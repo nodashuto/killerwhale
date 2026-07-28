@@ -7,9 +7,15 @@ use bevy::{
     input::mouse::AccumulatedMouseMotion, light::NotShadowCaster, prelude::*,
 };
 
+
+use crate::game::*;
+
+pub mod game;
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
+        .add_plugins(GamePlugin)
         .add_systems(
             Startup,
             (
