@@ -1,4 +1,6 @@
 use std::f32::consts::FRAC_PI_2;
+const JUMP_SPEED: f32 = 6.0;
+
 
 use bevy::{
     camera::visibility::RenderLayers, color::palettes::tailwind,
@@ -17,13 +19,27 @@ fn main() {
                 spawn_text,
             ),
         )
-        .add_systems(Update, (move_player, change_fov, move_player_from_input))
+        .add_systems(Update,
+		     (
+			 move_player,
+			 change_fov,
+			 update_player_movement,
+		         player_jump,
+			 apply_gravity,
+			 apply_velocity),
+	)
 	.add_systems(Update, close_on_esc)
         .run();
 }
 
 #[derive(Debug, Component)]
 struct Player;
+
+#[derive(Component, Debug, Default)]
+struct Velocity(Vec3);
+
+#[derive(Component)]
+struct Grounded;
 
 #[derive(Debug, Component, Deref, DerefMut)]
 struct CameraSensitivity(Vec2);
@@ -63,6 +79,7 @@ fn spawn_view_model(
 
     commands.spawn((
         Player,
+	Velocity::default(),
         CameraSensitivity::default(),
         Transform::from_xyz(0.0, 1.0, 0.0),
         Visibility::default(),
@@ -109,7 +126,7 @@ fn spawn_world_model(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let floor = meshes.add(Plane3d::new(Vec3::Y, Vec2::splat(10.0)));
+    let floor = meshes.add(Plane3d::new(Vec3::Y, Vec2::splat(100.0)));
     let cube = meshes.add(Cuboid::new(2.0, 0.5, 1.0));
     let material = materials.add(Color::WHITE);
 
@@ -231,32 +248,78 @@ pub fn close_on_esc(
 }
 
 // Allow player to move
-fn move_player_from_input(
-    // "Bevy, give me keyboard input"
-    input: Res<ButtonInput<KeyCode>>,           
-    // "Bevy, give me the game timer"
-    time: Res<Time>,                            
-    // "Bevy, give me the player's position"
-    mut player_transform: Single<&mut Transform, With<Player>>, 
+fn update_player_movement(
+    input: Res<ButtonInput<KeyCode>>,
+    time: Res<Time>,
+    mut player: Single<&mut Transform, With<Player> >,
 ) {
-    let mut direction = Vec3::ZERO;
-    if  input.pressed(KeyCode::KeyA) {
-        direction.x -= 1.0;
-    }
-    if  input.pressed(KeyCode::KeyD) {
-        direction.x += 1.0;
-    }
+    let mut movement = Vec3::ZERO;
+
+    let forward = player.forward();
+    let right = player.right();
+
     if input.pressed(KeyCode::KeyW) {
-        direction.z += 1.0;
+        movement += *forward;
     }
-    if  input.pressed(KeyCode::KeyS) {
-        direction.z -= 1.0;
+    if input.pressed(KeyCode::KeyS) {
+        movement -= *forward;
+    }
+    if input.pressed(KeyCode::KeyD) {
+        movement += *right;
+    }
+    if input.pressed(KeyCode::KeyA) {
+        movement -= *right;
     }
 
-    if direction != Vec3::ZERO {
-        let speed = 30.0; // pixels per second
-        let delta = direction.normalize() * speed * time.delta_secs();
-        player_transform.translation.x += delta.x;
-        player_transform.translation.z += delta.z;
+    // Don't fly when looking up/down
+    movement.y = 0.0;
+
+    if movement.length_squared() > 0.0 {
+        let speed = 5.0;
+        player.translation += movement.normalize() * speed * time.delta_secs();
+    }
+}
+
+fn player_jump(
+    input: Res<ButtonInput<KeyCode>>,
+    mut commands: Commands,
+    mut query: Query<(Entity, &mut Velocity), (With<Player>, With<Grounded>)>,
+) {
+    if !input.just_pressed(KeyCode::Space) {
+        return;
+    }
+
+    if let Ok((entity, mut velocity)) = query.single_mut() {
+        velocity.0.y = JUMP_SPEED;
+        commands.entity(entity).remove::<Grounded>();
+    }
+}
+
+const GRAVITY: f32 = 20.0;
+
+fn apply_gravity(
+    time: Res<Time>,
+    mut query: Query<&mut Velocity, With<Player>>,
+) {
+    let mut velocity = query.single_mut().unwrap();
+
+    velocity.0.y -= GRAVITY * time.delta_secs();
+}
+
+fn apply_velocity(
+    time: Res<Time>,
+    mut commands: Commands,
+    mut query: Query<(Entity, &mut Transform, &mut Velocity), With<Player>>,
+) {
+    let (entity, mut transform, mut velocity) = query.single_mut().unwrap();
+
+    transform.translation += velocity.0 * time.delta_secs();
+
+    // Simple floor at y = 1.0
+    if transform.translation.y <= 1.0 {
+        transform.translation.y = 1.0;
+        velocity.0.y = 0.0;
+
+        commands.entity(entity).insert(Grounded);
     }
 }
