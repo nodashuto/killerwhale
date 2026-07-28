@@ -1,5 +1,5 @@
 use std::f32::consts::FRAC_PI_2;
-const JUMP_SPEED: f32 = 6.0;
+const JUMP_SPEED: f32 = 5.0;
 
 
 use bevy::{
@@ -52,7 +52,7 @@ impl Default for CameraSensitivity {
             // We use a component for them so that we can make them user-configurable at runtime
             // for accessibility reasons.
             // It also allows you to inspect them in an editor if you `Reflect` the component.
-            Vec2::new(0.003, 0.002),
+            Vec2::new(0.006, 0.006),
         )
     }
 }
@@ -75,7 +75,7 @@ fn spawn_view_model(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let arm = meshes.add(Cuboid::new(0.1, 0.1, 0.5));
-    let arm_material = materials.add(Color::from(tailwind::TEAL_200));
+    let arm_material = materials.add(Color::from(tailwind::ZINC_800));
 
     commands.spawn((
         Player,
@@ -148,14 +148,15 @@ fn spawn_world_model(
     ));
 }
 
+// https://docs.rs/bevy/latest/bevy/prelude/struct.PointLight.html
 fn spawn_lights(mut commands: Commands) {
     commands.spawn((
         PointLight {
-            color: Color::from(tailwind::ROSE_300),
-            shadow_maps_enabled: true,
+            color: Color::from(tailwind::ORANGE_50),
+            shadow_maps_enabled: false,
             ..default()
         },
-        Transform::from_xyz(-2.0, 4.0, -0.75),
+        Transform::from_xyz(-2.0, 6.0, -0.75),
         // The light source illuminates both the world model and the view model.
         RenderLayers::from_layers(&[DEFAULT_RENDER_LAYER, VIEW_MODEL_RENDER_LAYER]),
     ));
@@ -295,7 +296,7 @@ fn player_jump(
     }
 }
 
-const GRAVITY: f32 = 20.0;
+const GRAVITY: f32 = 12.0;
 
 fn apply_gravity(
     time: Res<Time>,
