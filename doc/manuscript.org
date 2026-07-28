@@ -1,0 +1,9 @@
+#+TITLE: README
+#+AUTHOR: Noda Shuto
+#+EXPORT_FILE_NAME: ../README.md
+
+* Killerwhale Engine
+
+3d game engine
+
+- basic wasd movement
