@@ -3,6 +3,7 @@ use bevy::{
 };
 
 use super::player::player;
+use super::level::level;
 
 pub struct GamePlugin;
 
@@ -10,12 +11,13 @@ impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
 	// Register your systems here
 	app
+	    .add_plugins(level::LevelPlugin)
 	    .add_plugins(player::PlayerPlugin)
             .insert_resource(player::MovementSettings {
             sensitivity: 0.00015, // default: 0.00012
             speed: 12.0,          // default: 12.0
             })
-            .add_systems(Startup, scene.spawn())
+            //.add_systems(Startup, scene.spawn())
             .add_systems(Update, close_on_esc);
 	    
     }        
