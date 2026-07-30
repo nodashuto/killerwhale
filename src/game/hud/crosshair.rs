@@ -16,6 +16,6 @@ pub fn spawn_crosshair(
             top: Val::Px(window.height() / 2.0 - crosshair_size / 2.0),
             ..default()
         },
-        BackgroundColor(Color::srgb(1.0, 1.0, 1.0)),
+        BackgroundColor(Color::srgb(0.0, 1.0, 0.0)),
     ));
 }

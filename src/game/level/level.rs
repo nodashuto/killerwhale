@@ -35,7 +35,7 @@ fn init_level(
     let material = materials.add(Color::WHITE);
 
     // spawn floor
-    commands.spawn((Mesh3d(floor), MeshMaterial3d(material.clone())));
+    commands.spawn((Mesh3d(floor), MeshMaterial3d(material.clone()), Transform::from_xyz(0.0, -1.5, 0.0),));
 
     // spawn block 
     commands.spawn((
@@ -68,7 +68,7 @@ fn init_level(
             .with_scale(Vec3::splat(2.)),
         DirectionalLight {
             illuminance: AMBIENT_DAYLIGHT,
-            shadow_maps_enabled: false,
+            shadow_maps_enabled: true,
             ..default()
         },
         Visibility::Visible,

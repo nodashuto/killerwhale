@@ -1,3 +1,7 @@
+const GRAVITY: f32 = -25.0;
+const JUMP_SPEED: f32 = 10.0;
+const GROUND_Y: f32 = 0.0;
+
 use bevy::input::mouse::MouseMotion;
 use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
@@ -77,6 +81,7 @@ fn setup_player(mut commands: Commands) {
     commands.spawn((
         Camera3d::default(),
         FlyCam,
+	PlayerPhysics::default(),
         Transform::from_xyz(-2.0, 5.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
 }
@@ -88,9 +93,9 @@ fn player_move(
     primary_cursor_options: Single<&mut CursorOptions, With<PrimaryWindow>>,
     settings: Res<MovementSettings>,
     key_bindings: Res<KeyBindings>,
-    mut query: Query<(&FlyCam, &mut Transform)>, //    mut query: Query<&mut Transform, With<FlyCam>>,
+    mut query: Query<(&FlyCam, &mut Transform, &mut PlayerPhysics)>, //    mut query: Query<&mut Transform, With<FlyCam>>,
 ) {
-    for (_camera, mut transform) in query.iter_mut() {
+    for (_camera, mut transform, mut physics) in query.iter_mut() {
         let mut velocity = Vec3::ZERO;
         let local_z = transform.local_z();
         let forward = -Vec3::new(local_z.x, 0., local_z.z);
@@ -110,17 +115,38 @@ fn player_move(
                     } else if key == key_bindings.move_right {
                         velocity += right;
                     } else if key == key_bindings.move_ascend {
-                        velocity += Vec3::Y;
+                        //velocity += Vec3::Y;
                     } else if key == key_bindings.move_descend {
-                        velocity -= Vec3::Y;
+                        //velocity -= Vec3::Y;
                     }
+		    // Jump
+		    if keys.just_pressed(key_bindings.move_ascend) && physics.is_grounded {
+			physics.vertical_velocity = JUMP_SPEED;
+			physics.is_grounded = false;
+		    }
                 }
             }
         }
 
         velocity = velocity.normalize_or_zero();
 
-        transform.translation += velocity * time.delta_secs() * settings.speed
+        //transform.translation += velocity * time.delta_secs() * settings.speed;
+
+	 // Horizontal movement
+	 transform.translation += velocity * settings.speed * time.delta_secs();
+
+	// Gravity
+	physics.vertical_velocity += GRAVITY * time.delta_secs();
+
+	// Vertical movement
+	transform.translation.y += physics.vertical_velocity * time.delta_secs();
+
+	// Ground collision
+	if transform.translation.y <= GROUND_Y {
+            transform.translation.y = GROUND_Y;
+            physics.vertical_velocity = 0.0;
+            physics.is_grounded = true;
+	}
     }
 }
 
@@ -206,4 +232,21 @@ fn common_build(app: &mut App) {
         .add_systems(Update, player_move)
         .add_systems(Update, player_look)
         .add_systems(Update, cursor_grab);
+}
+
+
+/// Add a player physics component
+#[derive(Component)]
+pub struct PlayerPhysics {
+    pub vertical_velocity: f32,
+    pub is_grounded: bool,
+}
+
+impl Default for PlayerPhysics {
+    fn default() -> Self {
+        Self {
+            vertical_velocity: 0.0,
+            is_grounded: false,
+        }
+    }
 }
