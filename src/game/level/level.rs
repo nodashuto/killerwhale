@@ -63,11 +63,12 @@ fn init_level(
     ));
 
     commands.spawn((
-        Transform::from_xyz(-10., 500.0, 10.)
+        Transform::from_xyz(-50., 500.0, 100.)
             .looking_at(Vec3::ZERO, Vec3::Y)
             .with_scale(Vec3::splat(2.)),
         DirectionalLight {
-            illuminance: AMBIENT_DAYLIGHT,
+	    color: Color::from(tailwind::AMBER_100),
+	    illuminance: AMBIENT_DAYLIGHT,
             shadow_maps_enabled: true,
             ..default()
         },

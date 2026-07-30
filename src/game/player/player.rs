@@ -1,4 +1,4 @@
-const GRAVITY: f32 = -25.0;
+const GRAVITY: f32 = -30.0;
 const JUMP_SPEED: f32 = 10.0;
 const GROUND_Y: f32 = 0.0;
 
