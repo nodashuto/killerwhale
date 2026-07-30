@@ -2,9 +2,11 @@ use bevy::prelude::*;
 
 use bevy_rapier3d::prelude::*;
 use bevy::{
- color::palettes::tailwind,   
+    color::palettes::tailwind,
+    light::DirectionalLightTexture,
 };
 
+use light_consts::lux::AMBIENT_DAYLIGHT;
 
 pub struct LevelPlugin;
 
@@ -32,8 +34,10 @@ fn init_level(
     let cube = meshes.add(Cuboid::new(2.0, 0.5, 1.0));
     let material = materials.add(Color::WHITE);
 
+    // spawn floor
     commands.spawn((Mesh3d(floor), MeshMaterial3d(material.clone())));
 
+    // spawn block 
     commands.spawn((
         Mesh3d(cube.clone()),
         MeshMaterial3d(material.clone()),
@@ -46,15 +50,29 @@ fn init_level(
         Transform::from_xyz(0.75, 1.75, 0.0),
     ));
 
-        commands.spawn((
+    commands.spawn((
         PointLight {
             color: Color::from(tailwind::ROSE_300),
-            shadow_maps_enabled: true,
+	    intensity: 000_000.0,
+            shadow_maps_enabled: false,
             ..default()
         },
         Transform::from_xyz(-2.0, 4.0, -0.75),
         // The light source illuminates both the world model and the view model.
   
     ));
+
+    commands.spawn((
+        Transform::from_xyz(-10., 500.0, 10.)
+            .looking_at(Vec3::ZERO, Vec3::Y)
+            .with_scale(Vec3::splat(2.)),
+        DirectionalLight {
+            illuminance: AMBIENT_DAYLIGHT,
+            shadow_maps_enabled: false,
+            ..default()
+        },
+        Visibility::Visible,
+    ));
+    
 
 }
