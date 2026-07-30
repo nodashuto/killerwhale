@@ -42,6 +42,7 @@ pub struct KeyBindings {
     pub move_ascend: KeyCode,
     pub move_descend: KeyCode,
     pub toggle_grab_cursor: KeyCode,
+    pub sprint: KeyCode,
 }
 
 impl Default for KeyBindings {
@@ -54,6 +55,7 @@ impl Default for KeyBindings {
             move_ascend: KeyCode::Space,
             move_descend: KeyCode::ShiftLeft,
             toggle_grab_cursor: KeyCode::Escape,
+	    sprint: KeyCode::ShiftLeft,
         }
     }
 }
@@ -140,6 +142,13 @@ fn player_move(
         velocity = velocity.normalize_or_zero();
 
         //transform.translation += velocity * time.delta_secs() * settings.speed;
+
+	// Sprint
+	
+	if keys.pressed(key_bindings.move_forward) & keys.pressed(key_bindings.sprint)  {
+	    transform.translation += velocity * settings.speed * time.delta_secs() * 1.5; // sprint is 1.5x faster
+	}
+
 
 	 // Horizontal movement
 	 transform.translation += velocity * settings.speed * time.delta_secs();
@@ -259,6 +268,7 @@ impl Default for PlayerPhysics {
         Self {
             vertical_velocity: 0.0,
             is_grounded: false,
+	    
         }
     }
 }
@@ -269,12 +279,12 @@ fn update_player(
     buttons: Res<ButtonInput<MouseButton>>,
 ) {
     for button in buttons.get_pressed() {
-        println!("{:?} is currently held down", button);
+        //println!("{:?} is currently held down", button);
     }
     for button in buttons.get_just_pressed() {
-        println!("{:?} was pressed", button);
+        //println!("{:?} was pressed", button);
     }
     for button in buttons.get_just_released() {
-        println!("{:?} was released", button);
+        //println!("{:?} was released", button);
     }
 }
