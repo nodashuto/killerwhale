@@ -2,13 +2,19 @@ const GRAVITY: f32 = -30.0;
 const JUMP_SPEED: f32 = 10.0;
 const GROUND_Y: f32 = 0.0;
 
+use std::f32::consts::FRAC_PI_2;
+
+
 use bevy::input::mouse::MouseMotion;
 use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
 use bevy_rapier3d::prelude::*;
 use bevy_rapier3d::math::*;
 
-
+use bevy::{
+    camera::visibility::RenderLayers, color::palettes::tailwind,
+    input::mouse::AccumulatedMouseMotion, light::NotShadowCaster, prelude::*,
+};
 
 use crate::game::tracer;
 
@@ -87,13 +93,86 @@ fn initial_grab_cursor(primary_cursor_options: Single<&mut CursorOptions, With<P
     toggle_grab_cursor(primary_cursor_options);
 }
 
+/// start: https://bevy.org/examples/camera/first-person-view-model/
+
+#[derive(Debug, Component, Deref, DerefMut)]
+struct CameraSensitivity(Vec2);
+
+impl Default for CameraSensitivity {
+    fn default() -> Self {
+        Self(
+            // These factors are just arbitrary mouse sensitivity values.
+            // It's often nicer to have a faster horizontal sensitivity than vertical.
+            // We use a component for them so that we can make them user-configurable at runtime
+            // for accessibility reasons.
+            // It also allows you to inspect them in an editor if you `Reflect` the component.
+            Vec2::new(0.003, 0.002),
+        )
+    }
+}
+
+#[derive(Debug, Component)]
+struct WorldModelCamera;
+
+/// Used implicitly by all entities without a `RenderLayers` component.
+/// Our world model camera and all objects other than the player are on this layer.
+/// The light source belongs to both layers.
+const DEFAULT_RENDER_LAYER: usize = 0;
+
+/// Used by the view model camera and the player's arm.
+/// The light source belongs to both layers.
+const VIEW_MODEL_RENDER_LAYER: usize = 1;
+
+/// ends
+
 /// Spawns the `Camera3dBundle` to be controlled
-fn setup_player(mut commands: Commands) {
+fn setup_player(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let arm = meshes.add(Cuboid::new(0.1, 0.1, 0.5));
+    let arm_material = materials.add(Color::from(tailwind::TEAL_200));
     commands.spawn((
-        Camera3d::default(),
+        //Camera3d::default(),
         FlyCam,
 	PlayerPhysics::default(),
         Transform::from_xyz(-2.0, 5.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+	children![
+            (
+                WorldModelCamera,
+                Camera3d::default(),
+                Projection::from(PerspectiveProjection {
+                    fov: 90.0_f32.to_radians(),
+                    ..default()
+                }),
+            ),
+            // Spawn view model camera.
+            (
+                Camera3d::default(),
+                Camera {
+                    // Bump the order to render on top of the world model.
+                    order: 1,
+                    ..default()
+                },
+                Projection::from(PerspectiveProjection {
+                    fov: 70.0_f32.to_radians(),
+                    ..default()
+                }),
+                // Only render objects belonging to the view model.
+                RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
+            ),
+            // Spawn the player's right arm.
+            (
+                Mesh3d(arm),
+                MeshMaterial3d(arm_material),
+                Transform::from_xyz(0.2, -0.1, -0.25),
+                // Ensure the arm is only rendered by the view model camera.
+                RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
+                // The arm is free-floating, so shadows would look weird.
+                NotShadowCaster,
+            ),
+        ],
     ));
 }
 
@@ -230,7 +309,10 @@ impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         common_build(app);
 	//app.add_plugins(tracer::tracer::TracerPlugin); //added
-	app.add_systems(Startup, setup_player);
+	app.add_systems(Startup, (
+	    //spawn_view_model,
+	    setup_player,
+	));
 	app.add_systems(Update, update_player); // added myself
 	
     }
@@ -287,4 +369,56 @@ fn update_player(
     for button in buttons.get_just_released() {
         //println!("{:?} was released", button);
     }
+}
+
+
+fn spawn_view_model(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let arm = meshes.add(Cuboid::new(0.1, 0.1, 0.5));
+    let arm_material = materials.add(Color::from(tailwind::TEAL_200));
+
+    commands.spawn((
+        Player,
+        CameraSensitivity::default(),
+        Transform::from_xyz(0.0, 1.0, 0.0),
+        Visibility::default(),
+        children![
+            (
+                WorldModelCamera,
+                Camera3d::default(),
+                Projection::from(PerspectiveProjection {
+                    fov: 90.0_f32.to_radians(),
+                    ..default()
+                }),
+            ),
+             //Spawn view model camera.
+            (
+                Camera3d::default(),
+                Camera {
+                    // Bump the order to render on top of the world model.
+                    order: 1,
+                    ..default()
+                },
+                Projection::from(PerspectiveProjection {
+                    fov: 70.0_f32.to_radians(),
+                    ..default()
+                }),
+                // Only render objects belonging to the view model.
+                RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
+            ),
+            // Spawn the player's right arm.
+            (
+                Mesh3d(arm),
+                MeshMaterial3d(arm_material),
+                Transform::from_xyz(0.2, -0.1, -0.25),
+                // Ensure the arm is only rendered by the view model camera.
+                RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
+                // The arm is free-floating, so shadows would look weird.
+                NotShadowCaster,
+            ),
+        ],
+    ));
 }

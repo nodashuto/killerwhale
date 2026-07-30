@@ -4,8 +4,10 @@ use bevy_rapier3d::prelude::*;
 use bevy::{
     color::palettes::tailwind,
     light::DirectionalLightTexture,
+    camera::visibility::RenderLayers, 
 };
 
+    
 use light_consts::lux::AMBIENT_DAYLIGHT;
 
 pub struct LevelPlugin;
@@ -15,15 +17,6 @@ impl Plugin for LevelPlugin {
         app.add_systems(Startup, init_level);
     }
 }
-
-/// Used implicitly by all entities without a `RenderLayers` component.
-/// Our world model camera and all objects other than the player are on this layer.
-/// The light source belongs to both layers.
-const DEFAULT_RENDER_LAYER: usize = 0;
-
-/// Used by the view model camera and the player's arm.
-/// The light source belongs to both layers.
-const VIEW_MODEL_RENDER_LAYER: usize = 1;
 
 fn init_level(
     mut commands: Commands,
@@ -73,6 +66,7 @@ fn init_level(
             ..default()
         },
         Visibility::Visible,
+
     ));
     
 
