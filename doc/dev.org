@@ -3,3 +3,96 @@
 #+OPTIONS:   num:nil toc:2 \n:t
 #+EXPORT_FILE_NAME: dev.md
 
+
+#+begin_src
+  if let Ok(_entity) = target_query.get(entity) {
+                    commands.entity(entity).insert(DeadTarget);
+                }
+                //spawn tracer and check collisions
+                let tracer_material = StandardMaterial {
+                    base_color: Color::srgb(1., 1., 0.),
+                    unlit: true,
+                    ..default()
+                };
+
+                commands.spawn((
+		    Mesh3d(meshes.add(Cuboid::from_size(Vec3::new(0.1, 0.1, 1.0)))),
+		    MeshMaterial3d(materials.add(tracer_material)),
+		    Transform::from_translation(Vec3::splat(f32::MAX)),
+		    player::tracer::BulletTracer::new(
+			transform.translation,
+			ray_intersection.point,
+			100.,
+		    ),
+		));
+#+end_src
+
+
+[2026-07-30 Thu]
+
+#+begin_src
+  fn update_player(
+    mouse_input: Res<ButtonInput<MouseButton>>,
+    mut commands: Commands,
+    rapier_context: ReadRapierContext,
+    mut player_query: Query<(
+        &mut Player,//Player, Flycam
+        &mut Transform,
+        &mut GlobalTransform,
+        &mut Camera,
+    )>,
+    window_query: Query<&Window, With<PrimaryWindow>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    //target_query: Query<Entity, With<Target>>,
+) {
+    let window = window_query.single().unwrap();
+    let rapier_context = rapier_context.single().unwrap();
+    let ray_origin = Vec3::ZERO;
+    let ray_dir = Vec3::new(0.0, 1.0, 0.0);
+    let max_toi = 1000.0; // Time of Impact (衝突までの時間/距離)
+    let solid = true;
+    let filter = QueryFilter::default();
+
+    if let Ok((_player, transform, global_transform, camera)) = player_query.single() {
+        if mouse_input.just_pressed(MouseButton::Left) {
+            let Some(ray) = camera.viewport_to_world(
+                &global_transform,
+                Vec2::new(window.width() / 2., window.height() / 2.),
+            ) else {
+                return;
+            };
+	    
+            let hit = rapier_context.cast_ray_and_get_normal (
+		 ray.origin, ray.direction.into(), max_toi, solid, filter
+            );
+            if let Some((entity, ray_intersection)) = hit {
+		//spawn tracer and check collision
+		//if let Ok(_entity) = target_query.get(entity) {
+                    //commands.entity(entity).insert(DeadTarget);
+                //}
+                //spawn tracer and check collisions
+
+	    let tracer_material = StandardMaterial {
+                    base_color: Color::srgb(1., 1., 0.),
+                    unlit: true,
+                ..default()
+	    };
+                
+
+                commands.spawn((
+		    Mesh3d(meshes.add(Cuboid::from_size(Vec3::new(0.1, 0.1, 1.0)))),
+		    MeshMaterial3d(materials.add(tracer_material)),
+		    Transform::from_translation(Vec3::splat(f32::MAX)),
+		    tracer::tracer::BulletTracer::new(
+			transform.translation,
+			ray_intersection.point,
+			100.,
+		    ),
+		));
+                
+            }
+        }
+    }
+}
+#+end_src

@@ -4,6 +4,7 @@ use bevy::{
 
 use super::player::player;
 use super::level::level;
+use super::tracer::tracer;
 
 use crate::game::hud::hud;
 
@@ -20,6 +21,7 @@ impl Plugin for GamePlugin {
             sensitivity: 0.00015, // default: 0.00012
             speed: 6.0,          // default: 12.0
             })
+            .add_plugins(tracer::TracerPlugin)
             //.add_systems(Startup, scene.spawn())
             //.add_systems(Update, close_on_esc)
 	    ;

@@ -5,6 +5,12 @@ const GROUND_Y: f32 = 0.0;
 use bevy::input::mouse::MouseMotion;
 use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
+use bevy_rapier3d::prelude::*;
+use bevy_rapier3d::math::*;
+
+
+
+use crate::game::tracer;
 
 pub mod prelude {
     pub use crate::*;
@@ -56,6 +62,9 @@ impl Default for KeyBindings {
 /// A marker component used in queries when you want flycams and not other cameras
 #[derive(Component)]
 pub struct FlyCam;
+
+#[derive(Component)]
+pub struct Player;
 
 /// Grabs/ungrabs mouse cursor
 fn toggle_grab_cursor(mut primary_cursor_options: Single<&mut CursorOptions, With<PrimaryWindow>>) {
@@ -211,7 +220,10 @@ pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         common_build(app);
-        app.add_systems(Startup, setup_player);
+	//app.add_plugins(tracer::tracer::TracerPlugin); //added
+	app.add_systems(Startup, setup_player);
+	app.add_systems(Update, update_player); // added myself
+	
     }
 }
 
@@ -248,5 +260,21 @@ impl Default for PlayerPhysics {
             vertical_velocity: 0.0,
             is_grounded: false,
         }
+    }
+}
+
+
+
+fn update_player(
+    buttons: Res<ButtonInput<MouseButton>>,
+) {
+    for button in buttons.get_pressed() {
+        println!("{:?} is currently held down", button);
+    }
+    for button in buttons.get_just_pressed() {
+        println!("{:?} was pressed", button);
+    }
+    for button in buttons.get_just_released() {
+        println!("{:?} was released", button);
     }
 }
