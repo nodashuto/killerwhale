@@ -131,7 +131,7 @@ fn setup_player(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let arm = meshes.add(Cuboid::new(0.1, 0.1, 0.5));
+    let arm = meshes.add(Cuboid::new(0.1, 0.1, 1.0));
     let arm_material = materials.add(Color::from(tailwind::TEAL_200));
     commands.spawn((
         //Camera3d::default(),
@@ -143,7 +143,7 @@ fn setup_player(
                 WorldModelCamera,
                 Camera3d::default(),
                 Projection::from(PerspectiveProjection {
-                    fov: 90.0_f32.to_radians(),
+                    fov: 80.0_f32.to_radians(),
                     ..default()
                 }),
             ),
@@ -166,7 +166,7 @@ fn setup_player(
             (
                 Mesh3d(arm),
                 MeshMaterial3d(arm_material),
-                Transform::from_xyz(0.2, -0.1, -0.25),
+                Transform::from_xyz(0.2, -0.2, -0.25),
                 // Ensure the arm is only rendered by the view model camera.
                 RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
                 // The arm is free-floating, so shadows would look weird.
