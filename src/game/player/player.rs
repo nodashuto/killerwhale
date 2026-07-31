@@ -13,6 +13,7 @@ use bevy_rapier3d::math::*;
 
 use bevy::{
     camera::visibility::RenderLayers, color::palettes::tailwind,
+    color::palettes::*,
     input::mouse::AccumulatedMouseMotion, light::NotShadowCaster, prelude::*,
 };
 
@@ -130,6 +131,7 @@ fn setup_player(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+        asset_server: Res<AssetServer>,
 ) {
     let arm = meshes.add(Cuboid::new(0.1, 0.1, 1.0));
     let arm_material = materials.add(Color::from(tailwind::TEAL_200));
@@ -166,12 +168,31 @@ fn setup_player(
             (
                 Mesh3d(arm),
                 MeshMaterial3d(arm_material),
-                Transform::from_xyz(0.2, -0.2, -0.25),
+                
+		Transform {
+		    translation: Vec3::new(-0.1, -0.4, -0.25),
+		    rotation: Quat::from_rotation_y(std::f32::consts::PI / -6.0),
+		    scale: Vec3::new(1.0, 1.0, 1.0),
+		},
                 // Ensure the arm is only rendered by the view model camera.
                 RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
                 // The arm is free-floating, so shadows would look weird.
                 NotShadowCaster,
             ),
+	    (
+		Mesh3d(asset_server.load("models/sniper-0001.glb#Mesh0/Primitive0")),
+		MeshMaterial3d(materials.add(StandardMaterial {base_color: Color::BLACK,..default()})),
+		Transform {
+		    translation: Vec3::new(0.2, -0.3, -0.7),
+		    rotation: Quat::from_rotation_y(std::f32::consts::PI),
+		    scale: Vec3::new(1.0, 1.0, 6.0),
+		},
+		// Ensure the arm is only rendered by the view model camera.
+                RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
+                // The arm is free-floating, so shadows would look weird.
+                NotShadowCaster,		     
+		
+	    ),
         ],
     ));
 }

@@ -87,4 +87,22 @@ fn init_level(
         Transform::default(),
     ));
 
+    let mesh2 = asset_server.load("models/sniper-0001.glb#Mesh0/Primitive0");
+
+    
+    commands.spawn((
+        Mesh3d(mesh2),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: Color::WHITE,
+            ..default()
+        })),
+
+	Transform {
+	    translation: Vec3::new(3.0, 0.0, 0.0),
+	    rotation: Quat::from_rotation_y(1.57),
+	    scale: Vec3::new(1.0, 1.0, 5.0),
+	}
+    ));
+
+
 }
