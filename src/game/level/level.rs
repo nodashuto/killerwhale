@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
 use bevy::{
     color::palettes::tailwind,
+    color::palettes::*,
     light::DirectionalLightTexture,
     camera::visibility::RenderLayers, 
 };
@@ -22,6 +23,7 @@ fn init_level(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
 ) {
     let floor = meshes.add(Plane3d::new(Vec3::Y, Vec2::splat(10.0)));
     let cube = meshes.add(Cuboid::new(2.0, 0.5, 1.0));
@@ -68,6 +70,21 @@ fn init_level(
         Visibility::Visible,
 
     ));
-    
+
+    //commands.spawn(WorldAssetRoot(asset_server.load(
+      //  GltfAssetLabel::Scene(0).from_asset("models/sniper-0001.glb#Scene0"),
+    //)));
+
+    // Load the mesh from the GLB
+    let mesh = asset_server.load("models/sniper-0001.glb#Mesh0/Primitive0");
+
+    commands.spawn((
+        Mesh3d(mesh),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: Color::BLACK,
+            ..default()
+        })),
+        Transform::default(),
+    ));
 
 }
