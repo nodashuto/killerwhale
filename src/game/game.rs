@@ -2,6 +2,8 @@ use bevy::{
     prelude::*,
 };
 
+use bevy_rapier3d::prelude::*;
+
 use super::player::player;
 use super::level::level;
 use super::tracer::tracer;
@@ -22,6 +24,7 @@ impl Plugin for GamePlugin {
             speed: 6.0,          // default: 12.0
             })
             .add_plugins(tracer::TracerPlugin)
+	    .add_plugins(RapierPhysicsPlugin::<NoUserData>::default()) //set up rapier
             //.add_systems(Startup, scene.spawn())
             //.add_systems(Update, close_on_esc)
 	    ;

@@ -20,7 +20,7 @@ fn spawn_text(mut commands: Commands) {
         })
         .with_child(Text::new(concat!(
             "Debug Build\n",
-            " \n",
-            " "
+            "bevy = 0.19.0 \n",
+            "bevy_rapier3d = 0.35.0 "
         )));
 }

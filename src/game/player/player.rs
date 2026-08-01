@@ -80,6 +80,11 @@ pub struct FlyCam;
 #[derive(Component)]
 pub struct Player;
 
+#[derive(Component)]
+struct Health {
+    hp: f32,
+}
+
 /// Grabs/ungrabs mouse cursor
 fn toggle_grab_cursor(mut primary_cursor_options: Single<&mut CursorOptions, With<PrimaryWindow>>) {
     match primary_cursor_options.grab_mode {
@@ -142,7 +147,7 @@ fn setup_player(
     let arm_material = materials.add(Color::from(tailwind::TEAL_200));
     commands.spawn((
         //Camera3d::default(),
-        FlyCam,
+        Player,
 	PlayerPhysics::default(),
         Transform::from_xyz(-2.0, 5.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
 	children![
@@ -209,7 +214,7 @@ fn player_move(
     primary_cursor_options: Single<&mut CursorOptions, With<PrimaryWindow>>,
     settings: Res<MovementSettings>,
     key_bindings: Res<KeyBindings>,
-    mut query: Query<(&FlyCam, &mut Transform, &mut PlayerPhysics)>, //    mut query: Query<&mut Transform, With<FlyCam>>,
+    mut query: Query<(&Player, &mut Transform, &mut PlayerPhysics)>, //    mut query: Query<&mut Transform, With<FlyCam>>,
 ) {
     for (_camera, mut transform, mut physics) in query.iter_mut() {
         let mut velocity = Vec3::ZERO;
@@ -279,7 +284,7 @@ fn player_look(
     primary_window: Query<&mut Window, With<PrimaryWindow>>,
     primary_cursor_options: Single<&mut CursorOptions, With<PrimaryWindow>>,
     mut state: MessageReader<MouseMotion>,
-    mut query: Query<&mut Transform, With<FlyCam>>,
+    mut query: Query<&mut Transform, With<Player>>,
 ) {
     if let Ok(window) = primary_window.single() {
         for mut transform in query.iter_mut() {
@@ -319,7 +324,7 @@ fn cursor_grab(
 
 // Grab cursor when an entity with FlyCam is added
 fn initial_grab_on_flycam_spawn(
-    query_added: Query<Entity, Added<FlyCam>>,
+    query_added: Query<Entity, Added<Player>>,
     primary_cursor_options: Single<&mut CursorOptions, With<PrimaryWindow>>,
 ) {
     if query_added.is_empty() {
@@ -340,6 +345,7 @@ impl Plugin for PlayerPlugin {
 	    setup_player,
 	));
 	app.add_systems(Update, update_player); // added myself
+	app.add_systems(Update, fire_weapon);
 	
     }
 }
@@ -447,4 +453,44 @@ fn spawn_view_model(
             ),
         ],
     ));
+}
+
+
+fn fire_weapon(
+    buttons: Res<ButtonInput<MouseButton>>,
+    camera: Query<&GlobalTransform, With<Camera3d>>,
+    rapier_context: ReadRapierContext,
+    mut health_query: Query<&mut Health>,
+) {
+    if !buttons.just_pressed(MouseButton::Left) {
+        return;
+    }
+
+    let transform = camera.single().unwrap();
+
+    let origin = transform.translation();
+    let direction = transform.forward();
+
+    let max_distance = 1000.0;
+
+    if let Ok(ctx) = rapier_context.single() {
+        if let Some((entity, toi)) = ctx.cast_ray_and_get_normal(
+            origin,
+            *direction,
+            max_distance,
+            true,
+            QueryFilter::default(),
+        ) {
+            //println!("Hit {:?} at {}", entity, toi);
+
+            if let Ok(mut health) = health_query.get_mut(entity) {
+                health.hp -= 20.0;
+
+                println!("Remaining HP: {}", health.hp);
+            }
+
+            //let hit_position = origin + *direction * toi;
+            //println!("Impact position: {:?}", hit_position);
+        }
+    }
 }
