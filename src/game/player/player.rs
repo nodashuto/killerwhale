@@ -40,6 +40,7 @@ impl Default for MovementSettings {
 }
 
 /// Key configuration
+
 #[derive(Resource)]
 pub struct KeyBindings {
     pub move_forward: KeyCode,
@@ -50,8 +51,10 @@ pub struct KeyBindings {
     pub move_descend: KeyCode,
     pub toggle_grab_cursor: KeyCode,
     pub sprint: KeyCode,
+    pub crouch: KeyCode,
 }
 
+/// https://docs.rs/bevy/latest/bevy/prelude/enum.KeyCode.html
 impl Default for KeyBindings {
     fn default() -> Self {
         Self {
@@ -63,6 +66,7 @@ impl Default for KeyBindings {
             move_descend: KeyCode::ShiftLeft,
             toggle_grab_cursor: KeyCode::Escape,
 	    sprint: KeyCode::ShiftLeft,
+	    crouch: KeyCode::ControlLeft,
         }
     }
 }
@@ -71,6 +75,7 @@ impl Default for KeyBindings {
 /// A marker component used in queries when you want flycams and not other cameras
 #[derive(Component)]
 pub struct FlyCam;
+
 
 #[derive(Component)]
 pub struct Player;
@@ -411,7 +416,7 @@ fn spawn_view_model(
                 WorldModelCamera,
                 Camera3d::default(),
                 Projection::from(PerspectiveProjection {
-                    fov: 90.0_f32.to_radians(),
+                    fov: 64.0_f32.to_radians(),
                     ..default()
                 }),
             ),
