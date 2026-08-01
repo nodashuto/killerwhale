@@ -4,6 +4,9 @@ const GROUND_Y: f32 = 0.0;
 
 use std::f32::consts::FRAC_PI_2;
 
+use crate::game::target::target::{Target, Health};
+
+
 
 use bevy::input::mouse::MouseMotion;
 use bevy::prelude::*;
@@ -80,10 +83,9 @@ pub struct FlyCam;
 #[derive(Component)]
 pub struct Player;
 
+
 #[derive(Component)]
-struct Health {
-    hp: f32,
-}
+struct PlayerCamera;
 
 /// Grabs/ungrabs mouse cursor
 fn toggle_grab_cursor(mut primary_cursor_options: Single<&mut CursorOptions, With<PrimaryWindow>>) {
@@ -161,7 +163,8 @@ fn setup_player(
             ),
             // Spawn view model camera.
             (
-                Camera3d::default(),
+		PlayerCamera,
+		Camera3d::default(),
                 Camera {
                     // Bump the order to render on top of the world model.
                     order: 1,
@@ -458,7 +461,7 @@ fn spawn_view_model(
 
 fn fire_weapon(
     buttons: Res<ButtonInput<MouseButton>>,
-    camera: Query<&GlobalTransform, With<Camera3d>>,
+    camera: Query<&GlobalTransform, With<PlayerCamera>>,
     rapier_context: ReadRapierContext,
     mut health_query: Query<&mut Health>,
 ) {
@@ -484,9 +487,8 @@ fn fire_weapon(
             //println!("Hit {:?} at {}", entity, toi);
 
             if let Ok(mut health) = health_query.get_mut(entity) {
-                health.hp -= 20.0;
-
-                println!("Remaining HP: {}", health.hp);
+		health.current -= 50.0;
+		println!("Remaining HP: {}", health.current);
             }
 
             //let hit_position = origin + *direction * toi;

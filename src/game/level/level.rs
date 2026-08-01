@@ -8,7 +8,9 @@ use bevy::{
     camera::visibility::RenderLayers, 
 };
 
-    
+
+
+use crate::game::target::target::{Target, TargetPlugin, Health, spawn_target};
 use light_consts::lux::AMBIENT_DAYLIGHT;
 
 pub struct LevelPlugin;
@@ -104,5 +106,17 @@ fn init_level(
 	}
     ));
 
-
+    
+    spawn_target(
+        &mut commands,
+        &mut meshes,
+        &mut materials,
+        Vec3::new(0.0, 0.5, -5.0),
+    );
+    spawn_target(
+        &mut commands,
+        &mut meshes,
+        &mut materials,
+        Vec3::new(0.0, 0.5, -6.0),
+    );
 }
