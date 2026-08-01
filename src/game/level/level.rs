@@ -64,7 +64,7 @@ fn init_level(
             .looking_at(Vec3::ZERO, Vec3::Y)
             .with_scale(Vec3::splat(2.)),
         DirectionalLight {
-	    color: Color::from(tailwind::AMBER_100),
+	    color: Color::from(tailwind::NEUTRAL_500),
 	    illuminance: AMBIENT_DAYLIGHT,
             shadow_maps_enabled: true,
             ..default()
