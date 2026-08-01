@@ -4,6 +4,11 @@
 
 * Killerwhale Engine
 
-3d game engine
+My 3d game engine in Rust, Bevy.
 
-- basic wasd movement
+- Rust
+- Bevy Engine
+
+
+
+
