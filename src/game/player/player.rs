@@ -1,5 +1,5 @@
-const GRAVITY: f32 = 25.0;
-const JUMP_SPEED: f32 = 20.0;
+const GRAVITY: f32 = 40.0;
+const JUMP_SPEED: f32 = 16.0;
 const PLAYER_HEIGHT: f32 = 1.8;
 
 
@@ -150,7 +150,7 @@ fn setup_player(
 ) {
     let arm = meshes.add(Cuboid::new(0.1, 0.1, 1.0));
     let arm_material = materials.add(Color::from(tailwind::TEAL_200));
-    let camera_height = 1.8;
+    let camera_height = 1.5;
     commands.spawn((
         //Camera3d::default(),
         Player,

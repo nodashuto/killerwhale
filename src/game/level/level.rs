@@ -122,6 +122,16 @@ fn init_level(
         &mut materials,
         Vec3::new(0.0, 0.5, -6.0),
     );
+
+    let mesh3 = meshes.add(Cuboid::new(2.0, 2.0, 2.0));
+    // spawn block 
+    commands.spawn((
+        Mesh3d(mesh3),
+        MeshMaterial3d(materials.add(Color::WHITE)),
+        Transform::from_xyz(30.0, 1.0, 30.0),
+	RigidBody::Fixed,
+        Collider::cuboid(1.0, 1.0, 1.0),
+    ));
 }
 
 // https://github.com/dimforge/bevy_rapier/blob/master/bevy_rapier3d/examples/boxes3.rs
@@ -130,13 +140,29 @@ pub fn setup_physics(mut commands: Commands) {
     /*
      * Ground
      */
-    let ground_size = 200.1;
-    let ground_height = 0.1;
+    let ground_size = 100.1;
+    let ground_height = 0.5;
 
     commands.spawn((
         Transform::from_xyz(0.0, -ground_height, 0.0),
         Collider::cuboid(ground_size, ground_height, ground_size),
     ));
+
+    /*
+     * Second Ground added myself
+     */
+    
+    let second_ground_size = 500.1;
+    let second_ground_height = 0.5;
+
+    let second_ground_y = 100.1 + second_ground_height;
+
+    commands.spawn((
+        Transform::from_xyz(0.0, -second_ground_y, 0.0),
+        Collider::cuboid(second_ground_size, second_ground_height, second_ground_size),
+    ));
+
+        
 
     /*
      * Create the cubes
