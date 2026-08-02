@@ -1,6 +1,6 @@
 const GRAVITY: f32 = -30.0;
 const JUMP_SPEED: f32 = 10.0;
-const GROUND_Y: f32 = 0.0;
+const GROUND_Y: f32 = 0.1;
 
 use std::f32::consts::FRAC_PI_2;
 
@@ -147,11 +147,19 @@ fn setup_player(
 ) {
     let arm = meshes.add(Cuboid::new(0.1, 0.1, 1.0));
     let arm_material = materials.add(Color::from(tailwind::TEAL_200));
+    let camera_height = 1.8;
     commands.spawn((
         //Camera3d::default(),
         Player,
 	PlayerPhysics::default(),
         Transform::from_xyz(-2.0, 5.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+	Collider::cuboid(1.,10., 1.),
+        RigidBody::KinematicPositionBased,
+        KinematicCharacterController{
+            up : Vec3::Y,
+            offset : CharacterLength::Absolute(0.01),
+            ..default()
+        },
 	children![
             (
                 WorldModelCamera,
@@ -160,6 +168,7 @@ fn setup_player(
                     fov: 80.0_f32.to_radians(),
                     ..default()
                 }),
+		Transform::from_xyz(0.0, camera_height, 0.0),
             ),
             // Spawn view model camera.
             (
@@ -176,6 +185,7 @@ fn setup_player(
                 }),
                 // Only render objects belonging to the view model.
                 RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
+		Transform::from_xyz(0.0, camera_height, 0.0),
             ),
             // Spawn the player's right arm.
             (
@@ -185,7 +195,7 @@ fn setup_player(
 		Transform {
 		    translation: Vec3::new(-0.1, -0.4, -0.25),
 		    rotation: Quat::from_rotation_y(std::f32::consts::PI / -6.0),
-		    scale: Vec3::new(1.0, 1.0, 1.0),
+		    scale: Vec3::new(1.0, 1.0+camera_height, 1.0),
 		},
                 // Ensure the arm is only rendered by the view model camera.
                 RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
@@ -198,7 +208,7 @@ fn setup_player(
 		Transform {
 		    translation: Vec3::new(0.2, -0.3, -0.7),
 		    rotation: Quat::from_rotation_y(std::f32::consts::PI),
-		    scale: Vec3::new(1.0, 1.0, 6.0),
+		    scale: Vec3::new(1.0, 1.0+camera_height, 6.0),
 		},
 		// Ensure the arm is only rendered by the view model camera.
                 RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
@@ -464,6 +474,7 @@ fn fire_weapon(
     camera: Query<&GlobalTransform, With<PlayerCamera>>,
     rapier_context: ReadRapierContext,
     mut health_query: Query<&mut Health>,
+    player_query: Query<Entity, With<Player>>,
 ) {
     if !buttons.just_pressed(MouseButton::Left) {
         return;
@@ -476,13 +487,17 @@ fn fire_weapon(
 
     let max_distance = 1000.0;
 
+    // Exclude player's hitbox when ray casting
+    let player_entity = player_query.single().unwrap();
+    let filter = QueryFilter::default().exclude_rigid_body(player_entity);
+
     if let Ok(ctx) = rapier_context.single() {
-        if let Some((entity, toi)) = ctx.cast_ray_and_get_normal(
+        if let Some((entity, toi)) = ctx.cast_ray(
             origin,
             *direction,
             max_distance,
             true,
-            QueryFilter::default(),
+            filter,
         ) {
             //println!("Hit {:?} at {}", entity, toi);
 

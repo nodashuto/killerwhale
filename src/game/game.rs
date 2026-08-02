@@ -17,6 +17,8 @@ impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
 	// Register your systems here
 	app
+	    .add_plugins(RapierPhysicsPlugin::<NoUserData>::default()) //set up rapier
+	    .add_plugins(RapierDebugRenderPlugin::default())
 	    .add_plugins(level::LevelPlugin)
 	    .add_plugins(hud::HUDPlugin)
 	    .add_plugins(player::PlayerPlugin)
@@ -25,7 +27,6 @@ impl Plugin for GamePlugin {
             speed: 6.0,          // default: 12.0
             })
             .add_plugins(tracer::TracerPlugin)
-	    .add_plugins(RapierPhysicsPlugin::<NoUserData>::default()) //set up rapier
 	    .add_plugins(target::TargetPlugin)
             //.add_systems(Startup, scene.spawn())
             //.add_systems(Update, close_on_esc)
