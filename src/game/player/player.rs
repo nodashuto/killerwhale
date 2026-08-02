@@ -1,6 +1,7 @@
-const GRAVITY: f32 = -30.0;
-const JUMP_SPEED: f32 = 10.0;
-const GROUND_Y: f32 = 0.1;
+const GRAVITY: f32 = 25.0;
+const JUMP_SPEED: f32 = 20.0;
+const PLAYER_HEIGHT: f32 = 1.8;
+
 
 use std::f32::consts::FRAC_PI_2;
 
@@ -80,9 +81,11 @@ impl Default for KeyBindings {
 pub struct FlyCam;
 
 
+//#[derive(Component)]
+//pub struct Player;
+
 #[derive(Component)]
 pub struct Player;
-
 
 #[derive(Component)]
 struct PlayerCamera;
@@ -152,8 +155,8 @@ fn setup_player(
         //Camera3d::default(),
         Player,
 	PlayerPhysics::default(),
-        Transform::from_xyz(-2.0, 5.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
-	Collider::cuboid(1.,10., 1.),
+        Transform::from_xyz(-2.0, 10.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+	Collider::cuboid(1.,2.0, 1.),
         RigidBody::KinematicPositionBased,
         KinematicCharacterController{
             up : Vec3::Y,
@@ -229,6 +232,8 @@ fn player_move(
     key_bindings: Res<KeyBindings>,
     mut query: Query<(&Player, &mut Transform, &mut PlayerPhysics)>, //    mut query: Query<&mut Transform, With<FlyCam>>,
 ) {
+    let dt = time.delta_secs();
+    
     for (_camera, mut transform, mut physics) in query.iter_mut() {
         let mut velocity = Vec3::ZERO;
         let local_z = transform.local_z();
@@ -255,7 +260,7 @@ fn player_move(
                     }
 		    // Jump
 		    if keys.just_pressed(key_bindings.move_ascend) && physics.is_grounded {
-			physics.vertical_velocity = JUMP_SPEED;
+			physics.vertical_velocity = 0.0; // JUMP_SPEED;
 			physics.is_grounded = false;
 		    }
                 }
@@ -277,17 +282,31 @@ fn player_move(
 	 transform.translation += velocity * settings.speed * time.delta_secs();
 
 	// Gravity
-	physics.vertical_velocity += GRAVITY * time.delta_secs();
+	//physics.vertical_velocity += GRAVITY * time.delta_secs();
 
 	// Vertical movement
-	transform.translation.y += physics.vertical_velocity * time.delta_secs();
+	//transform.translation.y += physics.vertical_velocity * time.delta_secs();
+
+	// Jump
+        //if keys.just_pressed(key_bindings.move_ascend) && physics.is_grounded {
+            //physics.vertical_velocity = JUMP_SPEED;
+            //physics.is_grounded = false;
+        //}
+
+
+	// Apply current vertical velocity.
+	// Jump is handled in player jump
+        // Gravity is handled in gravity_system().
+        transform.translation.y += physics.vertical_velocity * dt;
+
+	
 
 	// Ground collision
-	if transform.translation.y <= GROUND_Y {
-            transform.translation.y = GROUND_Y;
-            physics.vertical_velocity = 0.0;
-            physics.is_grounded = true;
-	}
+	//if transform.translation.y <= GROUND_Y {
+        //    transform.translation.y = GROUND_Y;
+        //    physics.vertical_velocity = 0.0;
+        //    physics.is_grounded = true;
+	//}
     }
 }
 
@@ -358,6 +377,11 @@ impl Plugin for PlayerPlugin {
 	    setup_player,
 	));
 	app.add_systems(Update, update_player); // added myself
+	app.add_systems (Update, (
+	    gravity_system,
+	    ground_check_system,
+	    player_jump,
+	).chain());
 	app.add_systems(Update, fire_weapon);
 	
     }
@@ -508,6 +532,58 @@ fn fire_weapon(
 
             //let hit_position = origin + *direction * toi;
             //println!("Impact position: {:?}", hit_position);
+        }
+    }
+}
+
+
+/// Handle Ground Detection 2026-08-02-1442
+fn ground_check_system(
+    rapier_context: ReadRapierContext,
+    mut query: Query<(Entity, &Transform, &mut PlayerPhysics), With<Player>>,
+) {
+    let Ok(ctx) = rapier_context.single() else { return; };
+
+    for (entity, transform, mut physics) in &mut query {
+        let origin = transform.translation + Vec3::new(0.0, -1.95, 0.0);
+
+        physics.is_grounded = ctx.cast_ray(
+            origin,
+            -Vec3::Y,
+            0.15,
+            true,
+            QueryFilter::default().exclude_rigid_body(entity),
+        ).is_some();
+    }
+}
+
+
+
+/// handle player gravity
+fn gravity_system(
+    time: Res<Time>,
+    mut query: Query<&mut PlayerPhysics>,
+) {
+    let dt = time.delta_secs();
+
+    for mut physics in &mut query {
+        if !physics.is_grounded {
+            physics.vertical_velocity -= GRAVITY * dt;
+        } else if physics.vertical_velocity < 0.0 {
+            physics.vertical_velocity = 0.0;
+        }
+    }
+}
+
+
+fn player_jump(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    mut query: Query<&mut PlayerPhysics>,
+) {
+    for mut player in &mut query {
+        if player.is_grounded && keyboard.just_pressed(KeyCode::Space) {
+            player.vertical_velocity = JUMP_SPEED;
+            player.is_grounded = false;
         }
     }
 }
