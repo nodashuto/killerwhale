@@ -156,7 +156,7 @@ fn setup_player(
         Player,
 	PlayerPhysics::default(),
         Transform::from_xyz(-2.0, 10.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
-	Collider::cuboid(1.,2.0, 1.),
+	Collider::capsule_y(0.9, 0.3),
         RigidBody::KinematicPositionBased,
         KinematicCharacterController{
             up : Vec3::Y,

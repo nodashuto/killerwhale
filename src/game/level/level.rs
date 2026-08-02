@@ -123,7 +123,7 @@ fn init_level(
         Vec3::new(0.0, 0.5, -6.0),
     );
 
-    let mesh3 = meshes.add(Cuboid::new(2.0, 2.0, 2.0));
+    let mesh3 = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
     // spawn block 
     commands.spawn((
         Mesh3d(mesh3),
