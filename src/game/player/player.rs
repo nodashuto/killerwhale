@@ -310,6 +310,70 @@ fn player_move(
     }
 }
 
+fn player_move_rapier(
+    keys: Res<ButtonInput<KeyCode>>,
+    time: Res<Time>,
+    primary_cursor_options: Single<&CursorOptions, With<PrimaryWindow>>,
+    settings: Res<MovementSettings>,
+    key_bindings: Res<KeyBindings>,
+    mut query: Query<(
+        &Transform,
+         &mut KinematicCharacterController,
+        &mut PlayerPhysics,
+    ), With<Player>>,
+) {
+    for (transform, mut controller, mut physics) in &mut query {
+        if primary_cursor_options.grab_mode == CursorGrabMode::None {
+            continue;
+        }
+
+        let mut movement = Vec3::ZERO;
+
+        let local_z = transform.local_z();
+        let forward = -Vec3::new(local_z.x, 0.0, local_z.z);
+        let right = Vec3::new(local_z.z, 0.0, -local_z.x);
+
+        if keys.pressed(key_bindings.move_forward) {
+            movement += forward;
+        }
+        if keys.pressed(key_bindings.move_backward) {
+            movement -= forward;
+        }
+        if keys.pressed(key_bindings.move_left) {
+            movement -= right;
+        }
+        if keys.pressed(key_bindings.move_right) {
+            movement += right;
+        }
+
+        movement = movement.normalize_or_zero();
+	let mut speed = settings.speed;
+
+	if keys.pressed(key_bindings.move_forward)
+	    && keys.pressed(key_bindings.sprint)
+	{
+	    speed *= 1.5;
+	}
+
+	controller.translation = Some(
+	    movement * speed * time.delta_secs()
+	);
+
+        // Jump
+        if keys.just_pressed(key_bindings.move_ascend) && physics.is_grounded {
+            controller.translation = Some(
+		Vec3::new(
+		    movement.x * speed * time.delta_secs(),
+		    physics.vertical_velocity * time.delta_secs(),
+		    movement.z * speed * time.delta_secs(),
+		)
+	    );
+        }
+
+        // Let Rapier/gravity control vertical velocity otherwise.
+    }
+}
+
 /// Handles looking around if cursor is locked
 fn player_look(
     settings: Res<MovementSettings>,
@@ -401,7 +465,8 @@ fn common_build(app: &mut App) {
         .init_resource::<KeyBindings>()
         .add_systems(Startup, initial_grab_cursor)
         .add_systems(Startup, initial_grab_on_flycam_spawn)
-        .add_systems(Update, player_move)
+        //.add_systems(Update, player_move)
+	.add_systems(Update, player_move_rapier)
         .add_systems(Update, player_look)
         .add_systems(Update, cursor_grab);
 }
