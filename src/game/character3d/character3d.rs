@@ -28,3 +28,12 @@ fn read_result_system(controllers: Query<(Entity, &KinematicCharacterControllerO
         );
     }
 }
+
+fn character_movement() {
+    
+}
+
+fn jump() {
+    
+}
+
