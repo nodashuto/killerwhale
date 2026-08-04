@@ -1,189 +1,480 @@
-use bevy::prelude::*;
-use bevy_rapier3d::prelude::*;
-use bevy::{
-    camera::visibility::RenderLayers, color::palettes::tailwind,
-    input::mouse::AccumulatedMouseMotion, light::NotShadowCaster, prelude::*,
-};
-use bevy::color::*;
+// use bevy::prelude::*;
+// use bevy_rapier3d::prelude::*;
+// use bevy::{
+//     camera::visibility::RenderLayers, color::palettes::tailwind,
+//     input::mouse::AccumulatedMouseMotion, light::NotShadowCaster, prelude::*,
+// };
+// use bevy::color::*;
 
 // This line tells the compiler to include the code it finds in src/game.rs
 //pub mod game;
 
-fn main() {
-    App::new()
-        .add_plugins(DefaultPlugins)
+// fn main() {
+//     App::new()
+//         .add_plugins(DefaultPlugins)
     //.add_plugins(game::game::GamePlugin)
     //.add_systems(Startup, (init_level, spawn_lights))
-        .add_systems(Startup, init_level)
+        // .add_systems(Startup, init_level)
+	// .add_systems(Startup, setup)
+	// .add_systems(Startup, setup_physics)
+	// .add_systems(Update, update_system)
+	// .add_systems(Update, read_result_system)
+//         .run();
+// }
+
+
+// #[derive(Debug, Component)]
+// struct Player;
+
+
+
+// fn init_level(
+//     mut commands: Commands,
+//     mut meshes: ResMut<Assets<Mesh>>,
+//     mut materials: ResMut<Assets<StandardMaterial>>,
+
+// ) {
+//      /*
+//      * Ground
+//      */
+//     let ground_size = 100.1;
+//     let ground_height = 0.5;
+
+//     commands.spawn((
+//         Transform::from_xyz(0.0, -ground_height, 0.0),
+//         Collider::cuboid(ground_size, ground_height, ground_size),
+//     ));
+
+//     let floor = meshes.add(Plane3d::new(Vec3::Y, Vec2::splat(10.0)));
+//     let cube = meshes.add(Cuboid::new(2.0, 0.5, 1.0));
+//     let material = materials.add(Color::WHITE);
+
+//     // spawn floor
+//     commands.spawn((Mesh3d(floor), MeshMaterial3d(material.clone()), Transform::from_xyz(0.0, 0.1, 0.0),));
+
+    
+// }
+
+
+// fn spawn_lights(mut commands: Commands) {
+//     commands.spawn((
+//         PointLight {
+//             color: Color::from(tailwind::NEUTRAL_300),
+//             shadow_maps_enabled: true,
+//             ..default()
+//         },
+//         Transform::from_xyz(-2.0, 4.0, -0.75),
+//         // The light source illuminates both the world model and the view model.
+//         //RenderLayers::from_layers(&[DEFAULT_RENDER_LAYER, VIEW_MODEL_RENDER_LAYER]),
+//     ));
+// }
+
+// /// For more infomation, see: https://rapier.rs/docs/user_guides/bevy_plugin/character_controller/
+// fn setup_physics(
+//     mut commands: Commands,
+//     mut meshes: ResMut<Assets<Mesh>>,
+//     mut materials: ResMut<Assets<StandardMaterial>>,
+
+// ) {
+//     /*
+//      * Spawn Player with CharacterController
+//      */
+
+//     // commands.spawn((
+//     //     //RigidBody::KinematicPositionBased,
+//     // 	//Player,
+//     // 	RigidBody::Dynamic,
+//     // 	GravityScale(0.5),
+//     //     Transform::from_xyz(0.0, 4.1, 0.0),
+//     // 	Visibility::default(),
+//     // 	Collider::cuboid(1.0, 2.0, 1.0),
+//     // 	ColliderDebugColor(Srgba::rgb(0.5, 0.5, 0.5).into()),
+//     // 	KinematicCharacterController{
+//     //         ..KinematicCharacterController::default()
+//     //     },
+//     // 	Mesh3d(meshes.add(Capsule3d::default())),
+//     //     MeshMaterial3d(materials.add(Color::srgb(1.0, 0.0, 0.0))),
+//     // ));
+
+//     commands
+//     .spawn(RigidBody::Dynamic)
+//     .insert(Transform::from_xyz(0.0, 6.0, 0.0))
+//     .insert(GravityScale(1.0))
+//     .insert(Sleeping::disabled())
+// 	.insert(Ccd::enabled())
+// 	.insert(ColliderDebugColor(Srgba::rgb(0.5, 0.5, 0.5).into()))
+// 	.insert(Mesh3d(meshes.add(Capsule3d::default())))
+// 	.insert(MeshMaterial3d(materials.add(Color::srgb(1.0, 0.0, 0.0))))
+// .insert(Collider::cuboid(1.0, 2.0, 1.0));
+
+// }
+
+// /* , With<Player>
+// */
+// fn update_system(time: Res<Time>, mut controllers: Query<&mut KinematicCharacterController>) {
+//     for mut controller in controllers.iter_mut() {
+//         //controller.translation = Some(Vec3::new(0.0, -1.0, 0.0) * time.delta_secs());
+//     }
+// }
+
+// fn read_result_system(controllers: Query<(Entity, &KinematicCharacterControllerOutput)>) {
+//     for (entity, output) in controllers.iter() {
+//         println!(
+//             "Entity {:?} moved by {:?} and touches the ground: {:?}",
+//             entity, output.effective_translation, output.grounded
+//         );
+//     }
+// }
+// #[derive(Component)]
+// struct Ground;
+
+// fn setup(
+//     mut commands: Commands,
+//     mut meshes: ResMut<Assets<Mesh>>,
+//     mut materials: ResMut<Assets<StandardMaterial>>,
+// ) {
+//     // plane
+//     commands.spawn((
+//         Mesh3d(meshes.add(Plane3d::default().mesh().size(20., 20.))),
+//         MeshMaterial3d(materials.add(Color::srgb(0.3, 0.5, 0.3))),
+//         Ground,
+//     ));
+
+//     // light
+//     commands.spawn((
+//         DirectionalLight::default(),
+//         Transform::from_translation(Vec3::ONE).looking_at(Vec3::ZERO, Vec3::Y),
+//     ));
+
+//     // camera
+//     commands.spawn((
+//         Camera3d::default(),
+//         Transform::from_xyz(15.0, 5.0, 15.0).looking_at(Vec3::ZERO, Vec3::Y),
+//     ));
+// }
+
+// fn character_movement(
+//     keys: Res<ButtonInput<KeyCode>>,
+//     time: Res<Time>,
+//      mut controllers: Query<&mut KinematicCharacterController>,
+// ) {
+//     for mut controller in controllers.iter_mut() {
+// 	let mut movement = Vec3::ZERO;
+//         let forward = Vec3::new(1.0, 0., 0.0);
+//         let right = Vec3::new(0.0, 0., 1.0);
+
+
+        
+
+// 	if keys.pressed(KeyCode::KeyW){
+//             movement = forward;
+// 	}
+// 	if keys.pressed(KeyCode::KeyA){
+
+//             movement = right;
+// 	}
+// 	if keys.pressed(KeyCode::KeyS){
+//             movement = -forward;
+	    
+// 	}
+// 	if keys.pressed(KeyCode::KeyD){
+//             movement = -right;
+// 	}
+
+// 	movement = movement.normalize_or_zero();
+// 	controller.translation = Some(
+// 	    movement * time.delta_secs()
+// 	);
+
+	
+// 	controller.translation = Some(Vec3::new(0.0, -0.1, 0.0) * time.delta_secs());
+//     }
+// }
+
+
+
+// fn jump() {
+    
+// }
+
+
+
+
+use bevy::input::mouse::MouseMotion;
+use bevy::prelude::*;
+use bevy_rapier3d::prelude::*;
+use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
+use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll};
+
+
+
+const PLAYER_SPEED: f32 = 8.0;
+const JUMP_IMPULSE: f32 = 5.0;
+const MOUSE_SENSITIVITY: f32 = 0.002;
+
+fn main() {
+    App::new()
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                title: "Basic FPS".into(),
+                ..default()
+            }),
+            ..default()
+        }))
+        .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
+        //.add_plugins(RapierDebugRenderPlugin::default()) // Uncomment for collider visualization
+        .insert_resource(ClearColor(Color::srgb(0.1, 0.12, 0.15)))
+        //.add_systems(Startup, setup)
+	// .add_systems(Startup, initial_grab_cursor)
+	// .add_systems(Startup, initial_grab_on_player_spawn)
+	// .add_systems(Update, player_look)
+        // .add_systems(Update, player_movement)
 	.add_systems(Startup, setup)
-	.add_systems(Startup, setup_physics)
-	.add_systems(Update, update_system)
-	.add_systems(Update, read_result_system)
+	//.add_systems(Startup, initial_grab_cursor)
+        .add_systems(Update,player_movement)
+        //.add_systems(Update, mouse_look)
+        //.add_systems(Update, grab_mouse) 
         .run();
 }
 
-#[derive(Debug, Component)]
+#[derive(Component)]
 struct Player;
 
-
-
-fn init_level(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-
-) {
-     /*
-     * Ground
-     */
-    let ground_size = 100.1;
-    let ground_height = 0.5;
-
-    commands.spawn((
-        Transform::from_xyz(0.0, -ground_height, 0.0),
-        Collider::cuboid(ground_size, ground_height, ground_size),
-    ));
-
-    let floor = meshes.add(Plane3d::new(Vec3::Y, Vec2::splat(10.0)));
-    let cube = meshes.add(Cuboid::new(2.0, 0.5, 1.0));
-    let material = materials.add(Color::WHITE);
-
-    // spawn floor
-    commands.spawn((Mesh3d(floor), MeshMaterial3d(material.clone()), Transform::from_xyz(0.0, 0.1, 0.0),));
-
-    
-}
-
-
-fn spawn_lights(mut commands: Commands) {
-    commands.spawn((
-        PointLight {
-            color: Color::from(tailwind::NEUTRAL_300),
-            shadow_maps_enabled: true,
-            ..default()
-        },
-        Transform::from_xyz(-2.0, 4.0, -0.75),
-        // The light source illuminates both the world model and the view model.
-        //RenderLayers::from_layers(&[DEFAULT_RENDER_LAYER, VIEW_MODEL_RENDER_LAYER]),
-    ));
-}
-
-/// For more infomation, see: https://rapier.rs/docs/user_guides/bevy_plugin/character_controller/
-fn setup_physics(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-
-) {
-    /*
-     * Spawn Player with CharacterController
-     */
-
-    commands.spawn((
-        //RigidBody::KinematicPositionBased,
-	//Player,
-	RigidBody::KinematicPositionBased,
-        Transform::from_xyz(0.0, 4.1, 0.0),
-	Visibility::default(),
-	Collider::cuboid(1.0, 2.0, 1.0),
-	ColliderDebugColor(Srgba::rgb(0.5, 0.5, 0.5).into()),
-	KinematicCharacterController{
-            ..KinematicCharacterController::default()
-        },
-	Mesh3d(meshes.add(Capsule3d::default())),
-        MeshMaterial3d(materials.add(Color::srgb(1.0, 0.0, 0.0))),
-    ));
-
-}
-
-/* , With<Player>
-*/
-fn update_system(time: Res<Time>, mut controllers: Query<&mut KinematicCharacterController>) {
-    for mut controller in controllers.iter_mut() {
-        controller.translation = Some(Vec3::new(0.0, -1.0, 0.0) * time.delta_secs());
-    }
-}
-
-fn read_result_system(controllers: Query<(Entity, &KinematicCharacterControllerOutput)>) {
-    for (entity, output) in controllers.iter() {
-        println!(
-            "Entity {:?} moved by {:?} and touches the ground: {:?}",
-            entity, output.effective_translation, output.grounded
-        );
-    }
-}
 #[derive(Component)]
-struct Ground;
+struct PlayerCamera;
+
+#[derive(Component)]
+struct LookAngles {
+    yaw: f32,
+    pitch: f32,
+}
 
 fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    // plane
+    // Light
     commands.spawn((
-        Mesh3d(meshes.add(Plane3d::default().mesh().size(20., 20.))),
-        MeshMaterial3d(materials.add(Color::srgb(0.3, 0.5, 0.3))),
-        Ground,
+        PointLight {
+            intensity: 5000.0,
+            shadow_maps_enabled: true,
+            ..default()
+        },
+        Transform::from_xyz(5.0, 10.0, 5.0),
     ));
 
-    // light
+    // Floor
     commands.spawn((
-        DirectionalLight::default(),
-        Transform::from_translation(Vec3::ONE).looking_at(Vec3::ZERO, Vec3::Y),
+        Mesh3d(meshes.add(Cuboid::new(50.0, 1.0, 50.0))),
+        MeshMaterial3d(materials.add(Color::srgb(0.3, 0.6, 0.3))),
+        Transform::from_xyz(0.0, -0.5, 0.0),
+        RigidBody::Fixed,
+        Collider::cuboid(25.0, 0.5, 25.0),
     ));
 
-    // camera
+
+
+    // Red box
     commands.spawn((
+        Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
+        MeshMaterial3d(materials.add(Color::srgb(1.0, 0.0, 0.0))),
+        Transform::from_xyz(9.0, -0.3, 6.0),
+        RigidBody::Fixed,
+        Collider::cuboid(0.5, 0.5, 0.5),
+    ));
+
+    // second Red box
+    commands.spawn((
+        Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
+        MeshMaterial3d(materials.add(Color::srgb(1.0, 0.0, 0.0))),
+        Transform::from_xyz(9.0, 0.1, 5.0),
+        RigidBody::Fixed,
+        Collider::cuboid(0.5, 0.5, 0.5),
+    ));
+
+    // Blue Wall
+    commands.spawn((
+        Mesh3d(meshes.add(Cuboid::new(5.0, 5.0, 1.0))),
+        MeshMaterial3d(materials.add(Color::srgb(0.0, 0.0, 1.0))),
+        Transform::from_xyz(-10.0, 0.0, -10.0),
+        RigidBody::Fixed,
+        Collider::cuboid(2.5, 2.5, 0.5),
+    ));
+
+
+    // Player
+    commands.spawn((
+        Player,
+        Mesh3d(meshes.add(Capsule3d::default())),
+        MeshMaterial3d(materials.add(Color::srgb(0.2, 0.4, 1.0))),
+        Transform::from_xyz(0.0, 2.0, 0.0),
+        RigidBody::Dynamic,
+        Collider::capsule_y(0.5, 0.4),
+        Velocity::default(),
+        LockedAxes::ROTATION_LOCKED,
+        GravityScale(1.0),
+	KinematicCharacterController {
+            ..KinematicCharacterController::default()
+        },
+        Damping {
+            linear_damping: 2.0,
+            angular_damping: 100.0,
+        },
         Camera3d::default(),
-        Transform::from_xyz(15.0, 5.0, 15.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
 }
 
-fn character_movement(
-    keys: Res<ButtonInput<KeyCode>>,
-    time: Res<Time>,
-     mut controllers: Query<&mut KinematicCharacterController>,
+
+
+
+// /// Grabs/ungrabs mouse cursor
+// fn toggle_grab_cursor(mut primary_cursor_options: Single<&mut CursorOptions, With<PrimaryWindow>>) {
+//     match primary_cursor_options.grab_mode {
+//         CursorGrabMode::None => {
+//             primary_cursor_options.grab_mode = CursorGrabMode::Confined;
+//             primary_cursor_options.visible = false;
+//         }
+//         _ => {
+//             primary_cursor_options.grab_mode = CursorGrabMode::None;
+//             primary_cursor_options.visible = true;
+//         }
+//     }
+// }
+
+// /// Grabs the cursor when game first starts
+// fn initial_grab_cursor(primary_cursor_options: Single<&mut CursorOptions, With<PrimaryWindow>>) {
+//     toggle_grab_cursor(primary_cursor_options);
+// }
+
+// fn grab_cursor(mut windows: Query<&mut Window>) {
+//     let mut window = windows.single_mut().unwrap();
+//     window.cursor_options.visible = false;
+//     window.cursor_options.grab_mode = CursorGrabMode::Locked;
+// }
+
+// fn toggle_cursor(
+//     keyboard: Res<ButtonInput<KeyCode>>,
+//     mut windows: Query<&mut Window>,
+// ) {
+//     if keyboard.just_pressed(KeyCode::Escape) {
+//         let mut window = windows.single_mut().unwrap();
+
+//         if window.cursor_options.grab_mode == CursorGrabMode::Locked {
+//             window.cursor_options.grab_mode = CursorGrabMode::None;
+//             window.cursor_options.visible = true;
+//         } else {
+//             window.cursor_options.grab_mode = CursorGrabMode::Locked;
+//             window.cursor_options.visible = false;
+//         }
+//     }
+// }
+
+// fn mouse_look(
+//     mut cursor_options: Single<&mut CursorOptions>,
+//     mut mouse_motion: Res<ButtonInput<MouseButton>>,
+//     mut accumulated_mouse_motion: Res<AccumulatedMouseMotion>,
+//     mut player_query: Query<(&mut Transform, &mut LookAngles), With<Player>>,
+//     mut camera_query: Query<&mut Transform, (With<PlayerCamera>, Without<Player>)>,
+//     primary_cursor_options: Single<&mut CursorOptions, With<PrimaryWindow>>,
+//     windows: Query<&Window>,
+// ) {
+//     let window = windows.single().unwrap();
+
+//     if cursor_options.grab_mode != CursorGrabMode::Locked {
+//         // mouse_motion.clear();
+//         return;
+//     }
+
+//     let delta = Vec2::ZERO;
+
+//     // for event in mouse_motion.read() {
+//     //     delta += event.delta;
+//     // }
+
+//     if accumulated_mouse_motion.delta != Vec2::ZERO {
+//         let delta = accumulated_mouse_motion.delta;
+//         info!("mouse moved ({}, {})", delta.x, delta.y);
+//     }
+
+//     if delta == Vec2::ZERO {
+//         return;
+//     }
+
+//     let (mut player_transform, mut look) = player_query.single_mut().unwrap();
+//     let mut camera_transform = camera_query.single_mut().unwrap();
+
+//     look.yaw -= delta.x * MOUSE_SENSITIVITY;
+//     look.pitch -= delta.y * MOUSE_SENSITIVITY;
+
+//     // Prevent flipping over
+//     look.pitch = look.pitch.clamp(-1.54, 1.54);
+
+//     // Horizontal rotation on player body
+//     player_transform.rotation = Quat::from_rotation_y(look.yaw);
+
+//     // Vertical rotation on camera
+//     camera_transform.rotation = Quat::from_rotation_x(look.pitch);
+// }
+
+
+
+// This system grabs the mouse when the left mouse button is pressed
+// and releases it when the escape key is pressed
+// fn grab_mouse(
+//     mut cursor_options: Single<&mut CursorOptions>,
+//     mouse: Res<ButtonInput<MouseButton>>,
+//     key: Res<ButtonInput<KeyCode>>,
+// ) {
+//     if mouse.just_pressed(MouseButton::Left) {
+//         cursor_options.visible = false;
+//         cursor_options.grab_mode = CursorGrabMode::Locked;
+//     }
+
+//     if key.just_pressed(KeyCode::Escape) {
+//         cursor_options.visible = true;
+//         cursor_options.grab_mode = CursorGrabMode::None;
+//     }
+// }
+
+fn player_movement(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    mut query: Query<(&Transform, &mut Velocity), With<Player>>,
 ) {
-    for mut controller in controllers.iter_mut() {
-	let mut movement = Vec3::ZERO;
-        let forward = Vec3::new(1.0, 0., 0.0);
-        let right = Vec3::new(0.0, 0., 1.0);
+    let Ok((transform, mut velocity)) = query.single_mut() else {
+        return;
+    };
 
+    let mut movement = Vec3::ZERO;
 
-        
+    let forward = transform.forward();
+    let right = transform.right();
 
-	if keys.pressed(KeyCode::KeyW){
-            movement = forward;
-	}
-	if keys.pressed(KeyCode::KeyA){
+    if keyboard.pressed(KeyCode::KeyW) {
+        movement += *forward;
+    }
+    if keyboard.pressed(KeyCode::KeyS) {
+        movement -= *forward;
+    }
+    if keyboard.pressed(KeyCode::KeyA) {
+        movement -= *right;
+    }
+    if keyboard.pressed(KeyCode::KeyD) {
+        movement += *right;
+    }
 
-            movement = right;
-	}
-	if keys.pressed(KeyCode::KeyS){
-            movement = -forward;
-	    
-	}
-	if keys.pressed(KeyCode::KeyD){
-            movement = -right;
-	}
+    // Ignore camera pitch for movement.
+    movement.y = 0.0;
 
-	movement = movement.normalize_or_zero();
-	controller.translation = Some(
-	    movement * time.delta_secs()
-	);
+    if movement.length_squared() > 0.0 {
+        movement = movement.normalize();
+    }
 
-	
-	controller.translation = Some(Vec3::new(0.0, -0.1, 0.0) * time.delta_secs());
+    velocity.linear.x = movement.x * PLAYER_SPEED;
+    velocity.linear.z = movement.z * PLAYER_SPEED;
+
+    // Simple grounded check.
+    if keyboard.just_pressed(KeyCode::Space) && transform.translation.y <= 1.55 {
+        velocity.linear.y = JUMP_IMPULSE;
     }
 }
-
-
-
-fn jump() {
-    
-}
-
-
-
-

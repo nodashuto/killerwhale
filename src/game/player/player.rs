@@ -417,7 +417,6 @@ fn cursor_grab(
         toggle_grab_cursor(primary_cursor_options);
     }
 }
-
 // Grab cursor when an entity with FlyCam is added
 fn initial_grab_on_flycam_spawn(
     query_added: Query<Entity, Added<Player>>,

@@ -11,6 +11,13 @@ use super::target::target;
 
 use crate::game::hud::hud;
 
+pub enum GameState{
+    Setup,
+    MainMenu,
+    InGame,
+    
+}
+
 pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
