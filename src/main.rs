@@ -1,3 +1,510 @@
+use std::f32::consts::FRAC_PI_2;
+
+use bevy::{
+    camera::visibility::RenderLayers, color::palettes::tailwind,
+    light::NotShadowCaster, 
+};
+
+
+use bevy::input::mouse::MouseMotion;
+use bevy::prelude::*;
+use bevy_rapier3d::prelude::*;
+use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
+use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll};
+
+
+
+const PLAYER_SPEED: f32 = 4.0;
+const JUMP_IMPULSE: f32 = 5.0;
+const MOUSE_SENSITIVITY: f32 = 0.002;
+
+fn main() {
+    App::new()
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                title: "Basic FPS".into(),
+                ..default()
+            }),
+            ..default()
+        }))
+        .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
+        //.add_plugins(RapierDebugRenderPlugin::default()) // Uncomment for collider visualization
+        .insert_resource(ClearColor(Color::srgb(0.1, 0.12, 0.15)))
+        //.add_systems(Startup, setup)
+	// .add_systems(Startup, initial_grab_cursor)
+	// .add_systems(Startup, initial_grab_on_player_spawn)
+	// .add_systems(Update, player_look)
+        // .add_systems(Update, player_movement)
+	//.add_systems(Startup, setup) //needthis
+	.add_systems(Startup, initial_grab_cursor)
+        
+        //.add_systems(Update, mouse_look)
+    // .add_systems(Update, grab_mouse)
+	.add_systems(
+            Startup,
+            (
+                spawn_view_model,
+                spawn_world_model,
+                spawn_lights,
+                spawn_text,
+            ),
+        )
+        .add_systems(Update, (move_player, change_fov))
+	.add_systems(Update,player_movement) //needthis
+        .run();
+}
+
+#[derive(Component)]
+struct Player;
+
+#[derive(Component)]
+struct PlayerCamera;
+
+#[derive(Component)]
+struct LookAngles {
+    yaw: f32,
+    pitch: f32,
+}
+
+fn setup(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    // Light
+    commands.spawn((
+        PointLight {
+            intensity: 5000.0,
+            shadow_maps_enabled: true,
+            ..default()
+        },
+        Transform::from_xyz(5.0, 10.0, 5.0),
+    ));
+
+    // Floor
+    commands.spawn((
+        Mesh3d(meshes.add(Cuboid::new(50.0, 1.0, 50.0))),
+        MeshMaterial3d(materials.add(Color::srgb(0.3, 0.6, 0.3))),
+        Transform::from_xyz(0.0, -0.5, 0.0),
+        RigidBody::Fixed,
+        Collider::cuboid(25.0, 0.5, 25.0),
+    ));
+
+
+
+    // Red box
+    commands.spawn((
+        Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
+        MeshMaterial3d(materials.add(Color::srgb(1.0, 0.0, 0.0))),
+        Transform::from_xyz(9.0, -0.3, 6.0),
+        RigidBody::Fixed,
+        Collider::cuboid(0.5, 0.5, 0.5),
+    ));
+
+    // second Red box
+    commands.spawn((
+        Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
+        MeshMaterial3d(materials.add(Color::srgb(1.0, 0.0, 0.0))),
+        Transform::from_xyz(9.0, 0.1, 5.0),
+        RigidBody::Fixed,
+        Collider::cuboid(0.5, 0.5, 0.5),
+    ));
+
+    // Blue Wall
+    commands.spawn((
+        Mesh3d(meshes.add(Cuboid::new(5.0, 5.0, 1.0))),
+        MeshMaterial3d(materials.add(Color::srgb(0.0, 0.0, 1.0))),
+        Transform::from_xyz(-10.0, 0.0, -10.0),
+        RigidBody::Fixed,
+        Collider::cuboid(2.5, 2.5, 0.5),
+    ));
+
+
+    // Player
+    commands.spawn((
+        Player,
+        Mesh3d(meshes.add(Capsule3d::default())),
+        MeshMaterial3d(materials.add(Color::srgb(0.2, 0.4, 1.0))),
+        Transform::from_xyz(0.0, 2.0, 0.0),
+        RigidBody::Dynamic,
+        Collider::capsule_y(0.5, 0.4),
+        Velocity::default(),
+        LockedAxes::ROTATION_LOCKED,
+        GravityScale(1.0),
+	KinematicCharacterController {
+            ..KinematicCharacterController::default()
+        },
+        Damping {
+            linear_damping: 2.0,
+            angular_damping: 100.0,
+        },
+        Camera3d::default(),
+    ));
+}
+
+
+
+
+/// Grabs/ungrabs mouse cursor
+fn toggle_grab_cursor(mut primary_cursor_options: Single<&mut CursorOptions, With<PrimaryWindow>>) {
+    match primary_cursor_options.grab_mode {
+        CursorGrabMode::None => {
+            primary_cursor_options.grab_mode = CursorGrabMode::Confined;
+            primary_cursor_options.visible = false;
+        }
+        _ => {
+            primary_cursor_options.grab_mode = CursorGrabMode::None;
+            primary_cursor_options.visible = true;
+        }
+    }
+}
+
+/// Grabs the cursor when game first starts
+fn initial_grab_cursor(primary_cursor_options: Single<&mut CursorOptions, With<PrimaryWindow>>) {
+    toggle_grab_cursor(primary_cursor_options);
+}
+
+// fn grab_cursor(mut windows: Query<&mut Window>) {
+//     let mut window = windows.single_mut().unwrap();
+//     window.cursor_options.visible = false;
+//     window.cursor_options.grab_mode = CursorGrabMode::Locked;
+// }
+
+// fn toggle_cursor(
+//     keyboard: Res<ButtonInput<KeyCode>>,
+//     mut windows: Query<&mut Window>,
+// ) {
+//     if keyboard.just_pressed(KeyCode::Escape) {
+//         let mut window = windows.single_mut().unwrap();
+
+//         if window.cursor_options.grab_mode == CursorGrabMode::Locked {
+//             window.cursor_options.grab_mode = CursorGrabMode::None;
+//             window.cursor_options.visible = true;
+//         } else {
+//             window.cursor_options.grab_mode = CursorGrabMode::Locked;
+//             window.cursor_options.visible = false;
+//         }
+//     }
+// }
+
+// fn mouse_look(
+//     mut cursor_options: Single<&mut CursorOptions>,
+//     mut mouse_motion: Res<ButtonInput<MouseButton>>,
+//     mut accumulated_mouse_motion: Res<AccumulatedMouseMotion>,
+//     mut player_query: Query<(&mut Transform, &mut LookAngles), With<Player>>,
+//     mut camera_query: Query<&mut Transform, (With<PlayerCamera>, Without<Player>)>,
+//     primary_cursor_options: Single<&mut CursorOptions, With<PrimaryWindow>>,
+//     windows: Query<&Window>,
+// ) {
+//     let window = windows.single().unwrap();
+
+//     if cursor_options.grab_mode != CursorGrabMode::Locked {
+//         // mouse_motion.clear();
+//         return;
+//     }
+
+//     let delta = Vec2::ZERO;
+
+//     // for event in mouse_motion.read() {
+//     //     delta += event.delta;
+//     // }
+
+//     if accumulated_mouse_motion.delta != Vec2::ZERO {
+//         let delta = accumulated_mouse_motion.delta;
+//         info!("mouse moved ({}, {})", delta.x, delta.y);
+//     }
+
+//     if delta == Vec2::ZERO {
+//         return;
+//     }
+
+//     let (mut player_transform, mut look) = player_query.single_mut().unwrap();
+//     let mut camera_transform = camera_query.single_mut().unwrap();
+
+//     look.yaw -= delta.x * MOUSE_SENSITIVITY;
+//     look.pitch -= delta.y * MOUSE_SENSITIVITY;
+
+//     // Prevent flipping over
+//     look.pitch = look.pitch.clamp(-1.54, 1.54);
+
+//     // Horizontal rotation on player body
+//     player_transform.rotation = Quat::from_rotation_y(look.yaw);
+
+//     // Vertical rotation on camera
+//     camera_transform.rotation = Quat::from_rotation_x(look.pitch);
+// }
+
+
+
+// This system grabs the mouse when the left mouse button is pressed
+// and releases it when the escape key is pressed
+// fn grab_mouse(
+//     mut cursor_options: Single<&mut CursorOptions>,
+//     mouse: Res<ButtonInput<MouseButton>>,
+//     key: Res<ButtonInput<KeyCode>>,
+// ) {
+//     if mouse.just_pressed(MouseButton::Left) {
+//         cursor_options.visible = false;
+//         cursor_options.grab_mode = CursorGrabMode::Locked;
+//     }
+
+//     if key.just_pressed(KeyCode::Escape) {
+//         cursor_options.visible = true;
+//         cursor_options.grab_mode = CursorGrabMode::None;
+//     }
+// }
+
+fn player_movement(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    mut query: Query<(&Transform, &mut Velocity), With<Player>>,
+) {
+    let Ok((transform, mut velocity)) = query.single_mut() else {
+        return;
+    };
+
+    let mut movement = Vec3::ZERO;
+
+    let forward = transform.forward();
+    let right = transform.right();
+
+    if keyboard.pressed(KeyCode::KeyW) {
+        movement += *forward;
+    }
+    if keyboard.pressed(KeyCode::KeyS) {
+        movement -= *forward;
+    }
+    if keyboard.pressed(KeyCode::KeyA) {
+        movement -= *right;
+    }
+    if keyboard.pressed(KeyCode::KeyD) {
+        movement += *right;
+    }
+
+    // Ignore camera pitch for movement.
+    movement.y = 0.0;
+
+    if movement.length_squared() > 0.0 {
+        movement = movement.normalize();
+    }
+
+    velocity.linear.x = movement.x * PLAYER_SPEED;
+    velocity.linear.z = movement.z * PLAYER_SPEED;
+
+    // Simple grounded check.
+    if keyboard.just_pressed(KeyCode::Space) && transform.translation.y <= 1.55 {
+        //velocity.linear.y = JUMP_IMPULSE;
+    }
+}
+
+
+#[derive(Debug, Component, Deref, DerefMut)]
+struct CameraSensitivity(Vec2);
+
+impl Default for CameraSensitivity {
+    fn default() -> Self {
+        Self(
+            // These factors are just arbitrary mouse sensitivity values.
+            // It's often nicer to have a faster horizontal sensitivity than vertical.
+            // We use a component for them so that we can make them user-configurable at runtime
+            // for accessibility reasons.
+            // It also allows you to inspect them in an editor if you `Reflect` the component.
+            Vec2::new(0.003, 0.002),
+        )
+    }
+}
+
+#[derive(Debug, Component)]
+struct WorldModelCamera;
+
+/// Used implicitly by all entities without a `RenderLayers` component.
+/// Our world model camera and all objects other than the player are on this layer.
+/// The light source belongs to both layers.
+const DEFAULT_RENDER_LAYER: usize = 0;
+
+/// Used by the view model camera and the player's arm.
+/// The light source belongs to both layers.
+const VIEW_MODEL_RENDER_LAYER: usize = 1;
+
+fn spawn_view_model(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let arm = meshes.add(Cuboid::new(0.1, 0.1, 0.5));
+    let arm_material = materials.add(Color::from(tailwind::TEAL_200));
+
+    commands.spawn((
+        Player,
+        CameraSensitivity::default(),
+        Transform::from_xyz(0.0, 1.0, 0.0),
+        Visibility::default(),
+	Mesh3d(meshes.add(Capsule3d::default())),
+        MeshMaterial3d(materials.add(Color::srgb(0.2, 0.4, 1.0))),
+        RigidBody::Dynamic,
+        Collider::capsule_y(0.5, 0.4),
+	Velocity::default(),
+        LockedAxes::ROTATION_LOCKED,
+        GravityScale(1.0),
+	KinematicCharacterController {
+            ..KinematicCharacterController::default()
+        },
+        Damping {
+            linear_damping: 2.0,
+            angular_damping: 100.0,
+        },
+        children![
+            (
+                WorldModelCamera,
+                Camera3d::default(),
+                Projection::from(PerspectiveProjection {
+                    fov: 90.0_f32.to_radians(),
+                    ..default()
+                }),
+            ),
+            // Spawn view model camera.
+            (
+                Camera3d::default(),
+                Camera {
+                    // Bump the order to render on top of the world model.
+                    order: 1,
+                    ..default()
+                },
+                Projection::from(PerspectiveProjection {
+                    fov: 70.0_f32.to_radians(),
+                    ..default()
+                }),
+                // Only render objects belonging to the view model.
+                RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
+            ),
+            // Spawn the player's right arm.
+            (
+                Mesh3d(arm),
+                MeshMaterial3d(arm_material),
+                Transform::from_xyz(0.2, -0.1, -0.25),
+                // Ensure the arm is only rendered by the view model camera.
+                RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
+                // The arm is free-floating, so shadows would look weird.
+                NotShadowCaster,
+            ),	    
+        ],
+    ));
+}
+
+fn spawn_world_model(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let floor = meshes.add(Plane3d::new(Vec3::Y, Vec2::splat(10.0)));
+    let cube = meshes.add(Cuboid::new(2.0, 0.5, 1.0));
+    let material = materials.add(Color::WHITE);
+
+    // The world model camera will render the floor and the cubes spawned in this system.
+    // Assigning no `RenderLayers` component defaults to layer 0.
+
+    commands.spawn((
+	Mesh3d(floor),
+	MeshMaterial3d(material.clone()),
+	RigidBody::Fixed,
+        Collider::cuboid(100.0, 0.1, 100.0),
+	));
+
+    commands.spawn((
+        Mesh3d(cube.clone()),
+        MeshMaterial3d(material.clone()),
+        Transform::from_xyz(0.0, 0.25, -3.0),
+    ));
+
+    commands.spawn((
+        Mesh3d(cube),
+        MeshMaterial3d(material),
+        Transform::from_xyz(0.75, 1.75, 0.0),
+    ));
+}
+
+fn spawn_lights(mut commands: Commands) {
+    commands.spawn((
+        PointLight {
+            color: Color::from(tailwind::ROSE_300),
+            shadow_maps_enabled: true,
+            ..default()
+        },
+        Transform::from_xyz(-2.0, 4.0, -0.75),
+        // The light source illuminates both the world model and the view model.
+        RenderLayers::from_layers(&[DEFAULT_RENDER_LAYER, VIEW_MODEL_RENDER_LAYER]),
+    ));
+}
+
+fn spawn_text(mut commands: Commands) {
+    commands
+        .spawn(Node {
+            position_type: PositionType::Absolute,
+            bottom: px(12),
+            left: px(12),
+            ..default()
+        })
+        .with_child(Text::new(concat!(
+            "Move the camera with your mouse.\n",
+            "Press arrow up to decrease the FOV of the world model.\n",
+            "Press arrow down to increase the FOV of the world model."
+        )));
+}
+
+fn move_player(
+    accumulated_mouse_motion: Res<AccumulatedMouseMotion>,
+    player: Single<(&mut Transform, &CameraSensitivity), With<Player>>,
+) {
+    let (mut transform, camera_sensitivity) = player.into_inner();
+
+    let delta = accumulated_mouse_motion.delta;
+
+    if delta != Vec2::ZERO {
+        // Note that we are not multiplying by delta_time here.
+        // The reason is that for mouse movement, we already get the full movement that happened since the last frame.
+        // This means that if we multiply by delta_time, we will get a smaller rotation than intended by the user.
+        // This situation is reversed when reading e.g. analog input from a gamepad however, where the same rules
+        // as for keyboard input apply. Such an input should be multiplied by delta_time to get the intended rotation
+        // independent of the framerate.
+        let delta_yaw = -delta.x * camera_sensitivity.x;
+        let delta_pitch = -delta.y * camera_sensitivity.y;
+
+        let (yaw, pitch, roll) = transform.rotation.to_euler(EulerRot::YXZ);
+        let yaw = yaw + delta_yaw;
+
+        // If the pitch was ±¹⁄₂ π, the camera would look straight up or down.
+        // When the user wants to move the camera back to the horizon, which way should the camera face?
+        // The camera has no way of knowing what direction was "forward" before landing in that extreme position,
+        // so the direction picked will for all intents and purposes be arbitrary.
+        // Another issue is that for mathematical reasons, the yaw will effectively be flipped when the pitch is at the extremes.
+        // To not run into these issues, we clamp the pitch to a safe range.
+        const PITCH_LIMIT: f32 = FRAC_PI_2 - 0.01;
+        let pitch = (pitch + delta_pitch).clamp(-PITCH_LIMIT, PITCH_LIMIT);
+
+        transform.rotation = Quat::from_euler(EulerRot::YXZ, yaw, pitch, roll);
+    }
+}
+
+fn change_fov(
+    input: Res<ButtonInput<KeyCode>>,
+    mut world_model_projection: Single<&mut Projection, With<WorldModelCamera>>,
+) {
+    let Projection::Perspective(perspective) = world_model_projection.as_mut() else {
+        unreachable!(
+            "The `Projection` component was explicitly built with `Projection::Perspective`"
+        );
+    };
+
+    if input.pressed(KeyCode::ArrowUp) {
+        perspective.fov -= 1.0_f32.to_radians();
+        perspective.fov = perspective.fov.max(20.0_f32.to_radians());
+    }
+    if input.pressed(KeyCode::ArrowDown) {
+        perspective.fov += 1.0_f32.to_radians();
+        perspective.fov = perspective.fov.min(160.0_f32.to_radians());
+    }
+}
+
+
 // use bevy::prelude::*;
 // use bevy_rapier3d::prelude::*;
 // use bevy::{
@@ -198,283 +705,3 @@
 // }
 
 
-
-
-use bevy::input::mouse::MouseMotion;
-use bevy::prelude::*;
-use bevy_rapier3d::prelude::*;
-use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
-use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll};
-
-
-
-const PLAYER_SPEED: f32 = 8.0;
-const JUMP_IMPULSE: f32 = 5.0;
-const MOUSE_SENSITIVITY: f32 = 0.002;
-
-fn main() {
-    App::new()
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "Basic FPS".into(),
-                ..default()
-            }),
-            ..default()
-        }))
-        .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
-        //.add_plugins(RapierDebugRenderPlugin::default()) // Uncomment for collider visualization
-        .insert_resource(ClearColor(Color::srgb(0.1, 0.12, 0.15)))
-        //.add_systems(Startup, setup)
-	// .add_systems(Startup, initial_grab_cursor)
-	// .add_systems(Startup, initial_grab_on_player_spawn)
-	// .add_systems(Update, player_look)
-        // .add_systems(Update, player_movement)
-	.add_systems(Startup, setup)
-	//.add_systems(Startup, initial_grab_cursor)
-        .add_systems(Update,player_movement)
-        //.add_systems(Update, mouse_look)
-        //.add_systems(Update, grab_mouse) 
-        .run();
-}
-
-#[derive(Component)]
-struct Player;
-
-#[derive(Component)]
-struct PlayerCamera;
-
-#[derive(Component)]
-struct LookAngles {
-    yaw: f32,
-    pitch: f32,
-}
-
-fn setup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
-    // Light
-    commands.spawn((
-        PointLight {
-            intensity: 5000.0,
-            shadow_maps_enabled: true,
-            ..default()
-        },
-        Transform::from_xyz(5.0, 10.0, 5.0),
-    ));
-
-    // Floor
-    commands.spawn((
-        Mesh3d(meshes.add(Cuboid::new(50.0, 1.0, 50.0))),
-        MeshMaterial3d(materials.add(Color::srgb(0.3, 0.6, 0.3))),
-        Transform::from_xyz(0.0, -0.5, 0.0),
-        RigidBody::Fixed,
-        Collider::cuboid(25.0, 0.5, 25.0),
-    ));
-
-
-
-    // Red box
-    commands.spawn((
-        Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
-        MeshMaterial3d(materials.add(Color::srgb(1.0, 0.0, 0.0))),
-        Transform::from_xyz(9.0, -0.3, 6.0),
-        RigidBody::Fixed,
-        Collider::cuboid(0.5, 0.5, 0.5),
-    ));
-
-    // second Red box
-    commands.spawn((
-        Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
-        MeshMaterial3d(materials.add(Color::srgb(1.0, 0.0, 0.0))),
-        Transform::from_xyz(9.0, 0.1, 5.0),
-        RigidBody::Fixed,
-        Collider::cuboid(0.5, 0.5, 0.5),
-    ));
-
-    // Blue Wall
-    commands.spawn((
-        Mesh3d(meshes.add(Cuboid::new(5.0, 5.0, 1.0))),
-        MeshMaterial3d(materials.add(Color::srgb(0.0, 0.0, 1.0))),
-        Transform::from_xyz(-10.0, 0.0, -10.0),
-        RigidBody::Fixed,
-        Collider::cuboid(2.5, 2.5, 0.5),
-    ));
-
-
-    // Player
-    commands.spawn((
-        Player,
-        Mesh3d(meshes.add(Capsule3d::default())),
-        MeshMaterial3d(materials.add(Color::srgb(0.2, 0.4, 1.0))),
-        Transform::from_xyz(0.0, 2.0, 0.0),
-        RigidBody::Dynamic,
-        Collider::capsule_y(0.5, 0.4),
-        Velocity::default(),
-        LockedAxes::ROTATION_LOCKED,
-        GravityScale(1.0),
-	KinematicCharacterController {
-            ..KinematicCharacterController::default()
-        },
-        Damping {
-            linear_damping: 2.0,
-            angular_damping: 100.0,
-        },
-        Camera3d::default(),
-    ));
-}
-
-
-
-
-// /// Grabs/ungrabs mouse cursor
-// fn toggle_grab_cursor(mut primary_cursor_options: Single<&mut CursorOptions, With<PrimaryWindow>>) {
-//     match primary_cursor_options.grab_mode {
-//         CursorGrabMode::None => {
-//             primary_cursor_options.grab_mode = CursorGrabMode::Confined;
-//             primary_cursor_options.visible = false;
-//         }
-//         _ => {
-//             primary_cursor_options.grab_mode = CursorGrabMode::None;
-//             primary_cursor_options.visible = true;
-//         }
-//     }
-// }
-
-// /// Grabs the cursor when game first starts
-// fn initial_grab_cursor(primary_cursor_options: Single<&mut CursorOptions, With<PrimaryWindow>>) {
-//     toggle_grab_cursor(primary_cursor_options);
-// }
-
-// fn grab_cursor(mut windows: Query<&mut Window>) {
-//     let mut window = windows.single_mut().unwrap();
-//     window.cursor_options.visible = false;
-//     window.cursor_options.grab_mode = CursorGrabMode::Locked;
-// }
-
-// fn toggle_cursor(
-//     keyboard: Res<ButtonInput<KeyCode>>,
-//     mut windows: Query<&mut Window>,
-// ) {
-//     if keyboard.just_pressed(KeyCode::Escape) {
-//         let mut window = windows.single_mut().unwrap();
-
-//         if window.cursor_options.grab_mode == CursorGrabMode::Locked {
-//             window.cursor_options.grab_mode = CursorGrabMode::None;
-//             window.cursor_options.visible = true;
-//         } else {
-//             window.cursor_options.grab_mode = CursorGrabMode::Locked;
-//             window.cursor_options.visible = false;
-//         }
-//     }
-// }
-
-// fn mouse_look(
-//     mut cursor_options: Single<&mut CursorOptions>,
-//     mut mouse_motion: Res<ButtonInput<MouseButton>>,
-//     mut accumulated_mouse_motion: Res<AccumulatedMouseMotion>,
-//     mut player_query: Query<(&mut Transform, &mut LookAngles), With<Player>>,
-//     mut camera_query: Query<&mut Transform, (With<PlayerCamera>, Without<Player>)>,
-//     primary_cursor_options: Single<&mut CursorOptions, With<PrimaryWindow>>,
-//     windows: Query<&Window>,
-// ) {
-//     let window = windows.single().unwrap();
-
-//     if cursor_options.grab_mode != CursorGrabMode::Locked {
-//         // mouse_motion.clear();
-//         return;
-//     }
-
-//     let delta = Vec2::ZERO;
-
-//     // for event in mouse_motion.read() {
-//     //     delta += event.delta;
-//     // }
-
-//     if accumulated_mouse_motion.delta != Vec2::ZERO {
-//         let delta = accumulated_mouse_motion.delta;
-//         info!("mouse moved ({}, {})", delta.x, delta.y);
-//     }
-
-//     if delta == Vec2::ZERO {
-//         return;
-//     }
-
-//     let (mut player_transform, mut look) = player_query.single_mut().unwrap();
-//     let mut camera_transform = camera_query.single_mut().unwrap();
-
-//     look.yaw -= delta.x * MOUSE_SENSITIVITY;
-//     look.pitch -= delta.y * MOUSE_SENSITIVITY;
-
-//     // Prevent flipping over
-//     look.pitch = look.pitch.clamp(-1.54, 1.54);
-
-//     // Horizontal rotation on player body
-//     player_transform.rotation = Quat::from_rotation_y(look.yaw);
-
-//     // Vertical rotation on camera
-//     camera_transform.rotation = Quat::from_rotation_x(look.pitch);
-// }
-
-
-
-// This system grabs the mouse when the left mouse button is pressed
-// and releases it when the escape key is pressed
-// fn grab_mouse(
-//     mut cursor_options: Single<&mut CursorOptions>,
-//     mouse: Res<ButtonInput<MouseButton>>,
-//     key: Res<ButtonInput<KeyCode>>,
-// ) {
-//     if mouse.just_pressed(MouseButton::Left) {
-//         cursor_options.visible = false;
-//         cursor_options.grab_mode = CursorGrabMode::Locked;
-//     }
-
-//     if key.just_pressed(KeyCode::Escape) {
-//         cursor_options.visible = true;
-//         cursor_options.grab_mode = CursorGrabMode::None;
-//     }
-// }
-
-fn player_movement(
-    keyboard: Res<ButtonInput<KeyCode>>,
-    mut query: Query<(&Transform, &mut Velocity), With<Player>>,
-) {
-    let Ok((transform, mut velocity)) = query.single_mut() else {
-        return;
-    };
-
-    let mut movement = Vec3::ZERO;
-
-    let forward = transform.forward();
-    let right = transform.right();
-
-    if keyboard.pressed(KeyCode::KeyW) {
-        movement += *forward;
-    }
-    if keyboard.pressed(KeyCode::KeyS) {
-        movement -= *forward;
-    }
-    if keyboard.pressed(KeyCode::KeyA) {
-        movement -= *right;
-    }
-    if keyboard.pressed(KeyCode::KeyD) {
-        movement += *right;
-    }
-
-    // Ignore camera pitch for movement.
-    movement.y = 0.0;
-
-    if movement.length_squared() > 0.0 {
-        movement = movement.normalize();
-    }
-
-    velocity.linear.x = movement.x * PLAYER_SPEED;
-    velocity.linear.z = movement.z * PLAYER_SPEED;
-
-    // Simple grounded check.
-    if keyboard.just_pressed(KeyCode::Space) && transform.translation.y <= 1.55 {
-        velocity.linear.y = JUMP_IMPULSE;
-    }
-}
