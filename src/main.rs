@@ -36,6 +36,7 @@ fn main() {
             ..default()
         }))
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
+	.init_state::<GameState>()
         .add_plugins(world::WorldPlugin)
         //.add_plugins(RapierDebugRenderPlugin::default()) // Uncomment for collider visualization
         .insert_resource(ClearColor(Color::srgb(0.1, 0.12, 0.15)))
@@ -57,9 +58,11 @@ fn main() {
             ),
         )
 	.add_systems(Startup, initial_grab_cursor)
+	.add_systems(Startup, setup_goal)
         .add_systems(Update, (move_player, change_fov))
 	.add_systems(Update,player_movement) //needthis
 	.add_systems(Update, cursor_grab)
+	.add_systems(Update, check_goal.run_if(in_state(GameState::Playing)))
         .run();
 }
 
@@ -621,4 +624,42 @@ fn change_fov(
     
 // }
 
+#[derive(States, Default, Debug, Clone, Eq, PartialEq, Hash)]
+enum GameState {
+    #[default]
+    Playing,
+    Results,
+}
 
+#[derive(Component)]
+struct Goal {
+    radius: f32,
+}
+fn check_goal(
+    player: Query<&Transform, With<Player>>,
+    goals: Query<(&Transform, &Goal)>,
+    //mut next_state: ResMut<NextState<GameState>>,
+) {
+    let player_pos = player.single().unwrap().translation;
+    //let goal_pos = goals.single();
+
+    for (goal_transform, goal) in &goals {
+        let distance = player_pos.distance(goal_transform.translation);
+
+        if distance <= goal.radius {
+            println!("Reached the goal!" );
+            // next_state.set(GameState::Results);
+        }
+    }
+}
+
+fn setup_goal (
+    mut commands: Commands
+) {
+    // Spawn goal
+    commands.spawn((
+        Goal { radius: 2.0 },
+        Transform::from_xyz(20.0, 0.0, 0.0),
+        GlobalTransform::default(),
+    ));
+}

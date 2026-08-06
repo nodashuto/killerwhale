@@ -16,6 +16,8 @@ impl Plugin for WorldPlugin {
     fn build(&self, app: &mut App) {
 	app.add_plugins(RapierDebugRenderPlugin::default()); //activate gismo
 	app.add_systems(Startup, spawn_world_model);
+	app.add_systems(Startup, spawn_mesh);
+	app.add_systems(Startup, spawn_wall);
     }
 }
 
@@ -34,7 +36,7 @@ fn spawn_world_model(
 
     let house = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
 
-    let wall = meshes.add(Cuboid::new(2.0, 2.0, 0.1));
+    
 
     // The world model camera will render the floor and the cubes spawned in this system.
     // Assigning no `RenderLayers` component defaults to layer 0.
@@ -81,11 +83,68 @@ fn spawn_world_model(
     ));
 
     // wall x z ++
+    
+
+    let wall = meshes.add(Cuboid::new(2.0, 2.0, 0.1));
         commands.spawn((
 	Mesh3d(wall.clone()),
 	MeshMaterial3d(material.clone()),
 	RigidBody::Fixed,
-        Collider::cuboid(0.5, 0.5, 0.5),
-	Transform::from_xyz(4.0, 2.0, 3.0),
+        Collider::cuboid(1.0 , 1.0, 0.05),
+	Transform::from_xyz(3.0, 1.0, -4.0),
 	));
+}
+
+fn spawn_mesh(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
+) {
+       // Load the mesh from the GLB
+    let mesh = meshes.add(Cuboid::new(2.0, 0.5, 1.0));
+
+    commands.spawn((
+        Mesh3d(mesh.clone()),
+	MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: Color::BLACK,
+            ..default()
+        })),
+	RigidBody::Fixed,
+	Collider::cuboid(2.0, 0.5, 1.0),
+        Transform::from_xyz(14.0, 0.0, 0.0),	
+    ));
+ 
+}
+
+fn spawn_wall(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let wall_width = 2.0;
+    let wall_height = 2.0;
+    let wall_depth = 0.1;
+    
+    commands.spawn((
+        Mesh3d(meshes.add(Cuboid::new(wall_width, wall_height, wall_depth))),
+	MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: Color::WHITE,
+            ..default()
+        })),
+	RigidBody::Fixed,
+	Collider::cuboid(wall_width / 2.0 , wall_height / 2.0 , wall_depth / 2.0 ),
+        Transform::from_xyz(-6.0, 1.0, 0.0).with_rotation(Quat::from_rotation_y(0.25 *  std::f32::consts::PI)),	
+    ));
+
+        commands.spawn((
+        Mesh3d(meshes.add(Cuboid::new(wall_width, wall_height, wall_depth))),
+	MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: Color::WHITE,
+            ..default()
+        })),
+	RigidBody::Fixed,
+	Collider::cuboid(wall_width / 2.0 , wall_height / 2.0 , wall_depth / 2.0 ),
+        Transform::from_xyz(-18.0, 0.5, 0.0).with_rotation(Quat::from_rotation_x(0.30 *  std::f32::consts::PI)),	
+    ));
 }
