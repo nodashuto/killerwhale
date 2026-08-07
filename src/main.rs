@@ -414,7 +414,7 @@ fn spawn_text(mut commands: Commands) {
         })
         .with_child(Text::new(concat!(
             "Bevy = 0.19.0\n",
-            "@hatomatsu\n",
+            "Apple shooter\n",
             " "
         )));
 }
