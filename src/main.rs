@@ -19,7 +19,12 @@ use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll};
 
 use light_consts::lux::AMBIENT_DAYLIGHT;
 
+
+//use crate::shootingtarget;
 pub mod world;
+pub mod shootingtarget;
+
+use shootingtarget::ShootingTargetPlugin;
 
 
 const PLAYER_SPEED: f32 = 4.0;
@@ -38,8 +43,9 @@ fn main() {
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
 	.init_state::<GameState>()
         .add_plugins(world::WorldPlugin)
+        //.add_plugins(shootingtarget::ShootingTargetPlugin)
         //.add_plugins(RapierDebugRenderPlugin::default()) // Uncomment for collider visualization
-        .insert_resource(ClearColor(Color::srgb(0.1, 0.12, 0.15)))
+        //.insert_resource(ClearColor(Color::srgb(0.1, 0.12, 0.15)))
         //.add_systems(Startup, setup)
 	// .add_systems(Startup, initial_grab_cursor)
 	// .add_systems(Startup, initial_grab_on_player_spawn)
@@ -61,6 +67,7 @@ fn main() {
 	.add_systems(Startup, setup_goal)
         .add_systems(Update, (move_player, change_fov, ads_zoom))
 	.add_systems(Update, (update_view_arm, update_view_weapon))
+	.add_systems(Update, fire_weapon)
 	.add_systems(Update,player_movement) //needthis
 	.add_systems(Update, cursor_grab)
 	.add_systems(Update, check_goal.run_if(in_state(GameState::Playing)))
@@ -267,7 +274,7 @@ fn spawn_view_model(
     let arm_material = materials.add(Color::from(tailwind::TEAL_200));
 
         // Load the mesh from the GLB
-    let gun_mesh = asset_server.load("models/gun-model-0001.glb#Mesh0/Primitive0");
+    let gun_mesh = asset_server.load("models/gun-model-0002.glb#Mesh0/Primitive0");
     let gun_material = materials.add(Color::BLACK);
 
 
@@ -339,7 +346,7 @@ fn spawn_view_model(
 		// Ensure the arm is only rendered by the view model camera.
                 RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
                 // The arm is free-floating, so shadows would look weird.
-                NotShadowCaster,
+                //NotShadowCaster,
 	    ),
         ],
     ));
@@ -534,7 +541,7 @@ fn update_view_arm(
 #[derive(Component)]
 struct ViewWeapon;
 const WEAPON_IDLE: Vec3 = Vec3::new(0.8, -0.9, -1.25);
-const WEAPON_AIM: Vec3 = Vec3::new(0.0, -0.75, -0.95);
+const WEAPON_AIM: Vec3 = Vec3::new(0.0, -0.76, -0.4);
 
 
 
@@ -797,4 +804,57 @@ fn setup_goal (
         Transform::from_xyz(20.0, 0.0, 0.0),
         GlobalTransform::default(),
     ));
+}
+
+
+#[derive(Component)]
+pub struct Health {
+    pub current: f32,
+    pub max: f32,
+}
+
+
+fn fire_weapon(
+    buttons: Res<ButtonInput<MouseButton>>,
+    camera: Query<&GlobalTransform, With<WorldModelCamera>>,
+    rapier_context: ReadRapierContext,
+    mut health_query: Query<&mut Health>,
+    player_query: Query<Entity, With<Player>>,
+) {
+    if !buttons.just_pressed(MouseButton::Left) {
+        return;
+    }
+
+    println!("Shots fired");
+
+    let transform = camera.single().unwrap();
+
+    let origin = transform.translation();
+    let direction = transform.forward();
+
+    let max_distance = 100.0;
+
+    // Exclude player's hitbox when ray casting
+    let player_entity = player_query.single().unwrap();
+    let filter = QueryFilter::default().exclude_rigid_body(player_entity);
+
+    if let Ok(ctx) = rapier_context.single() {
+        if let Some((entity, toi)) = ctx.cast_ray(
+            origin,
+            *direction,
+            max_distance,
+            true,
+            filter,
+        ) {
+            //println!("Hit {:?} at {}", entity, toi);
+
+            if let Ok(mut health) = health_query.get_mut(entity) {
+		health.current -= 50.0;
+		println!("Remaining HP: {}", health.current);
+            }
+
+            //let hit_position = origin + *direction * toi;
+            //println!("Impact position: {:?}", hit_position);
+        }
+    }
 }

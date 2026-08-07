@@ -509,9 +509,14 @@ fn spawn_view_model(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+
 ) {
     let arm = meshes.add(Cuboid::new(0.1, 0.1, 0.5));
     let arm_material = materials.add(Color::from(tailwind::TEAL_200));
+    // Load the mesh from the GLB
+    // let gun_mesh = asset_server.load("models/gun-model-0001.glb#Mesh0/Primitive0");
+    // let gun_material = materials.add(Color::from(tailwind::TEAL_200));
+
 
     commands.spawn((
         Player,
@@ -552,6 +557,15 @@ fn spawn_view_model(
                 // The arm is free-floating, so shadows would look weird.
                 NotShadowCaster,
             ),
+	    (
+		Mesh3d(gun_mesh),
+		MeshMaterial3d(gun_material),
+		Transform::from_xyz(0.2, -0.1, -0.25),
+		// Ensure the arm is only rendered by the view model camera.
+                RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
+                // The arm is free-floating, so shadows would look weird.
+                NotShadowCaster,
+	    ),
         ],
     ));
 }

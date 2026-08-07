@@ -9,12 +9,20 @@ use bevy::{
 use std::f32::consts::TAU;
 
 
+use crate::shootingtarget::{ShootingTarget, ShootingTargetPlugin, spawn_shooting_target};
+
+
+// use crate::shootingtarget::ShootingTargetPlugin;
+
+use crate::Health;
 
 pub struct WorldPlugin;
 
 impl Plugin for WorldPlugin {
     fn build(&self, app: &mut App) {
-	app.add_plugins(RapierDebugRenderPlugin::default()); //activate gismo
+	// app.add_plugins(RapierDebugRenderPlugin::default()); //activate gismo
+	app.add_plugins(ShootingTargetPlugin);
+	app.insert_resource(ClearColor(Color::srgb(226.0 / 255.0, 237.0 / 255.0, 238.0 / 255.0)));
 	app.add_systems(Startup, spawn_world_model);
 	app.add_systems(Startup, spawn_mesh);
 	app.add_systems(Startup, spawn_wall);
@@ -34,6 +42,14 @@ fn spawn_world_model(
 
     let grass = materials.add(Color::srgb(0.4, 1.0, 0.2));
 
+    let sand = materials.add(
+	Color::srgb(
+    234.0 / 255.0,
+    225.0 / 255.0,
+    208.0 / 255.0,
+)
+    );
+
     let house = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
 
     
@@ -46,7 +62,7 @@ fn spawn_world_model(
     */
     commands.spawn((
 	Mesh3d(ground),
-	MeshMaterial3d(grass.clone()),
+	MeshMaterial3d(sand.clone()),
 	RigidBody::Fixed,
         Collider::cuboid(64.0, 0.1, 64.0),
 	));
@@ -93,6 +109,28 @@ fn spawn_world_model(
         Collider::cuboid(1.0 , 1.0, 0.05),
 	Transform::from_xyz(3.0, 1.0, -4.0),
 	));
+
+    // spawn shooting target 
+    spawn_shooting_target(
+        &mut commands,
+        &mut meshes,
+        &mut materials,
+        Vec3::new(0.0, 1.0, -10.0),
+    );
+
+    spawn_shooting_target(
+        &mut commands,
+        &mut meshes,
+        &mut materials,
+        Vec3::new(1.0, 1.0, -10.0),
+    );
+
+    spawn_shooting_target(
+        &mut commands,
+        &mut meshes,
+        &mut materials,
+        Vec3::new(-1.0, 1.0, -10.0),
+    );
 }
 
 fn spawn_mesh(
@@ -120,7 +158,7 @@ fn spawn_mesh(
 	WorldAssetRoot(asset_server.load(GltfAssetLabel::Scene(0).from_asset("models/tutorial-texture-wood.glb"))),
 	RigidBody::Fixed,
 	Collider::cuboid(1.0, 1.0, 1.0),
-        Transform::from_xyz(0.0, 1.0, -10.0),	
+        Transform::from_xyz(0.0, 1.0, -30.0),	
     ));
 
 	
