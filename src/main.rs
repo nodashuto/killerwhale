@@ -60,7 +60,7 @@ fn main() {
 	.add_systems(Startup, initial_grab_cursor)
 	.add_systems(Startup, setup_goal)
         .add_systems(Update, (move_player, change_fov, ads_zoom))
-	.add_systems(Update, update_view_arm)
+	.add_systems(Update, (update_view_arm, update_view_weapon))
 	.add_systems(Update,player_movement) //needthis
 	.add_systems(Update, cursor_grab)
 	.add_systems(Update, check_goal.run_if(in_state(GameState::Playing)))
@@ -261,9 +261,15 @@ fn spawn_view_model(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+            asset_server: Res<AssetServer>,
 ) {
     let arm = meshes.add(Cuboid::new(0.1, 0.1, 0.5));
     let arm_material = materials.add(Color::from(tailwind::TEAL_200));
+
+        // Load the mesh from the GLB
+    let gun_mesh = asset_server.load("models/gun-model-0001.glb#Mesh0/Primitive0");
+    let gun_material = materials.add(Color::BLACK);
+
 
     commands.spawn((
         Player,
@@ -318,7 +324,23 @@ fn spawn_view_model(
                 RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
                 // The arm is free-floating, so shadows would look weird.
                 NotShadowCaster,
-            ),	    
+            ),
+	    //Spawn the player's gun model
+	(
+	    ViewWeapon,
+	    Mesh3d(gun_mesh),
+		MeshMaterial3d(gun_material),
+	    //transform::from_xyz(0.2, -0.1, -0.25),
+	    Transform {
+		    translation: Vec3::new(0.8, -0.8, -1.2),
+		    rotation: Quat::from_rotation_y(std::f32::consts::PI), 
+		    scale: Vec3::new(0.1, 0.1, 0.1),
+		},
+		// Ensure the arm is only rendered by the view model camera.
+                RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
+                // The arm is free-floating, so shadows would look weird.
+                NotShadowCaster,
+	    ),
         ],
     ));
 }
@@ -483,8 +505,10 @@ fn ads_zoom(
 
 #[derive(Component)]
 struct ViewArm;
-const ARM_IDLE: Vec3 = Vec3::new(0.2, -0.1, -0.25);
-const ARM_AIM: Vec3 = Vec3::new(0.0, -0.15, -0.45);
+const ARM_IDLE: Vec3 = Vec3::new(0.4, -0.35, -0.45);
+const ARM_AIM: Vec3 = Vec3::new(0.0, -0.40, -0.55);
+
+
 
 fn update_view_arm(
     buttons: Res<ButtonInput<MouseButton>>,
@@ -505,6 +529,36 @@ fn update_view_arm(
         .translation
         .lerp(target, speed * time.delta_secs());
 }
+
+
+#[derive(Component)]
+struct ViewWeapon;
+const WEAPON_IDLE: Vec3 = Vec3::new(0.8, -0.9, -1.25);
+const WEAPON_AIM: Vec3 = Vec3::new(0.0, -0.75, -0.95);
+
+
+
+fn update_view_weapon(
+    buttons: Res<ButtonInput<MouseButton>>,
+    mut weapon: Query<&mut Transform, With<ViewWeapon>>,
+    time: Res<Time>,
+) {
+    let target = if buttons.pressed(MouseButton::Right) {
+        WEAPON_AIM
+    } else {
+        WEAPON_IDLE
+    };
+
+    let mut transform = weapon.single_mut().unwrap();
+
+    // Smooth movement
+    let speed = 12.0;
+    transform.translation = transform
+        .translation
+        .lerp(target, speed * time.delta_secs());
+}
+
+
 
 // use bevy::prelude::*;
 // use bevy_rapier3d::prelude::*;
