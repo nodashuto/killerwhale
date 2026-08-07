@@ -28,10 +28,11 @@ pub fn spawn_shooting_target(
     materials: &mut Assets<StandardMaterial>,
     position: Vec3,
 ) {
-    let mesh = meshes.add(Sphere::new(0.1).mesh().ico(7).unwrap());
+    let radius = 0.05;
+    let mesh = meshes.add(Sphere::new(radius).mesh().ico(7).unwrap());
 
     let material = materials.add(StandardMaterial {
-        base_color: Color::srgb(1.0, 0.2, 0.2),
+	base_color: Color::srgb(118.0 / 255.0, 205.0 / 255.0, 38.0 / 255.0), //Color::srgb(1.0, 0.2, 0.2),
         ..default()
     });
 
@@ -39,14 +40,14 @@ pub fn spawn_shooting_target(
         ShootingTarget,
         Name::new("Shooting_Target"),
         Health {
-            current: 100.0,
-            max: 100.0,
+            current: 50.0,
+            max: 50.0,
         },
         Mesh3d(mesh),
         MeshMaterial3d(material),
         Transform::from_translation(position),
         RigidBody::Fixed,
-        Collider::cuboid(0.1, 0.1, 0.1),
+        Collider::ball(radius + 0.01),
     ));
 }
 

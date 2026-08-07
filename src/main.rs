@@ -24,6 +24,8 @@ use light_consts::lux::AMBIENT_DAYLIGHT;
 pub mod world;
 pub mod shootingtarget;
 
+use crate::shootingtarget::*;
+
 use shootingtarget::ShootingTargetPlugin;
 
 
@@ -385,6 +387,22 @@ fn spawn_lights(mut commands: Commands) {
     // ));
 }
 
+// /// original spawn text here
+// fn spawn_text(mut commands: Commands) {
+//     commands
+//         .spawn(Node {
+//             position_type: PositionType::Absolute,
+//             bottom: px(12),
+//             left: px(12),
+//             ..default()
+//         })
+//         .with_child(Text::new(concat!(
+//             "Move the camera with your mouse.\n",
+//             "Press arrow up to decrease the FOV of the world model.\n",
+//             "Press arrow down to increase the FOV of the world model."
+//         )));
+// }
+
 
 fn spawn_text(mut commands: Commands) {
     commands
@@ -395,11 +413,14 @@ fn spawn_text(mut commands: Commands) {
             ..default()
         })
         .with_child(Text::new(concat!(
-            "Move the camera with your mouse.\n",
-            "Press arrow up to decrease the FOV of the world model.\n",
-            "Press arrow down to increase the FOV of the world model."
+            "Bevy = 0.19.0\n",
+            "@hatomatsu\n",
+            " "
         )));
 }
+
+
+
 
 fn move_player(
     accumulated_mouse_motion: Res<AccumulatedMouseMotion>,
