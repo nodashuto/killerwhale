@@ -114,6 +114,17 @@ fn spawn_mesh(
 	Collider::cuboid(2.0, 0.5, 1.0),
         Transform::from_xyz(14.0, 0.0, 0.0),	
     ));
+
+    commands.spawn( (
+	//Mesh3d(asset_server.load("models/tutorial-texture-wood.glb#Mesh0/Primitive0")),
+	WorldAssetRoot(asset_server.load(GltfAssetLabel::Scene(0).from_asset("models/tutorial-texture-wood.glb"))),
+	RigidBody::Fixed,
+	Collider::cuboid(1.0, 1.0, 1.0),
+        Transform::from_xyz(0.0, 1.0, -10.0),	
+    ));
+
+	
+		
  
 }
 
@@ -146,5 +157,7 @@ fn spawn_wall(
 	RigidBody::Fixed,
 	Collider::cuboid(wall_width / 2.0 , wall_height / 2.0 , wall_depth / 2.0 ),
         Transform::from_xyz(-18.0, 0.5, 0.0).with_rotation(Quat::from_rotation_x(0.30 *  std::f32::consts::PI)),	
-    ));
+	));
+
+    
 }

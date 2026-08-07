@@ -59,7 +59,7 @@ fn main() {
         )
 	.add_systems(Startup, initial_grab_cursor)
 	.add_systems(Startup, setup_goal)
-        .add_systems(Update, (move_player, change_fov))
+        .add_systems(Update, (move_player, change_fov, ads_zoom))
 	.add_systems(Update,player_movement) //needthis
 	.add_systems(Update, cursor_grab)
 	.add_systems(Update, check_goal.run_if(in_state(GameState::Playing)))
@@ -422,9 +422,60 @@ fn change_fov(
         perspective.fov += 1.0_f32.to_radians();
         perspective.fov = perspective.fov.min(160.0_f32.to_radians());
     }
+
+    
 }
 
+// added myself
+// fn toggle_ADS(
+//     buttons: Res<ButtonInput<MouseButton>>,
+//     input: Res<ButtonInput<KeyCode>>,
+//     mut world_model_projection: Single<&mut Projection, With<WorldModelCamera>>,
+// ) {
+//     if !buttons.just_pressed(MouseButton::Right) {
+//         return;
+//     }
 
+//     let Projection::Perspective(perspective) = world_model_projection.as_mut() else {
+//         unreachable!(
+//             "The `Projection` component was explicitly built with `Projection::Perspective`"
+//         );
+//     };
+
+    
+    
+//     if input.pressed(KeyCode::ArrowUp) {
+//         perspective.fov -= 1.0_f32.to_radians();
+//         perspective.fov = perspective.fov.max(20.0_f32.to_radians());
+//     }
+//     if input.pressed(KeyCode::ArrowDown) {
+//         perspective.fov += 1.0_f32.to_radians();
+//         perspective.fov = perspective.fov.min(160.0_f32.to_radians());
+//     }
+
+    
+// }
+
+
+/// Hold right mouse button to zoom in. 
+fn ads_zoom(
+    time: Res<Time>,
+    buttons: Res<ButtonInput<MouseButton>>,
+    mut world_model_projection: Single<&mut Projection, With<WorldModelCamera>>,
+) {
+    let Projection::Perspective(perspective) = world_model_projection.as_mut() else {
+        unreachable!();
+    };
+
+    let target = if buttons.pressed(MouseButton::Right) {
+        45.0_f32.to_radians()
+    } else {
+        65.0_f32.to_radians()
+    };
+
+    let speed = 10.0;
+    perspective.fov += (target - perspective.fov) * speed * time.delta_secs();
+}
 // use bevy::prelude::*;
 // use bevy_rapier3d::prelude::*;
 // use bevy::{
