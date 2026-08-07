@@ -44,6 +44,7 @@ fn main() {
         }))
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
 	.init_state::<GameState>()
+	.init_resource::<SoundEffect>() // for sound effect
         .add_plugins(world::WorldPlugin)
         //.add_plugins(shootingtarget::ShootingTargetPlugin)
         //.add_plugins(RapierDebugRenderPlugin::default()) // Uncomment for collider visualization
@@ -88,81 +89,99 @@ struct LookAngles {
     pitch: f32,
 }
 
-fn setup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
-    // Light
-    commands.spawn((
-        PointLight {
-            intensity: 5000.0,
-            shadow_maps_enabled: true,
-            ..default()
-        },
-        Transform::from_xyz(5.0, 10.0, 5.0),
-    ));
+// fn setup(
+//     mut commands: Commands,
+//     mut meshes: ResMut<Assets<Mesh>>,
+//     mut materials: ResMut<Assets<StandardMaterial>>,
+// ) {
+//     // Light
+//     commands.spawn((
+//         PointLight {
+//             intensity: 5000.0,
+//             shadow_maps_enabled: true,
+//             ..default()
+//         },
+//         Transform::from_xyz(5.0, 10.0, 5.0),
+//     ));
 
-    // Floor
-    commands.spawn((
-        Mesh3d(meshes.add(Cuboid::new(50.0, 1.0, 50.0))),
-        MeshMaterial3d(materials.add(Color::srgb(0.3, 0.6, 0.3))),
-        Transform::from_xyz(0.0, -0.5, 0.0),
-        RigidBody::Fixed,
-        Collider::cuboid(25.0, 0.5, 25.0),
-    ));
-
-
-
-    // Red box
-    commands.spawn((
-        Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
-        MeshMaterial3d(materials.add(Color::srgb(1.0, 0.0, 0.0))),
-        Transform::from_xyz(9.0, -0.3, 6.0),
-        RigidBody::Fixed,
-        Collider::cuboid(0.5, 0.5, 0.5),
-    ));
-
-    // second Red box
-    commands.spawn((
-        Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
-        MeshMaterial3d(materials.add(Color::srgb(1.0, 0.0, 0.0))),
-        Transform::from_xyz(9.0, 0.1, 5.0),
-        RigidBody::Fixed,
-        Collider::cuboid(0.5, 0.5, 0.5),
-    ));
-
-    // Blue Wall
-    commands.spawn((
-        Mesh3d(meshes.add(Cuboid::new(5.0, 5.0, 1.0))),
-        MeshMaterial3d(materials.add(Color::srgb(0.0, 0.0, 1.0))),
-        Transform::from_xyz(-10.0, 0.0, -10.0),
-        RigidBody::Fixed,
-        Collider::cuboid(2.5, 2.5, 0.5),
-    ));
+//     // Floor
+//     commands.spawn((
+//         Mesh3d(meshes.add(Cuboid::new(50.0, 1.0, 50.0))),
+//         MeshMaterial3d(materials.add(Color::srgb(0.3, 0.6, 0.3))),
+//         Transform::from_xyz(0.0, -0.5, 0.0),
+//         RigidBody::Fixed,
+//         Collider::cuboid(25.0, 0.5, 25.0),
+//     ));
 
 
-    // Player
-    commands.spawn((
-        Player,
-        Mesh3d(meshes.add(Capsule3d::default())),
-        MeshMaterial3d(materials.add(Color::srgb(0.2, 0.4, 1.0))),
-        Transform::from_xyz(0.0, 2.0, 0.0),
-        RigidBody::Dynamic,
-        Collider::capsule_y(0.5, 0.4),
-        Velocity::default(),
-        LockedAxes::ROTATION_LOCKED,
-        GravityScale(1.0),
-	KinematicCharacterController {
-            ..KinematicCharacterController::default()
-        },
-        Damping {
-            linear_damping: 2.0,
-            angular_damping: 100.0,
-        },
-        Camera3d::default(),
-    ));
+
+//     // Red box
+//     commands.spawn((
+//         Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
+//         MeshMaterial3d(materials.add(Color::srgb(1.0, 0.0, 0.0))),
+//         Transform::from_xyz(9.0, -0.3, 6.0),
+//         RigidBody::Fixed,
+//         Collider::cuboid(0.5, 0.5, 0.5),
+//     ));
+
+//     // second Red box
+//     commands.spawn((
+//         Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
+//         MeshMaterial3d(materials.add(Color::srgb(1.0, 0.0, 0.0))),
+//         Transform::from_xyz(9.0, 0.1, 5.0),
+//         RigidBody::Fixed,
+//         Collider::cuboid(0.5, 0.5, 0.5),
+//     ));
+
+//     // Blue Wall
+//     commands.spawn((
+//         Mesh3d(meshes.add(Cuboid::new(5.0, 5.0, 1.0))),
+//         MeshMaterial3d(materials.add(Color::srgb(0.0, 0.0, 1.0))),
+//         Transform::from_xyz(-10.0, 0.0, -10.0),
+//         RigidBody::Fixed,
+//         Collider::cuboid(2.5, 2.5, 0.5),
+//     ));
+
+
+//     // Player
+//     commands.spawn((
+//         Player,
+//         Mesh3d(meshes.add(Capsule3d::default())),
+//         MeshMaterial3d(materials.add(Color::srgb(0.2, 0.4, 1.0))),
+//         Transform::from_xyz(0.0, 2.0, 0.0),
+//         RigidBody::Dynamic,
+//         Collider::capsule_y(0.5, 0.4),
+//         Velocity::default(),
+//         LockedAxes::ROTATION_LOCKED,
+//         GravityScale(1.0),
+// 	KinematicCharacterController {
+//             ..KinematicCharacterController::default()
+//         },
+//         Damping {
+//             linear_damping: 2.0,
+//             angular_damping: 100.0,
+//         },
+//         Camera3d::default(),
+//     ));
+// }
+
+
+#[derive(Resource, Deref)]
+struct SoundEffect {
+    handle: Handle<AudioSource>,
 }
+
+// We can setup the logic for how to load our assets in the `FromWorld` trait.
+// This code is called via `init_resource`.
+impl FromWorld for SoundEffect {
+    fn from_world(world: &mut World) -> Self {
+        let asset_server = world.resource::<AssetServer>();
+        SoundEffect {
+            handle: asset_server.load("sounds/glock_single_shot_modify.ogg"),
+        }
+    }
+}
+
 
 
 
@@ -841,12 +860,19 @@ fn fire_weapon(
     rapier_context: ReadRapierContext,
     mut health_query: Query<&mut Health>,
     player_query: Query<Entity, With<Player>>,
+    sound_effect: Res<SoundEffect>,
+    mut commands: Commands,
 ) {
     if !buttons.just_pressed(MouseButton::Left) {
         return;
     }
 
     println!("Shots fired");
+    // play sound effect
+    commands.spawn((
+            AudioPlayer::new(sound_effect.clone()),
+            PlaybackSettings::DESPAWN,
+        ));
 
     let transform = camera.single().unwrap();
 
