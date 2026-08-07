@@ -60,6 +60,7 @@ fn main() {
 	.add_systems(Startup, initial_grab_cursor)
 	.add_systems(Startup, setup_goal)
         .add_systems(Update, (move_player, change_fov, ads_zoom))
+	.add_systems(Update, update_view_arm)
 	.add_systems(Update,player_movement) //needthis
 	.add_systems(Update, cursor_grab)
 	.add_systems(Update, check_goal.run_if(in_state(GameState::Playing)))
@@ -309,7 +310,8 @@ fn spawn_view_model(
             ),
             // Spawn the player's right arm.
             (
-                Mesh3d(arm),
+		ViewArm, // component marker for ADS translation
+		Mesh3d(arm),
                 MeshMaterial3d(arm_material),
                 Transform::from_xyz(0.2, -0.1, -0.25),
                 // Ensure the arm is only rendered by the view model camera.
@@ -457,7 +459,7 @@ fn change_fov(
 // }
 
 
-/// Hold right mouse button to zoom in. 
+/// Hold right mouse button to zoom in with WorldModelCamera. 
 fn ads_zoom(
     time: Res<Time>,
     buttons: Res<ButtonInput<MouseButton>>,
@@ -476,6 +478,34 @@ fn ads_zoom(
     let speed = 10.0;
     perspective.fov += (target - perspective.fov) * speed * time.delta_secs();
 }
+
+
+
+#[derive(Component)]
+struct ViewArm;
+const ARM_IDLE: Vec3 = Vec3::new(0.2, -0.1, -0.25);
+const ARM_AIM: Vec3 = Vec3::new(0.0, -0.15, -0.45);
+
+fn update_view_arm(
+    buttons: Res<ButtonInput<MouseButton>>,
+    mut arm: Query<&mut Transform, With<ViewArm>>,
+    time: Res<Time>,
+) {
+    let target = if buttons.pressed(MouseButton::Right) {
+        ARM_AIM
+    } else {
+        ARM_IDLE
+    };
+
+    let mut transform = arm.single_mut().unwrap();
+
+    // Smooth movement
+    let speed = 12.0;
+    transform.translation = transform
+        .translation
+        .lerp(target, speed * time.delta_secs());
+}
+
 // use bevy::prelude::*;
 // use bevy_rapier3d::prelude::*;
 // use bevy::{
