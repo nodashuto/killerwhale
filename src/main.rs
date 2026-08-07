@@ -30,7 +30,8 @@ use shootingtarget::ShootingTargetPlugin;
 
 
 const PLAYER_SPEED: f32 = 4.0;
-const JUMP_IMPULSE: f32 = 3.5;
+const PLAYER_JUMP_SPEED: f32 = 3.0;
+const PLAYER_GRAVITY: f32 = 9.0;
 // const MOUSE_SENSITIVITY: f32 = 0.002;
 
 fn main() {
@@ -71,7 +72,13 @@ fn main() {
         .add_systems(Update, (move_player, change_fov, ads_zoom))
 	.add_systems(Update, (update_view_arm, update_view_weapon))
 	.add_systems(Update, fire_weapon)
-	.add_systems(Update,player_movement) //needthis
+	//.add_systems(Update,player_movement) //needthis
+	.add_systems(Update, (
+	    player_movement,
+	    update_grounded,
+	    player_jump,
+	    player_gravity
+	))
 	.add_systems(Update, cursor_grab)
 	.add_systems(Update, check_goal.run_if(in_state(GameState::Playing)))
         .run();
@@ -80,14 +87,14 @@ fn main() {
 #[derive(Component)]
 struct Player;
 
-#[derive(Component)]
-struct PlayerCamera;
+// #[derive(Component)]
+// struct PlayerCamera;
 
-#[derive(Component)]
-struct LookAngles {
-    yaw: f32,
-    pitch: f32,
-}
+// #[derive(Component)]
+// struct LookAngles {
+//     yaw: f32,
+//     pitch: f32,
+// }
 
 // fn setup(
 //     mut commands: Commands,
@@ -216,45 +223,221 @@ fn cursor_grab(
 
 fn player_movement(
     keyboard: Res<ButtonInput<KeyCode>>,
-    mut query: Query<(&Transform, &mut Velocity), With<Player>>,
+    time: Res<Time>,
+    mut query: Query<(&Transform, &mut KinematicCharacterController)>,
+    mut player_controller: Query<&mut PlayerController>,
 ) {
-    let Ok((transform, mut velocity)) = query.single_mut() else {
+    let mut input = Vec3::ZERO;
+    let air_friction = 0.01;
+
+    for player in player_controller.iter_mut(){
+	// WASD when grounded
+	if player.isgrounded {
+	    if keyboard.pressed(KeyCode::KeyW) {
+		input.z -= 1.0;
+	    }
+	    if keyboard.pressed(KeyCode::KeyS) {
+		input.z += 1.0;
+	    }
+	    if keyboard.pressed(KeyCode::KeyA) {
+		input.x -= 1.0;
+	    }
+	    if keyboard.pressed(KeyCode::KeyD) {
+		input.x += 1.0;
+	    }
+	} else {
+	    if keyboard.pressed(KeyCode::KeyW) {
+		input.z -= 1.0 * air_friction;
+	    }
+	    if keyboard.pressed(KeyCode::KeyS) {
+		input.z += 1.0 * air_friction;
+	    }
+	    if keyboard.pressed(KeyCode::KeyA) {
+		input.x -= 1.0 * air_friction;
+	    }
+	    if keyboard.pressed(KeyCode::KeyD) {
+		input.x += 1.0 * air_friction;
+	    }
+	}
+	
+    }
+
+    
+
+    if input == Vec3::ZERO {
         return;
-    };
-
-    let mut movement = Vec3::ZERO;
-
-    let forward = transform.forward();
-    let right = transform.right();
-
-    if keyboard.pressed(KeyCode::KeyW) {
-        movement += *forward;
-    }
-    if keyboard.pressed(KeyCode::KeyS) {
-        movement -= *forward;
-    }
-    if keyboard.pressed(KeyCode::KeyA) {
-        movement -= *right;
-    }
-    if keyboard.pressed(KeyCode::KeyD) {
-        movement += *right;
     }
 
-    // Ignore camera pitch for movement.
-    movement.y = 0.0;
+    let speed = 5.0;
+    let dt = time.delta_secs();
 
-    if movement.length_squared() > 0.0 {
-        movement = movement.normalize();
+
+    for (transform, mut controller) in query.iter_mut() {
+        // Convert local WASD direction into world direction
+        let mut direction = transform.rotation * input;
+
+        // Keep movement horizontal
+        //direction.y = 0.0;
+
+	for player in player_controller.iter_mut(){
+	// WASD when grounded
+	if player.isgrounded {
+	    // Keep horizontal movement when grounded
+            direction.y = 0.0;
+	}
+	    else {
+		 // Add down pull when not grounded
+		direction.y = - PLAYER_GRAVITY * 0.01  * dt;
+	    }
+	 }
+	
+
+        if direction != Vec3::ZERO {
+            direction = direction.normalize();
+        }
+
+        controller.translation = Some(direction * PLAYER_SPEED * dt);
     }
 
-    velocity.linear.x = movement.x * PLAYER_SPEED;
-    velocity.linear.z = movement.z * PLAYER_SPEED;
+  	
 
-    // Simple grounded check.
-    if keyboard.just_pressed(KeyCode::Space) && transform.translation.y <= 1.0 {
-        velocity.linear.y = JUMP_IMPULSE;
+}
+
+#[derive(Component)]
+struct PlayerController {
+    vertical_velocity: f32,
+    isgrounded: bool,
+}
+
+
+impl Default for PlayerController {
+    fn default() -> Self {
+        Self {
+            vertical_velocity: 0.0,
+            isgrounded: false,
+        }
     }
 }
+
+fn calculate_jump_speed(height: f32, time_to_peak: f32) -> f32 {
+    (1.0 * height) / time_to_peak
+}
+
+fn player_jump(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    mut query: Query<&mut PlayerController>,
+    time: Res<Time>,
+    mut controllers: Query<(&Transform, &mut KinematicCharacterController)>,
+) {
+    let dt = time.delta_secs();
+
+    let jump_height = 2.0;
+    let jump_time_to_peak= 500.0 * dt;
+
+   
+
+    //let jump_strength =  calculate_jump_speed(jump_height, jump_time_to_peak);
+
+    let jump_strength = 5.0;
+
+    
+
+    for (transform, mut controller) in controllers.iter_mut() {
+    for mut player in query.iter_mut() {
+        if keyboard.just_pressed(KeyCode::Space) && player.isgrounded {
+            player.vertical_velocity = PLAYER_JUMP_SPEED;
+	    controller.translation = Some(Vec3::new(0.0, player.vertical_velocity  , 0.0) * PLAYER_SPEED * dt);    
+	    println!("Player Jump");
+            player.isgrounded = false;
+        }
+    }
+    }
+}
+
+fn update_grounded(
+    mut query: Query<(&mut PlayerController, &KinematicCharacterControllerOutput)>
+) {
+    for (mut player, output) in query.iter_mut() {
+        player.isgrounded = output.grounded;
+    }
+}
+
+fn player_gravity(
+    time: Res<Time>,
+    mut query: Query<(&mut PlayerController, &mut KinematicCharacterController)>,
+) {
+    let gravity = -9.0;
+    let dt = time.delta_secs();
+
+    for (mut player, mut controller) in query.iter_mut() {
+	if !player.isgrounded {
+	    
+        player.vertical_velocity += gravity * dt;
+
+        controller.translation = Some(
+            Vec3::new(
+                0.0,
+                player.vertical_velocity * dt,
+                0.0,
+            ));
+
+	    
+        } else if player.vertical_velocity < 0.0 {
+            // Prevent velocity from building up while standing.
+            player.vertical_velocity = 0.0;
+        }
+        
+
+
+
+
+
+
+
+    }
+}
+
+// fn player_movement(
+//     keyboard: Res<ButtonInput<KeyCode>>,
+//     mut query: Query<(&Transform, &mut Velocity), With<Player>>,
+// ) {
+//     let Ok((transform, mut velocity)) = query.single_mut() else {
+//         return;
+//     };
+
+//     let mut movement = Vec3::ZERO;
+
+//     let forward = transform.forward();
+//     let right = transform.right();
+
+//     if keyboard.pressed(KeyCode::KeyW) {
+//         movement += *forward;
+//     }
+//     if keyboard.pressed(KeyCode::KeyS) {
+//         movement -= *forward;
+//     }
+//     if keyboard.pressed(KeyCode::KeyA) {
+//         movement -= *right;
+//     }
+//     if keyboard.pressed(KeyCode::KeyD) {
+//         movement += *right;
+//     }
+
+//     // Ignore camera pitch for movement.
+//     movement.y = 0.0;
+
+//     if movement.length_squared() > 0.0 {
+//         movement = movement.normalize();
+//     }
+
+//     velocity.linear.x = movement.x * PLAYER_SPEED;
+//     velocity.linear.z = movement.z * PLAYER_SPEED;
+
+//     // Simple grounded check.
+//     if keyboard.just_pressed(KeyCode::Space) && transform.translation.y <= 1.0 {
+//         velocity.linear.y = JUMP_IMPULSE;
+//     }
+// }
 
 
 #[derive(Debug, Component, Deref, DerefMut)]
@@ -301,19 +484,25 @@ fn spawn_view_model(
 
     commands.spawn((
         Player,
+	PlayerController {
+	    ..PlayerController::default()
+	},
         CameraSensitivity::default(),
-        Transform::from_xyz(0.0, 1.0, 0.0),
+        Transform::from_xyz(0.0, 2.0, 0.0),
         Visibility::default(),
 	Mesh3d(meshes.add(Capsule3d::default())),
         MeshMaterial3d(materials.add(Color::srgb(0.2, 0.4, 1.0))),
-        RigidBody::Dynamic,
+        //RigidBody::Dynamic,
+	RigidBody::KinematicPositionBased,
         Collider::capsule_y(0.5, 0.4),
 	Velocity::default(),
         LockedAxes::ROTATION_LOCKED,
         GravityScale(1.0),
 	KinematicCharacterController {
-            ..KinematicCharacterController::default()
+	    offset: CharacterLength::Absolute(0.01),
+        ..default()
         },
+	
         Damping {
             linear_damping: 2.0,
             angular_damping: 100.0,
