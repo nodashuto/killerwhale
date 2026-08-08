@@ -76,7 +76,7 @@ fn main() {
 	.add_systems(Update, (
 	    player_movement,
 	    update_grounded,
-	    player_jump,
+	    jump_start,
 	    player_gravity
 	))
 	.add_systems(Update, cursor_grab)
@@ -272,6 +272,7 @@ fn player_movement(
     let dt = time.delta_secs();
 
 
+
     for (transform, mut controller) in query.iter_mut() {
         // Convert local WASD direction into world direction
         let mut direction = transform.rotation * input;
@@ -286,7 +287,8 @@ fn player_movement(
             direction.y = 0.0;
 	}
 	    else {
-		 // Add down pull when not grounded
+		// Add down pull when not grounded
+		
 		direction.y = - PLAYER_GRAVITY * 0.01  * dt;
 	    }
 	 }
@@ -323,7 +325,7 @@ fn calculate_jump_speed(height: f32, time_to_peak: f32) -> f32 {
     (1.0 * height) / time_to_peak
 }
 
-fn player_jump(
+fn jump_start(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut query: Query<&mut PlayerController>,
     time: Res<Time>,
@@ -340,13 +342,24 @@ fn player_jump(
 
     let jump_strength = 5.0;
 
-    
+    let test_jump_height = 5.0f32; // 39.0f32
+    let test_gravity =  1.0f32;
+    let mut jump_velocity_squared = (test_jump_height + test_jump_height) * test_gravity;
+
+    /* jump velocity is determined by factor. factor can be determined by player-state
+     *
+    */
+    let factor = 0.5f32;
+
+    // Modify jump strength after certain landing states.
+    jump_velocity_squared = jump_velocity_squared / factor ;
+
 
     for (transform, mut controller) in controllers.iter_mut() {
     for mut player in query.iter_mut() {
         if keyboard.just_pressed(KeyCode::Space) && player.isgrounded {
-            player.vertical_velocity = PLAYER_JUMP_SPEED;
-	    controller.translation = Some(Vec3::new(0.0, player.vertical_velocity  , 0.0) * PLAYER_SPEED * dt);    
+            player.vertical_velocity = jump_velocity_squared.sqrt();
+	    controller.translation = Some(Vec3::new(0.0, player.vertical_velocity  , 0.0)  * dt);    
 	    println!("Player Jump");
             player.isgrounded = false;
         }
@@ -478,7 +491,7 @@ fn spawn_view_model(
     let arm_material = materials.add(Color::from(tailwind::TEAL_200));
 
         // Load the mesh from the GLB
-    let gun_mesh = asset_server.load("models/gun-model-0002.glb#Mesh0/Primitive0");
+    let gun_mesh = asset_server.load("models/gun-model-0003.glb#Mesh0/Primitive0");
     let gun_material = materials.add(Color::BLACK);
 
 
@@ -760,7 +773,7 @@ fn update_view_arm(
     let mut transform = arm.single_mut().unwrap();
 
     // Smooth movement
-    let speed = 12.0;
+    let speed = 32.0;
     transform.translation = transform
         .translation
         .lerp(target, speed * time.delta_secs());
@@ -788,7 +801,7 @@ fn update_view_weapon(
     let mut transform = weapon.single_mut().unwrap();
 
     // Smooth movement
-    let speed = 12.0;
+    let speed = 32.0;
     transform.translation = transform
         .translation
         .lerp(target, speed * time.delta_secs());
