@@ -1,15 +1,10 @@
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
-
 use bevy::color::palettes::*;
 
 use crate::Health;
 
-
-
 pub struct ShootingTargetPlugin;
-
-
 
 impl Plugin for ShootingTargetPlugin {
     fn build(&self, app: &mut App) {
