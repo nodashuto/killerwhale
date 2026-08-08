@@ -1,37 +1,26 @@
 use std::f32::consts::FRAC_PI_2;
 
-use bevy::{
-    camera::visibility::RenderLayers, color::palettes::tailwind,
-    light::NotShadowCaster, 
-};
-
+use bevy::{camera::visibility::RenderLayers, color::palettes::tailwind, light::NotShadowCaster};
 
 use bevy::input::mouse::MouseMotion;
-use bevy::prelude::*;
-use bevy_rapier3d::prelude::*;
-use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
 use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll};
-
-
-
-
-
+use bevy::prelude::*;
+use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
+use bevy_rapier3d::prelude::*;
 
 use light_consts::lux::AMBIENT_DAYLIGHT;
 
-
 //use crate::shootingtarget;
-pub mod world;
 pub mod shootingtarget;
+pub mod world;
 
 use crate::shootingtarget::*;
 
 use shootingtarget::ShootingTargetPlugin;
 
-
-const PLAYER_SPEED: f32 = 4.0;
+const PLAYER_SPEED: f32 = 6.0;
 const PLAYER_JUMP_SPEED: f32 = 3.0;
-const PLAYER_GRAVITY: f32 = 9.0;
+const PLAYER_GRAVITY: f32 = 40.0;
 // const MOUSE_SENSITIVITY: f32 = 0.002;
 
 fn main() {
@@ -44,43 +33,35 @@ fn main() {
             ..default()
         }))
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
-	.init_state::<GameState>()
-	.init_resource::<SoundEffect>() // for sound effect
+        .init_state::<GameState>()
+        .init_resource::<SoundEffect>() // for sound effect
         .add_plugins(world::WorldPlugin)
         //.add_plugins(shootingtarget::ShootingTargetPlugin)
         //.add_plugins(RapierDebugRenderPlugin::default()) // Uncomment for collider visualization
         //.insert_resource(ClearColor(Color::srgb(0.1, 0.12, 0.15)))
         //.add_systems(Startup, setup)
-	// .add_systems(Startup, initial_grab_cursor)
-	// .add_systems(Startup, initial_grab_on_player_spawn)
-	// .add_systems(Update, player_look)
+        // .add_systems(Startup, initial_grab_cursor)
+        // .add_systems(Startup, initial_grab_on_player_spawn)
+        // .add_systems(Update, player_look)
         // .add_systems(Update, player_movement)
-	//.add_systems(Startup, setup) //needthis
-	
+        //.add_systems(Startup, setup) //needthis
         //.add_systems(Update, mouse_look)
-    // .add_systems(Update, grab_mouse)
-	.add_systems(
-            Startup,
-            (
-                spawn_view_model,                
-                spawn_lights,
-                spawn_text,
-            ),
-        )
-	.add_systems(Startup, initial_grab_cursor)
-	.add_systems(Startup, setup_goal)
+        // .add_systems(Update, grab_mouse)
+        .add_systems(Startup, (spawn_view_model, spawn_lights, spawn_text))
+        .add_systems(Startup, initial_grab_cursor)
+        .add_systems(Startup, setup_goal)
         .add_systems(Update, (move_player, change_fov, ads_zoom))
-	.add_systems(Update, (update_view_arm, update_view_weapon))
-	.add_systems(Update, fire_weapon)
-	//.add_systems(Update,player_movement) //needthis
-	.add_systems(Update, (
-	    player_movement,
-	    update_grounded,
-	    jump_start,
-	    player_gravity
-	))
-	.add_systems(Update, cursor_grab)
-	.add_systems(Update, check_goal.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, (update_view_arm, update_view_weapon))
+        .add_systems(Update, fire_weapon)
+        //.add_systems(Update,player_movement) //needthis
+        .add_systems(
+            Update,
+            (player_movement, update_grounded,
+	     //jump_start, player_gravity
+	    ),
+        )
+        .add_systems(Update, cursor_grab)
+        .add_systems(Update, check_goal.run_if(in_state(GameState::Playing)))
         .run();
 }
 
@@ -120,8 +101,6 @@ struct Player;
 //         Collider::cuboid(25.0, 0.5, 25.0),
 //     ));
 
-
-
 //     // Red box
 //     commands.spawn((
 //         Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
@@ -149,7 +128,6 @@ struct Player;
 //         Collider::cuboid(2.5, 2.5, 0.5),
 //     ));
 
-
 //     // Player
 //     commands.spawn((
 //         Player,
@@ -172,7 +150,6 @@ struct Player;
 //     ));
 // }
 
-
 #[derive(Resource, Deref)]
 struct SoundEffect {
     handle: Handle<AudioSource>,
@@ -188,9 +165,6 @@ impl FromWorld for SoundEffect {
         }
     }
 }
-
-
-
 
 /// Grabs/ungrabs mouse cursor
 fn toggle_grab_cursor(mut primary_cursor_options: Single<&mut CursorOptions, With<PrimaryWindow>>) {
@@ -211,7 +185,6 @@ fn initial_grab_cursor(primary_cursor_options: Single<&mut CursorOptions, With<P
     toggle_grab_cursor(primary_cursor_options);
 }
 
-
 fn cursor_grab(
     keys: Res<ButtonInput<KeyCode>>,
     primary_cursor_options: Single<&mut CursorOptions, With<PrimaryWindow>>,
@@ -221,101 +194,228 @@ fn cursor_grab(
     }
 }
 
-fn player_movement(
-    keyboard: Res<ButtonInput<KeyCode>>,
-    time: Res<Time>,
-    mut query: Query<(&Transform, &mut KinematicCharacterController)>,
-    mut player_controller: Query<&mut PlayerController>,
-) {
-    let mut input = Vec3::ZERO;
-    let air_friction = 0.01;
+// Ground acceleration.
+// Higher = reaches max speed faster.
+const GROUND_ACCEL: f32 = 20.0;
+// Air acceleration.
+// Lower than ground acceleration gives you reduced air control.
+const AIR_ACCEL: f32 = 4.0;
+// Jump height in world units.
+const JUMP_HEIGHT: f32 = 1.0;
 
-    for player in player_controller.iter_mut(){
-	// WASD when grounded
-	if player.isgrounded {
-	    if keyboard.pressed(KeyCode::KeyW) {
-		input.z -= 1.0;
-	    }
-	    if keyboard.pressed(KeyCode::KeyS) {
-		input.z += 1.0;
-	    }
-	    if keyboard.pressed(KeyCode::KeyA) {
-		input.x -= 1.0;
-	    }
-	    if keyboard.pressed(KeyCode::KeyD) {
-		input.x += 1.0;
-	    }
-	} else {
-	    if keyboard.pressed(KeyCode::KeyW) {
-		input.z -= 1.0 * air_friction;
-	    }
-	    if keyboard.pressed(KeyCode::KeyS) {
-		input.z += 1.0 * air_friction;
-	    }
-	    if keyboard.pressed(KeyCode::KeyA) {
-		input.x -= 1.0 * air_friction;
-	    }
-	    if keyboard.pressed(KeyCode::KeyD) {
-		input.x += 1.0 * air_friction;
-	    }
-	}
-	
+fn accelerate(velocity: &mut Vec3, wish_dir: Vec3, wish_speed: f32, acceleration: f32, dt: f32) {
+    if wish_dir == Vec3::ZERO || wish_speed <= 0.0 {
+        return;
     }
+    // Velocity in the direction the player wants to move.
+    let current_speed = velocity.dot(wish_dir);
+    // How much more speed we need.
+    let add_speed = wish_speed - current_speed;
+    if add_speed <= 0.0 {
+        return;
+    }
+    // Amount of acceleration this frame.
+    let accel_speed = acceleration * dt * wish_speed;
+    let accel_speed = accel_speed.min(add_speed);
+    *velocity += wish_dir * accel_speed;
+}
 
-    
+fn friction(velocity: &mut Vec3, friction: f32, stop_speed: f32, dt: f32) {
+    let speed = Vec2::new(velocity.x, velocity.z).length();
 
-    if input == Vec3::ZERO {
+    if speed < 0.001 {
+        velocity.x = 0.0;
+        velocity.z = 0.0;
         return;
     }
 
-    let speed = 5.0;
-    let dt = time.delta_secs();
+    let control = speed.max(stop_speed);
+    let drop = control * friction * dt;
 
+    let new_speed = (speed - drop).max(0.0);
+    let scale = new_speed / speed;
 
+    velocity.x *= scale;
+    velocity.z *= scale;
+}
 
-    for (transform, mut controller) in query.iter_mut() {
-        // Convert local WASD direction into world direction
-        let mut direction = transform.rotation * input;
+fn walk_move(velocity: &mut Vec3, wish_dir: Vec3, wish_speed: f32, dt: f32) {
 
-        // Keep movement horizontal
-        //direction.y = 0.0;
-
-	for player in player_controller.iter_mut(){
-	// WASD when grounded
-	if player.isgrounded {
-	    // Keep horizontal movement when grounded
-            direction.y = 0.0;
-	}
-	    else {
-		// Add down pull when not grounded
-		
-		direction.y = - PLAYER_GRAVITY * 0.01  * dt;
-	    }
-	 }
-	
-
-        if direction != Vec3::ZERO {
-            direction = direction.normalize();
-        }
-
-        controller.translation = Some(direction * PLAYER_SPEED * dt);
+    friction(velocity, 15.0, 2.0, dt);
+    // Ground movement accelerates quickly toward the desired speed.
+    accelerate(velocity, wish_dir, wish_speed, GROUND_ACCEL, dt);
+    // Ground movement should not accumulate vertical velocity.
+    //
+    // We only remove downward velocity here. This prevents a small
+    // downward velocity from making the player fall through the floor.
+    if velocity.y < 0.0 {
+        velocity.y = 0.0;
     }
-
-  	
-
 }
 
-#[derive(Component)]
-struct PlayerController {
-    vertical_velocity: f32,
-    isgrounded: bool,
+fn air_move(velocity: &mut Vec3, wish_dir: Vec3, wish_speed: f32, dt: f32) {
+    // Air acceleration is deliberately weaker than ground acceleration.
+    accelerate(velocity, wish_dir, wish_speed, AIR_ACCEL, dt);
 }
 
+fn check_jump(player: &mut PlayerController, keyboard: &ButtonInput<KeyCode>) {
+    if !player.isgrounded {
+        return;
+    }
+    if keyboard.just_pressed(KeyCode::Space) {
+        // v² = 2gh // // This is the same calculation used by the Jump_Start()
+        // function you posted earlier.
+        player.velocity.y = (2.0 * PLAYER_GRAVITY * JUMP_HEIGHT).sqrt();
+        player.isgrounded = false;
+    }
+}
+
+// fn walk_move()
+// {}
+
+// fn air_move(){
+
+// }
+
+// fn check_jump(){
+
+// }
+
+fn player_movement(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    time: Res<Time>,
+    mut query: Query<(
+        &Transform,
+        &mut KinematicCharacterController,
+        &mut PlayerController,
+    )>,
+) {
+    let dt = time.delta_secs();
+    for (transform, mut controller, mut player) in query.iter_mut() {
+        let mut input = Vec3::ZERO;
+        if keyboard.pressed(KeyCode::KeyW) {
+            input.z -= 1.0;
+        }
+        if keyboard.pressed(KeyCode::KeyS) {
+            input.z += 1.0;
+        }
+        if keyboard.pressed(KeyCode::KeyA) {
+            input.x -= 1.0;
+        }
+        if keyboard.pressed(KeyCode::KeyD) {
+            input.x += 1.0;
+        }
+        if input.length_squared() > 0.0 {
+            input = input.normalize();
+        }
+        let mut wish_dir = transform.rotation * input;
+        wish_dir.y = 0.0;
+        if wish_dir.length_squared() > 0.0 {
+            wish_dir = wish_dir.normalize();
+        }
+        let wish_speed = if wish_dir != Vec3::ZERO {
+            PLAYER_SPEED
+        } else {
+            0.0
+        };
+        check_jump(&mut player, &keyboard);
+        if player.isgrounded {
+            walk_move(&mut player.velocity, wish_dir, wish_speed, dt);
+        } else {
+            air_move(&mut player.velocity, wish_dir, wish_speed, dt);
+            player.velocity.y -= PLAYER_GRAVITY * dt;
+        }
+        controller.translation = Some(player.velocity * dt);
+    }
+}
+
+// fn player_movement(
+//     keyboard: Res<ButtonInput<KeyCode>>,
+//     time: Res<Time>,
+//     mut query: Query<(&Transform, &mut KinematicCharacterController)>,
+//     mut player_controller: Query<&mut PlayerController>,
+// ) {
+//     let mut input = Vec3::ZERO;
+//     let air_friction = 0.01;
+
+//     for player in player_controller.iter_mut() {
+//         // WASD when grounded
+//         if player.isgrounded {
+//             if keyboard.pressed(KeyCode::KeyW) {
+//                 input.z -= 1.0;
+//             }
+//             if keyboard.pressed(KeyCode::KeyS) {
+//                 input.z += 1.0;
+//             }
+//             if keyboard.pressed(KeyCode::KeyA) {
+//                 input.x -= 1.0;
+//             }
+//             if keyboard.pressed(KeyCode::KeyD) {
+//                 input.x += 1.0;
+//             }
+//         } else {
+//             if keyboard.pressed(KeyCode::KeyW) {
+//                 input.z -= 1.0 * air_friction;
+//             }
+//             if keyboard.pressed(KeyCode::KeyS) {
+//                 input.z += 1.0 * air_friction;
+//             }
+//             if keyboard.pressed(KeyCode::KeyA) {
+//                 input.x -= 1.0 * air_friction;
+//             }
+//             if keyboard.pressed(KeyCode::KeyD) {
+//                 input.x += 1.0 * air_friction;
+//             }
+//         }
+//     }
+
+//     if input == Vec3::ZERO {
+//         return;
+//     }
+
+//     let speed = 5.0;
+//     let dt = time.delta_secs();
+
+//     for (transform, mut controller) in query.iter_mut() {
+//         // Convert local WASD direction into world direction
+//         let mut direction = transform.rotation * input;
+
+//         // Keep movement horizontal
+//         //direction.y = 0.0;
+
+//         for player in player_controller.iter_mut() {
+//             // WASD when grounded
+//             if player.isgrounded {
+//                 // Keep horizontal movement when grounded
+//                 direction.y = 0.0;
+//             } else {
+//                 // Add down pull when not grounded
+
+//                 direction.y = -PLAYER_GRAVITY * 00.1 * dt;
+//             }
+//         }
+
+//         if direction != Vec3::ZERO {
+//             direction = direction.normalize();
+//         }
+
+//         controller.translation = Some(direction * PLAYER_SPEED * dt);
+//     }
+// }
+
+#[derive(Component)] pub struct PlayerController { pub velocity: Vec3, pub isgrounded: bool, }
+
+// #[derive(Component)]
+// struct PlayerController {
+//     vertical_velocity: f32,
+//     isgrounded: bool,
+// }
 
 impl Default for PlayerController {
     fn default() -> Self {
         Self {
-            vertical_velocity: 0.0,
+	    velocity: Vec3::ZERO,
+            //vertical_velocity: 0.0,
             isgrounded: false,
         }
     }
@@ -334,42 +434,37 @@ fn jump_start(
     let dt = time.delta_secs();
 
     let jump_height = 2.0;
-    let jump_time_to_peak= 500.0 * dt;
-
-   
+    let jump_time_to_peak = 500.0 * dt;
 
     //let jump_strength =  calculate_jump_speed(jump_height, jump_time_to_peak);
 
     let jump_strength = 5.0;
 
-    let test_jump_height = 5.0f32; // 39.0f32
-    let test_gravity =  1.0f32;
+    let test_jump_height = 10.0f32; // 39.0f32
+    let test_gravity = 1.0f32;
     let mut jump_velocity_squared = (test_jump_height + test_jump_height) * test_gravity;
 
     /* jump velocity is determined by factor. factor can be determined by player-state
      *
-    */
-    let factor = 0.5f32;
+     */
+    let factor = 1.0f32;
 
     // Modify jump strength after certain landing states.
-    jump_velocity_squared = jump_velocity_squared / factor ;
-
+    jump_velocity_squared = jump_velocity_squared / factor;
 
     for (transform, mut controller) in controllers.iter_mut() {
-    for mut player in query.iter_mut() {
-        if keyboard.just_pressed(KeyCode::Space) && player.isgrounded {
-            player.vertical_velocity = jump_velocity_squared.sqrt();
-	    controller.translation = Some(Vec3::new(0.0, player.vertical_velocity  , 0.0)  * dt);    
-	    println!("Player Jump");
-            player.isgrounded = false;
+        for mut player in query.iter_mut() {
+            if keyboard.just_pressed(KeyCode::Space) && player.isgrounded {
+                player.velocity.y = jump_velocity_squared.sqrt();
+                controller.translation = Some(Vec3::new(0.0, player.velocity.y, 0.0) * dt);
+                println!("Player Jump");
+                player.isgrounded = false;
+            }
         }
-    }
     }
 }
 
-fn update_grounded(
-    mut query: Query<(&mut PlayerController, &KinematicCharacterControllerOutput)>
-) {
+fn update_grounded(mut query: Query<(&mut PlayerController, &KinematicCharacterControllerOutput)>) {
     for (mut player, output) in query.iter_mut() {
         player.isgrounded = output.grounded;
     }
@@ -379,35 +474,19 @@ fn player_gravity(
     time: Res<Time>,
     mut query: Query<(&mut PlayerController, &mut KinematicCharacterController)>,
 ) {
-    let gravity = -9.0;
-    let dt = time.delta_secs();
+    // let gravity = -10.0;
+    // let dt = time.delta_secs();
 
-    for (mut player, mut controller) in query.iter_mut() {
-	if !player.isgrounded {
-	    
-        player.vertical_velocity += gravity * dt;
+    // for (mut player, mut controller) in query.iter_mut() {
+    //     if !player.isgrounded {
+    //         player.vertical_velocity += gravity * dt;
 
-        controller.translation = Some(
-            Vec3::new(
-                0.0,
-                player.vertical_velocity * dt,
-                0.0,
-            ));
-
-	    
-        } else if player.vertical_velocity < 0.0 {
-            // Prevent velocity from building up while standing.
-            player.vertical_velocity = 0.0;
-        }
-        
-
-
-
-
-
-
-
-    }
+    //         controller.translation = Some(Vec3::new(0.0, player.vertical_velocity * dt, 0.0));
+    //     } else if player.vertical_velocity < 0.0 {
+    //         // Prevent velocity from building up while standing.
+    //         player.vertical_velocity = 0.0;
+    //     }
+    // }
 }
 
 // fn player_movement(
@@ -452,7 +531,6 @@ fn player_gravity(
 //     }
 // }
 
-
 #[derive(Debug, Component, Deref, DerefMut)]
 struct CameraSensitivity(Vec2);
 
@@ -485,37 +563,35 @@ fn spawn_view_model(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-            asset_server: Res<AssetServer>,
+    asset_server: Res<AssetServer>,
 ) {
     let arm = meshes.add(Cuboid::new(0.1, 0.1, 0.5));
     let arm_material = materials.add(Color::from(tailwind::TEAL_200));
 
-        // Load the mesh from the GLB
+    // Load the mesh from the GLB
     let gun_mesh = asset_server.load("models/gun-model-0003.glb#Mesh0/Primitive0");
     let gun_material = materials.add(Color::BLACK);
 
-
     commands.spawn((
         Player,
-	PlayerController {
-	    ..PlayerController::default()
-	},
+        PlayerController {
+            ..PlayerController::default()
+        },
         CameraSensitivity::default(),
         Transform::from_xyz(0.0, 2.0, 0.0),
         Visibility::default(),
-	Mesh3d(meshes.add(Capsule3d::default())),
+        Mesh3d(meshes.add(Capsule3d::default())),
         MeshMaterial3d(materials.add(Color::srgb(0.2, 0.4, 1.0))),
         //RigidBody::Dynamic,
-	RigidBody::KinematicPositionBased,
+        RigidBody::KinematicPositionBased,
         Collider::capsule_y(0.5, 0.4),
-	Velocity::default(),
+        Velocity::default(),
         LockedAxes::ROTATION_LOCKED,
         GravityScale(1.0),
-	KinematicCharacterController {
-	    offset: CharacterLength::Absolute(0.01),
-        ..default()
+        KinematicCharacterController {
+            offset: CharacterLength::Absolute(0.01),
+            ..default()
         },
-	
         Damping {
             linear_damping: 2.0,
             angular_damping: 100.0,
@@ -546,8 +622,8 @@ fn spawn_view_model(
             ),
             // Spawn the player's right arm.
             (
-		ViewArm, // component marker for ADS translation
-		Mesh3d(arm),
+                ViewArm, // component marker for ADS translation
+                Mesh3d(arm),
                 MeshMaterial3d(arm_material),
                 Transform::from_xyz(0.2, -0.1, -0.25),
                 // Ensure the arm is only rendered by the view model camera.
@@ -555,46 +631,41 @@ fn spawn_view_model(
                 // The arm is free-floating, so shadows would look weird.
                 NotShadowCaster,
             ),
-	    //Spawn the player's gun model
-	(
-	    ViewWeapon,
-	    Mesh3d(gun_mesh),
-		MeshMaterial3d(gun_material),
-	    //transform::from_xyz(0.2, -0.1, -0.25),
-	    Transform {
-		    translation: Vec3::new(0.8, -0.8, -1.2),
-		    rotation: Quat::from_rotation_y(std::f32::consts::PI), 
-		    scale: Vec3::new(0.1, 0.1, 0.1),
-		},
-		// Ensure the arm is only rendered by the view model camera.
+            //Spawn the player's gun model
+            (
+                ViewWeapon,
+                Mesh3d(gun_mesh),
+                MeshMaterial3d(gun_material),
+                //transform::from_xyz(0.2, -0.1, -0.25),
+                Transform {
+                    translation: Vec3::new(0.8, -0.8, -1.2),
+                    rotation: Quat::from_rotation_y(std::f32::consts::PI),
+                    scale: Vec3::new(0.1, 0.1, 0.1),
+                },
+                // Ensure the arm is only rendered by the view model camera.
                 RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
                 // The arm is free-floating, so shadows would look weird.
                 //NotShadowCaster,
-	    ),
+            ),
         ],
     ));
 }
 
-
 fn spawn_lights(mut commands: Commands) {
-
     commands.spawn((
         Transform::from_xyz(-50., 500.0, 100.)
             .looking_at(Vec3::ZERO, Vec3::Y)
             .with_scale(Vec3::splat(2.)),
         DirectionalLight {
-	    color: Color::from(tailwind::NEUTRAL_500),
-	    illuminance: AMBIENT_DAYLIGHT,
+            color: Color::from(tailwind::NEUTRAL_500),
+            illuminance: AMBIENT_DAYLIGHT,
             shadow_maps_enabled: true,
             ..default()
         },
         Visibility::Visible,
-
     ));
 
-
     // commands.spawn(
-
 
     // 	(
     //     PointLight {
@@ -624,7 +695,6 @@ fn spawn_lights(mut commands: Commands) {
 //         )));
 // }
 
-
 fn spawn_text(mut commands: Commands) {
     commands
         .spawn(Node {
@@ -639,9 +709,6 @@ fn spawn_text(mut commands: Commands) {
             " "
         )));
 }
-
-
-
 
 fn move_player(
     accumulated_mouse_motion: Res<AccumulatedMouseMotion>,
@@ -695,8 +762,6 @@ fn change_fov(
         perspective.fov += 1.0_f32.to_radians();
         perspective.fov = perspective.fov.min(160.0_f32.to_radians());
     }
-
-    
 }
 
 // added myself
@@ -715,8 +780,6 @@ fn change_fov(
 //         );
 //     };
 
-    
-    
 //     if input.pressed(KeyCode::ArrowUp) {
 //         perspective.fov -= 1.0_f32.to_radians();
 //         perspective.fov = perspective.fov.max(20.0_f32.to_radians());
@@ -726,11 +789,9 @@ fn change_fov(
 //         perspective.fov = perspective.fov.min(160.0_f32.to_radians());
 //     }
 
-    
 // }
 
-
-/// Hold right mouse button to zoom in with WorldModelCamera. 
+/// Hold right mouse button to zoom in with WorldModelCamera.
 fn ads_zoom(
     time: Res<Time>,
     buttons: Res<ButtonInput<MouseButton>>,
@@ -750,14 +811,10 @@ fn ads_zoom(
     perspective.fov += (target - perspective.fov) * speed * time.delta_secs();
 }
 
-
-
 #[derive(Component)]
 struct ViewArm;
 const ARM_IDLE: Vec3 = Vec3::new(0.4, -0.35, -0.45);
 const ARM_AIM: Vec3 = Vec3::new(0.0, -0.40, -0.55);
-
-
 
 fn update_view_arm(
     buttons: Res<ButtonInput<MouseButton>>,
@@ -779,13 +836,10 @@ fn update_view_arm(
         .lerp(target, speed * time.delta_secs());
 }
 
-
 #[derive(Component)]
 struct ViewWeapon;
 const WEAPON_IDLE: Vec3 = Vec3::new(0.8, -0.9, -1.25);
 const WEAPON_AIM: Vec3 = Vec3::new(0.0, -0.76, -0.4);
-
-
 
 fn update_view_weapon(
     buttons: Res<ButtonInput<MouseButton>>,
@@ -807,8 +861,6 @@ fn update_view_weapon(
         .lerp(target, speed * time.delta_secs());
 }
 
-
-
 // use bevy::prelude::*;
 // use bevy_rapier3d::prelude::*;
 // use bevy::{
@@ -823,21 +875,18 @@ fn update_view_weapon(
 // fn main() {
 //     App::new()
 //         .add_plugins(DefaultPlugins)
-    //.add_plugins(game::game::GamePlugin)
-    //.add_systems(Startup, (init_level, spawn_lights))
-        // .add_systems(Startup, init_level)
-	// .add_systems(Startup, setup)
-	// .add_systems(Startup, setup_physics)
-	// .add_systems(Update, update_system)
-	// .add_systems(Update, read_result_system)
+//.add_plugins(game::game::GamePlugin)
+//.add_systems(Startup, (init_level, spawn_lights))
+// .add_systems(Startup, init_level)
+// .add_systems(Startup, setup)
+// .add_systems(Startup, setup_physics)
+// .add_systems(Update, update_system)
+// .add_systems(Update, read_result_system)
 //         .run();
 // }
 
-
 // #[derive(Debug, Component)]
 // struct Player;
-
-
 
 // fn init_level(
 //     mut commands: Commands,
@@ -863,9 +912,7 @@ fn update_view_weapon(
 //     // spawn floor
 //     commands.spawn((Mesh3d(floor), MeshMaterial3d(material.clone()), Transform::from_xyz(0.0, 0.1, 0.0),));
 
-    
 // }
-
 
 // fn spawn_lights(mut commands: Commands) {
 //     commands.spawn((
@@ -890,7 +937,6 @@ fn update_view_weapon(
 //     /*
 //      * Spawn Player with CharacterController
 //      */
-
 //     // commands.spawn((
 //     //     //RigidBody::KinematicPositionBased,
 //     // 	//Player,
@@ -974,9 +1020,6 @@ fn update_view_weapon(
 //         let forward = Vec3::new(1.0, 0., 0.0);
 //         let right = Vec3::new(0.0, 0., 1.0);
 
-
-        
-
 // 	if keys.pressed(KeyCode::KeyW){
 //             movement = forward;
 // 	}
@@ -986,7 +1029,7 @@ fn update_view_weapon(
 // 	}
 // 	if keys.pressed(KeyCode::KeyS){
 //             movement = -forward;
-	    
+
 // 	}
 // 	if keys.pressed(KeyCode::KeyD){
 //             movement = -right;
@@ -997,15 +1040,12 @@ fn update_view_weapon(
 // 	    movement * time.delta_secs()
 // 	);
 
-	
 // 	controller.translation = Some(Vec3::new(0.0, -0.1, 0.0) * time.delta_secs());
 //     }
 // }
 
-
-
 // fn jump() {
-    
+
 // }
 
 #[derive(States, Default, Debug, Clone, Eq, PartialEq, Hash)]
@@ -1031,15 +1071,13 @@ fn check_goal(
         let distance = player_pos.distance(goal_transform.translation);
 
         if distance <= goal.radius {
-            println!("Reached the goal!" );
+            println!("Reached the goal!");
             // next_state.set(GameState::Results);
         }
     }
 }
 
-fn setup_goal (
-    mut commands: Commands
-) {
+fn setup_goal(mut commands: Commands) {
     // Spawn goal
     commands.spawn((
         Goal { radius: 2.0 },
@@ -1048,13 +1086,11 @@ fn setup_goal (
     ));
 }
 
-
 #[derive(Component)]
 pub struct Health {
     pub current: f32,
     pub max: f32,
 }
-
 
 fn fire_weapon(
     buttons: Res<ButtonInput<MouseButton>>,
@@ -1072,9 +1108,9 @@ fn fire_weapon(
     println!("Shots fired");
     // play sound effect
     commands.spawn((
-            AudioPlayer::new(sound_effect.clone()),
-            PlaybackSettings::DESPAWN,
-        ));
+        AudioPlayer::new(sound_effect.clone()),
+        PlaybackSettings::DESPAWN,
+    ));
 
     let transform = camera.single().unwrap();
 
@@ -1088,18 +1124,12 @@ fn fire_weapon(
     let filter = QueryFilter::default().exclude_rigid_body(player_entity);
 
     if let Ok(ctx) = rapier_context.single() {
-        if let Some((entity, toi)) = ctx.cast_ray(
-            origin,
-            *direction,
-            max_distance,
-            true,
-            filter,
-        ) {
+        if let Some((entity, toi)) = ctx.cast_ray(origin, *direction, max_distance, true, filter) {
             //println!("Hit {:?} at {}", entity, toi);
 
             if let Ok(mut health) = health_query.get_mut(entity) {
-		health.current -= 50.0;
-		println!("Remaining HP: {}", health.current);
+                health.current -= 50.0;
+                println!("Remaining HP: {}", health.current);
             }
 
             //let hit_position = origin + *direction * toi;
