@@ -47,7 +47,10 @@ fn main() {
         //.add_systems(Startup, setup) //needthis
         //.add_systems(Update, mouse_look)
         // .add_systems(Update, grab_mouse)
-        .add_systems(Startup, (spawn_view_model, spawn_lights, spawn_text))
+        .add_systems(Startup, (
+	    spawn_view_model,
+	    //spawn_lights,
+	    spawn_text))
         .add_systems(Startup, initial_grab_cursor)
         .add_systems(Startup, setup_goal)
         .add_systems(Update, (move_player, change_fov, ads_zoom))
@@ -56,9 +59,11 @@ fn main() {
         //.add_systems(Update,player_movement) //needthis
         .add_systems(
             Update,
-            (player_movement, update_grounded,
-	     //jump_start, player_gravity
-	    ),
+            (
+                player_movement,
+                update_grounded,
+                //jump_start, player_gravity
+            ),
         )
         .add_systems(Update, cursor_grab)
         .add_systems(Update, check_goal.run_if(in_state(GameState::Playing)))
@@ -199,9 +204,9 @@ fn cursor_grab(
 const GROUND_ACCEL: f32 = 20.0;
 // Air acceleration.
 // Lower than ground acceleration gives you reduced air control.
-const AIR_ACCEL: f32 = 4.0;
+const AIR_ACCEL: f32 = 6.0;
 // Jump height in world units.
-const JUMP_HEIGHT: f32 = 1.0;
+const JUMP_HEIGHT: f32 = 0.9;
 
 fn accelerate(velocity: &mut Vec3, wish_dir: Vec3, wish_speed: f32, acceleration: f32, dt: f32) {
     if wish_dir == Vec3::ZERO || wish_speed <= 0.0 {
@@ -240,8 +245,7 @@ fn friction(velocity: &mut Vec3, friction: f32, stop_speed: f32, dt: f32) {
 }
 
 fn walk_move(velocity: &mut Vec3, wish_dir: Vec3, wish_speed: f32, dt: f32) {
-
-    friction(velocity, 15.0, 2.0, dt);
+    friction(velocity, 15.0, 3.0, dt);
     // Ground movement accelerates quickly toward the desired speed.
     accelerate(velocity, wish_dir, wish_speed, GROUND_ACCEL, dt);
     // Ground movement should not accumulate vertical velocity.
@@ -263,7 +267,7 @@ fn check_jump(player: &mut PlayerController, keyboard: &ButtonInput<KeyCode>) {
         return;
     }
     if keyboard.just_pressed(KeyCode::Space) {
-        // v² = 2gh // // This is the same calculation used by the Jump_Start() function. 
+        // v² = 2gh // // This is the same calculation used by the Jump_Start() function.
         player.velocity.y = (2.0 * PLAYER_GRAVITY * JUMP_HEIGHT).sqrt();
         player.isgrounded = false;
     }
@@ -402,7 +406,11 @@ fn player_movement(
 //     }
 // }
 
-#[derive(Component)] pub struct PlayerController { pub velocity: Vec3, pub isgrounded: bool, }
+#[derive(Component)]
+pub struct PlayerController {
+    pub velocity: Vec3,
+    pub isgrounded: bool,
+}
 
 // #[derive(Component)]
 // struct PlayerController {
@@ -413,7 +421,7 @@ fn player_movement(
 impl Default for PlayerController {
     fn default() -> Self {
         Self {
-	    velocity: Vec3::ZERO,
+            velocity: Vec3::ZERO,
             //vertical_velocity: 0.0,
             isgrounded: false,
         }
@@ -569,7 +577,11 @@ fn spawn_view_model(
 
     // Load the mesh from the GLB
     let gun_mesh = asset_server.load("models/gun-model-0003.glb#Mesh0/Primitive0");
-    let gun_material = materials.add(Color::BLACK);
+    let gun_material = materials.add(StandardMaterial {
+        base_color: Color::BLACK,
+        metallic: 0.1,
+        ..default()
+    });
 
     commands.spawn((
         Player,
@@ -651,31 +663,31 @@ fn spawn_view_model(
 }
 
 fn spawn_lights(mut commands: Commands) {
-    commands.spawn((
-        Transform::from_xyz(-50., 500.0, 100.)
-            .looking_at(Vec3::ZERO, Vec3::Y)
-            .with_scale(Vec3::splat(2.)),
-        DirectionalLight {
-            color: Color::from(tailwind::NEUTRAL_500),
-            illuminance: AMBIENT_DAYLIGHT,
-            shadow_maps_enabled: true,
-            ..default()
-        },
-        Visibility::Visible,
-    ));
-
-    // commands.spawn(
-
-    // 	(
-    //     PointLight {
-    //         color: Color::from(tailwind::ROSE_300),
+    // Spawn Global Light
+    // commands.spawn((
+    //     Transform::from_xyz(-50., 500.0, 100.)
+    //         .looking_at(Vec3::ZERO, Vec3::Y)
+    //         .with_scale(Vec3::splat(2.)),
+    //     DirectionalLight {
+    //         color: Color::from(tailwind::NEUTRAL_500),
+    //         illuminance: AMBIENT_DAYLIGHT,
     //         shadow_maps_enabled: true,
     //         ..default()
     //     },
-    //     Transform::from_xyz(-2.0, 4.0, -0.75),
-    //     // The light source illuminates both the world model and the view model.
-    //     RenderLayers::from_layers(&[DEFAULT_RENDER_LAYER, VIEW_MODEL_RENDER_LAYER]),
+    //     Visibility::Visible,
     // ));
+
+    // Spawn PointLight
+    commands.spawn((
+        PointLight {
+            color: Color::from(tailwind::NEUTRAL_200),
+            shadow_maps_enabled: true,
+            ..default()
+        },
+        Transform::from_xyz(-2.0, 2.0, -0.75),
+        // The light source illuminates both the world model and the view model.
+        RenderLayers::from_layers(&[DEFAULT_RENDER_LAYER, VIEW_MODEL_RENDER_LAYER]),
+    ));
 }
 
 // /// original spawn text here

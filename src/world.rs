@@ -2,7 +2,8 @@ use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
 use bevy::{
     camera::visibility::RenderLayers, color::palettes::tailwind,
-    light::NotShadowCaster, 
+    light::NotShadowCaster,
+    light::CascadeShadowConfigBuilder,
 };
 
 
@@ -24,6 +25,7 @@ impl Plugin for WorldPlugin {
 	app.add_plugins(ShootingTargetPlugin);
 	app.insert_resource(ClearColor(Color::srgb(226.0 / 255.0, 237.0 / 255.0, 238.0 / 255.0)));
 	app.add_systems(Startup, spawn_world_model);
+	app.add_systems(Startup, spawn_lights);
 	//app.add_systems(Startup, spawn_mesh);
 	//app.add_systems(Startup, spawn_wall);
     }
@@ -175,7 +177,27 @@ fn spawn_world_model(
         Vec3::new(0.0, -0.2, -10.0),
     );
 
-
+    //  commands.spawn((
+    //     DirectionalLight {
+    //         illuminance: light_consts::lux::OVERCAST_DAY,
+    //         shadow_maps_enabled: true,
+    //         ..default()
+    //     },
+    //     Transform {
+    //         translation: Vec3::new(0.0, 2.0, 0.0),
+    //         rotation: Quat::from_rotation_x(-PI / 4.),
+    //         ..default()
+    //     },
+    //     // The default cascade config is designed to handle large scenes.
+    //     // As this example has a much smaller world, we can tighten the shadow
+    //     // bounds for better visual quality.
+    //     CascadeShadowConfigBuilder {
+    //         first_cascade_far_bound: 4.0,
+    //         maximum_distance: 10.0,
+    //         ..default()
+    //     }
+    //     .build(),
+    // ));
 
 
 
@@ -321,5 +343,45 @@ pub fn spawn_table(
     )),
        RigidBody::Fixed,
        Collider::cuboid(depth / 2.0,leg_length / 2.0 , depth / 2.0),
+    ));
+}
+
+
+
+/// Used implicitly by all entities without a `RenderLayers` component.
+/// Our world model camera and all objects other than the player are on this layer.
+/// The light source belongs to both layers.
+const DEFAULT_RENDER_LAYER: usize = 0;
+
+/// Used by the view model camera and the player's arm.
+/// The light source belongs to both layers.
+const VIEW_MODEL_RENDER_LAYER: usize = 1;
+
+
+fn spawn_lights(mut commands: Commands) {
+    // Spawn Global Light
+    // commands.spawn((
+    //     Transform::from_xyz(-50., 500.0, 100.)
+    //         .looking_at(Vec3::ZERO, Vec3::Y)
+    //         .with_scale(Vec3::splat(2.)),
+    //     DirectionalLight {
+    //         color: Color::from(tailwind::NEUTRAL_500),
+    //         illuminance: AMBIENT_DAYLIGHT,
+    //         shadow_maps_enabled: true,
+    //         ..default()
+    //     },
+    //     Visibility::Visible,
+    // ));
+
+    // Spawn PointLight
+    commands.spawn((
+        PointLight {
+            color: Color::from(tailwind::NEUTRAL_800),
+            shadow_maps_enabled: true,
+            ..default()
+        },
+        Transform::from_xyz(-2.0, 2.0, -0.75),
+        // The light source illuminates both the world model and the view model.
+        RenderLayers::from_layers(&[DEFAULT_RENDER_LAYER, VIEW_MODEL_RENDER_LAYER]),
     ));
 }
