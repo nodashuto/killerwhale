@@ -576,7 +576,7 @@ fn spawn_view_model(
     let arm_material = materials.add(Color::from(tailwind::TEAL_200));
 
     // Load the mesh from the GLB
-    let gun_mesh = asset_server.load("models/gun-model-0003.glb#Mesh0/Primitive0");
+    let gun_mesh = asset_server.load("models/gun-model-0004.glb#Mesh0/Primitive0");
     let gun_material = materials.add(StandardMaterial {
         base_color: Color::BLACK,
         metallic: 0.1,
