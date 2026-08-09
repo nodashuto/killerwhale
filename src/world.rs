@@ -6,6 +6,7 @@ use bevy::{
 use bevy_rapier3d::prelude::*;
 
 use std::f32::consts::TAU;
+use std::f32::consts::PI;
 
 use crate::shootingtarget::{spawn_shooting_target, ShootingTarget, ShootingTargetPlugin};
 
@@ -26,10 +27,23 @@ impl Plugin for WorldPlugin {
         )));
         app.add_systems(Startup, spawn_world_model);
         app.add_systems(Startup, spawn_lights);
-	app.add_systems(Startup, spawn_stairs);
+        app.add_systems(Startup, spawn_stairs);
+	app.add_systems(Startup, spawn_cube);
+	app.add_systems(Update, draw_grid);
         //app.add_systems(Startup, spawn_mesh);
         //app.add_systems(Startup, spawn_wall);
     }
+}
+
+
+fn draw_grid(mut gizmos: Gizmos) {
+    gizmos.grid(
+        Quat::from_rotation_x(PI / 2.),
+        UVec2::splat(20),
+        Vec2::new(1., 1.),
+          Color::linear_rgb(0.7, 0., 0.4),
+        
+    ).outer_edges();
 }
 
 fn spawn_world_model(
@@ -47,6 +61,17 @@ fn spawn_world_model(
 
     let sand = materials.add(Color::srgb(234.0 / 255.0, 225.0 / 255.0, 208.0 / 255.0));
 
+    let transparent = materials.add(StandardMaterial {
+    base_color: Color::srgba(
+        234.0 / 255.0,
+        225.0 / 255.0,
+        208.0 / 255.0,
+        0.0,
+    ),
+    alpha_mode: AlphaMode::Blend,
+    ..default()
+});
+
     let _house = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
 
     // The world model camera will render the floor and the cubes spawned in this system.
@@ -57,7 +82,7 @@ fn spawn_world_model(
      */
     commands.spawn((
         Mesh3d(ground),
-        MeshMaterial3d(sand.clone()),
+        MeshMaterial3d(transparent.clone()),
         RigidBody::Fixed,
         Collider::cuboid(64.0, 0.1, 64.0),
         Transform::from_xyz(0.0, -0.1, 0.0),
@@ -165,7 +190,6 @@ fn spawn_world_model(
     //     &mut materials,
     //     Vec3::new(0.0, 0.0, 10.0),
     // );
-    
 
     //  commands.spawn((
     //     DirectionalLight {
@@ -214,7 +238,7 @@ fn spawn_mesh(
         //Mesh3d(asset_server.load("models/tutorial-texture-wood.glb#Mesh0/Primitive0")),
         WorldAssetRoot(
             asset_server
-                .load(GltfAssetLabel::Scene(0).from_asset("models/tutorial-texture-wood.glb")), // 
+                .load(GltfAssetLabel::Scene(0).from_asset("models/tutorial-texture-wood.glb")), //
         ),
         RigidBody::Fixed,
         Collider::cuboid(1.0, 1.0, 1.0),
@@ -222,15 +246,14 @@ fn spawn_mesh(
     ));
 }
 
-
 fn spawn_stairs(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut _materials: ResMut<Assets<StandardMaterial>>,
     asset_server: Res<AssetServer>,
 ) {
     // Load the mesh from the GLB
-    let mesh = meshes.add(Cuboid::new(2.0, 0.5, 1.0));
+    let _mesh = meshes.add(Cuboid::new(2.0, 0.5, 1.0));
 
     // commands.spawn((
     //     Mesh3d(mesh.clone()),
@@ -248,21 +271,19 @@ fn spawn_stairs(
     commands.spawn((
         //Mesh3d(asset_server.load("models/tutorial-texture-wood.glb#Mesh0/Primitive0")),
         WorldAssetRoot(
-            asset_server
-                .load(GltfAssetLabel::Scene(0).from_asset("models/Stairs-0001.glb")), // models/tutorial-texture-wood.glb
+            asset_server.load(GltfAssetLabel::Scene(0).from_asset("models/Stairs-0001.glb")), // models/tutorial-texture-wood.glb
         ),
-        RigidBody::Fixed,
-        Collider::cuboid(0.1, 0.2, 0.1),
+        //RigidBody::Fixed,
+        //Collider::cuboid(0.1, 0.2, 0.1),
         Transform::from_translation(origin.clone()),
     ));
 
     commands.spawn((
-	RigidBody::Fixed,
-	Collider::cuboid(1.0, 0.1, 1.0),
-	Transform::from_translation(origin.clone()),
+        RigidBody::Fixed,
+        Collider::cuboid(1.0, 0.1, 1.0),
+        Transform::from_translation(origin.clone()),
     ));
 }
-
 
 // fn spawn_stair(
 //     mut commands: Commands,
@@ -270,17 +291,60 @@ fn spawn_stairs(
 //     mut _materials: Assets<StandardMaterial>,
 //     asset_server: Res<AssetServer>, //position: Vec3,
 // ) {
-//     // 
+//     //
 //     commands.spawn((
 // 	WorldAssetRoot(
 //             asset_server
 //                 .load(GltfAssetLabel::Scene(0).from_asset("models/Stairs-0001.glb")),
 //         ),
 //         RigidBody::Fixed,
-//         Collider::cuboid(1.0, 1.0, 1.0),        
+//         Collider::cuboid(1.0, 1.0, 1.0),
 //         Transform::from_xyz(0.0, 0.0, 10.0),
 //     ));
 // }
+
+fn spawn_cube(mut commands: Commands) {
+    let vertices = vec![
+        Vec3::new(-0.5, -0.5, -0.5),
+        Vec3::new(0.5, -0.5, -0.5),
+        Vec3::new(0.5, 0.5, -0.5),
+        Vec3::new(-0.5, 0.5, -0.5),
+        Vec3::new(-0.5, -0.5, 0.5),
+        Vec3::new(0.5, -0.5, 0.5),
+        Vec3::new(0.5, 0.5, 0.5),
+        Vec3::new(-0.5, 0.5, 0.5),
+    ];
+
+    let indices = vec![
+        [0, 2, 1],
+        [0, 3, 2],
+        [4, 5, 6],
+        [4, 6, 7],
+        [0, 1, 5],
+        [0, 5, 4],
+        [2, 3, 7],
+        [2, 7, 6],
+        [0, 4, 7],
+        [0, 7, 3],
+        [1, 2, 6],
+        [1, 6, 5],
+    ];
+
+    let collider = Collider::trimesh_with_flags(
+    vertices,
+    indices,
+    TriMeshFlags::FIX_INTERNAL_EDGES,
+    ).expect("Failed to create cube trimesh collider");
+
+
+
+    
+    commands.spawn((
+        RigidBody::Fixed,
+        collider,
+        Transform::from_xyz(-16.0, 1.0, -5.0),
+    ));
+}
 
 fn spawn_wall(
     mut commands: Commands,

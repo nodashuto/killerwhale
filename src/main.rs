@@ -23,6 +23,9 @@ const PLAYER_JUMP_SPEED: f32 = 3.0;
 const PLAYER_GRAVITY: f32 = 40.0;
 // const MOUSE_SENSITIVITY: f32 = 0.002;
 
+use bevy_egui::{egui, EguiContexts, EguiPlugin, EguiPrimaryContextPass};
+
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
@@ -36,6 +39,7 @@ fn main() {
         .init_state::<GameState>()
         .init_resource::<SoundEffect>() // for sound effect
         .add_plugins(world::WorldPlugin)
+	.add_plugins(EguiPlugin::default())
         //.add_plugins(shootingtarget::ShootingTargetPlugin)
         //.add_plugins(RapierDebugRenderPlugin::default()) // Uncomment for collider visualization
         //.insert_resource(ClearColor(Color::srgb(0.1, 0.12, 0.15)))
@@ -67,7 +71,15 @@ fn main() {
         )
         .add_systems(Update, cursor_grab)
         .add_systems(Update, check_goal.run_if(in_state(GameState::Playing)))
+	.add_systems(EguiPrimaryContextPass, ui_example_system)
         .run();
+}
+
+fn ui_example_system(mut contexts: EguiContexts) -> Result {
+    egui::Window::new("Hello").show(contexts.ctx_mut()?, |ui| {
+        ui.label("world");
+    });
+    Ok(())
 }
 
 #[derive(Component)]
