@@ -7,8 +7,10 @@
 My 3d game engine in Rust, Bevy.
 
 - Rust
-- Bevy Engine
+- bevy 0.19.0
+- bevy_rapier3d 0.35.0
 
+Collision and physics are based on bevy rapier3d.
 
 
 
