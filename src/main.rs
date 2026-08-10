@@ -627,6 +627,12 @@ fn spawn_view_model(
         GravityScale(1.0),
         KinematicCharacterController {
             offset: CharacterLength::Absolute(0.01),
+	    autostep: Some(CharacterAutostep {
+		// Autostep if the step height is smaller than 0.2, and its width larger than 0.3.
+            max_height: CharacterLength::Absolute(0.2),
+            min_width: CharacterLength::Absolute(0.3),
+            include_dynamic_bodies: true,
+        }),
             ..default()
         },
         Damping {
