@@ -19,7 +19,7 @@ use crate::shootingtarget::*;
 use shootingtarget::ShootingTargetPlugin;
 
 const PLAYER_SPEED: f32 = 3.0;
-const PLAYER_SPRINTING_SPEED: f32 = 8.0;
+const PLAYER_SPRINTING_SPEED: f32 = 20.0;
 const PLAYER_JUMP_SPEED: f32 = 3.0;
 const PLAYER_GRAVITY: f32 = 40.0;
 // const MOUSE_SENSITIVITY: f32 = 0.002;
@@ -224,6 +224,12 @@ const AIR_ACCEL: f32 = 10.0;
 // Jump height in world units.
 const JUMP_HEIGHT: f32 = 1.0;
 
+// Add jump penalty
+const JUMP_PENALTY_DURATION: f32 = 0.8;
+const JUMP_SLOWDOWN_SPEED: f32 = 0.5;
+const JUMP_LAND_SLOWDOWN_TIME: f32 = 1.7;
+const JUMP_REJUMP_FACTOR: f32 = 2.5;
+
 fn accelerate(velocity: &mut Vec3, wish_dir: Vec3, wish_speed: f32, acceleration: f32, dt: f32) {
     if wish_dir == Vec3::ZERO || wish_speed <= 0.0 {
         return;
@@ -278,27 +284,55 @@ fn air_move(velocity: &mut Vec3, wish_dir: Vec3, wish_speed: f32, dt: f32) {
     accelerate(velocity, wish_dir, wish_speed, AIR_ACCEL, dt);
 }
 
+fn get_jump_land_factor(jump_penalty_time: f32) -> f32 {
+    if jump_penalty_time <= 0.0 {
+        return 1.0;
+    }
+
+    let elapsed = JUMP_PENALTY_DURATION - jump_penalty_time;
+
+    if elapsed >= JUMP_LAND_SLOWDOWN_TIME {
+        JUMP_REJUMP_FACTOR
+    } else {
+        elapsed * 1.5 / JUMP_LAND_SLOWDOWN_TIME + 1.0
+    }
+}
+
+// //  simple check jump
+// fn check_jump(player: &mut PlayerController, keyboard: &ButtonInput<KeyCode>) {
+//     if !player.isgrounded {
+//         return;
+//     }
+
+//     if !keyboard.just_pressed(KeyCode::Space) {
+// 	return;
+//     }
+
+//     if keyboard.just_pressed(KeyCode::Space) {
+//         // v² = 2gh // // This is the same calculation used by the Jump_Start() function.
+//         player.velocity.y = (2.0 * PLAYER_GRAVITY * JUMP_HEIGHT).sqrt();
+//         player.isgrounded = false;
+//     }
+// }
+
 fn check_jump(player: &mut PlayerController, keyboard: &ButtonInput<KeyCode>) {
     if !player.isgrounded {
         return;
     }
-    if keyboard.just_pressed(KeyCode::Space) {
-        // v² = 2gh // // This is the same calculation used by the Jump_Start() function.
-        player.velocity.y = (2.0 * PLAYER_GRAVITY * JUMP_HEIGHT).sqrt();
-        player.isgrounded = false;
+
+    if !keyboard.just_pressed(KeyCode::Space) {
+        return;
     }
+
+    let normal_velocity = (2.0 * PLAYER_GRAVITY * JUMP_HEIGHT).sqrt();
+
+    let land_factor = get_jump_land_factor(player.jump_penalty_time);
+
+    player.velocity.y = normal_velocity / land_factor.sqrt();
+
+    player.isgrounded = false;
+    player.jump_penalty_time = JUMP_PENALTY_DURATION;
 }
-
-// fn walk_move()
-// {}
-
-// fn air_move(){
-
-// }
-
-// fn check_jump(){
-
-// }
 
 fn get_move_speed(keyboard: &ButtonInput<KeyCode>) -> f32 {
     if keyboard.pressed(KeyCode::KeyW) && keyboard.pressed(KeyCode::ShiftLeft)
@@ -320,6 +354,8 @@ fn player_movement(
     )>,
 ) {
     let dt = time.delta_secs();
+
+
     for (transform, mut controller, mut player) in query.iter_mut() {
         let mut input = Vec3::ZERO;
         if keyboard.pressed(KeyCode::KeyW) {
@@ -342,12 +378,32 @@ fn player_movement(
         if wish_dir.length_squared() > 0.0 {
             wish_dir = wish_dir.normalize();
         }
-        let wish_speed = if wish_dir != Vec3::ZERO {
-            get_move_speed(&keyboard)
+
+        // Handle Player Jump
+        check_jump(&mut player, &keyboard);
+
+	player.jump_penalty_time = (player.jump_penalty_time - dt).max(0.0);
+
+
+        // Calculate jump penalty
+        let penalty_scale = if player.jump_penalty_time > 0.0 {
+            JUMP_SLOWDOWN_SPEED
+        } else {
+            1.0
+        };
+
+	let wish_speed = if wish_dir != Vec3::ZERO {
+            get_move_speed(&keyboard) * penalty_scale
         } else {
             0.0
         };
-        check_jump(&mut player, &keyboard);
+        // let wish_speed = if wish_dir != Vec3::ZERO {
+        //     get_move_speed(&keyboard)
+        // } else {
+        //     0.0
+        // };
+
+
         if player.isgrounded {
             walk_move(&mut player.velocity, wish_dir, wish_speed, dt);
         } else {
@@ -436,6 +492,8 @@ fn player_movement(
 pub struct PlayerController {
     pub velocity: Vec3,
     pub isgrounded: bool,
+    // Time remaining in the jump/landing penalty.
+    jump_penalty_time: f32,
 }
 
 // #[derive(Component)]
@@ -450,52 +508,54 @@ impl Default for PlayerController {
             velocity: Vec3::ZERO,
             //vertical_velocity: 0.0,
             isgrounded: false,
+            // Time remaining in the jump/landing penalty.
+            jump_penalty_time: 0.0,
         }
     }
 }
 
-fn calculate_jump_speed(height: f32, time_to_peak: f32) -> f32 {
-    (1.0 * height) / time_to_peak
-}
+// fn calculate_jump_speed(height: f32, time_to_peak: f32) -> f32 {
+//     (1.0 * height) / time_to_peak
+// }
 
-fn jump_start(
-    keyboard: Res<ButtonInput<KeyCode>>,
-    mut query: Query<&mut PlayerController>,
-    time: Res<Time>,
-    mut controllers: Query<(&Transform, &mut KinematicCharacterController)>,
-) {
-    let dt = time.delta_secs();
+// fn jump_start(
+//     keyboard: Res<ButtonInput<KeyCode>>,
+//     mut query: Query<&mut PlayerController>,
+//     time: Res<Time>,
+//     mut controllers: Query<(&Transform, &mut KinematicCharacterController)>,
+// ) {
+//     let dt = time.delta_secs();
 
-    let jump_height = 2.0;
-    let jump_time_to_peak = 500.0 * dt;
+//     let jump_height = 2.0;
+//     let jump_time_to_peak = 500.0 * dt;
 
-    //let jump_strength =  calculate_jump_speed(jump_height, jump_time_to_peak);
+//     //let jump_strength =  calculate_jump_speed(jump_height, jump_time_to_peak);
 
-    let jump_strength = 5.0;
+//     let jump_strength = 5.0;
 
-    let test_jump_height = 10.0f32; // 39.0f32
-    let test_gravity = 1.0f32;
-    let mut jump_velocity_squared = (test_jump_height + test_jump_height) * test_gravity;
+//     let test_jump_height = 10.0f32; // 39.0f32
+//     let test_gravity = 1.0f32;
+//     let mut jump_velocity_squared = (test_jump_height + test_jump_height) * test_gravity;
 
-    /* jump velocity is determined by factor. factor can be determined by player-state
-     *
-     */
-    let factor = 1.0f32;
+//     /* jump velocity is determined by factor. factor can be determined by player-state
+//      *
+//      */
+//     let factor = 1.0f32;
 
-    // Modify jump strength after certain landing states.
-    jump_velocity_squared = jump_velocity_squared / factor;
+//     // Modify jump strength after certain landing states.
+//     jump_velocity_squared = jump_velocity_squared / factor;
 
-    for (transform, mut controller) in controllers.iter_mut() {
-        for mut player in query.iter_mut() {
-            if keyboard.just_pressed(KeyCode::Space) && player.isgrounded {
-                player.velocity.y = jump_velocity_squared.sqrt();
-                controller.translation = Some(Vec3::new(0.0, player.velocity.y, 0.0) * dt);
-                println!("Player Jump");
-                player.isgrounded = false;
-            }
-        }
-    }
-}
+//     for (transform, mut controller) in controllers.iter_mut() {
+//         for mut player in query.iter_mut() {
+//             if keyboard.just_pressed(KeyCode::Space) && player.isgrounded {
+//                 player.velocity.y = jump_velocity_squared.sqrt();
+//                 controller.translation = Some(Vec3::new(0.0, player.velocity.y, 0.0) * dt);
+//                 println!("Player Jump");
+//                 player.isgrounded = false;
+//             }
+//         }
+//     }
+// }
 
 fn update_grounded(mut query: Query<(&mut PlayerController, &KinematicCharacterControllerOutput)>) {
     for (mut player, output) in query.iter_mut() {
@@ -503,24 +563,22 @@ fn update_grounded(mut query: Query<(&mut PlayerController, &KinematicCharacterC
     }
 }
 
-fn player_gravity(
-    time: Res<Time>,
-    mut query: Query<(&mut PlayerController, &mut KinematicCharacterController)>,
-) {
-    // let gravity = -10.0;
-    // let dt = time.delta_secs();
+// fn player_gravity(
+//     time: Res<Time>,
+//     mut query: Query<(&mut PlayerController, &mut KinematicCharacterController)>,
+// ) {
+// let gravity = -10.0;
+// let dt = time.delta_secs();
 
-    // for (mut player, mut controller) in query.iter_mut() {
-    //     if !player.isgrounded {
-    //         player.vertical_velocity += gravity * dt;
+// for (mut player, mut controller) in query.iter_mut() {
+//     if !player.isgrounded {
+//         player.vertical_velocity += gravity * dt;
 
-    //         controller.translation = Some(Vec3::new(0.0, player.vertical_velocity * dt, 0.0));
-    //     } else if player.vertical_velocity < 0.0 {
-    //         // Prevent velocity from building up while standing.
-    //         player.vertical_velocity = 0.0;
-    //     }
-    // }
-}
+//         controller.translation = Some(Vec3::new(0.0, player.vertical_velocity * dt, 0.0));
+//     } else if player.vertical_velocity < 0.0 {
+//         // Prevent velocity from building up while standing.
+//         player.vertical_velocity = 0
+//}
 
 // fn player_movement(
 //     keyboard: Res<ButtonInput<KeyCode>>,
@@ -627,12 +685,12 @@ fn spawn_view_model(
         GravityScale(1.0),
         KinematicCharacterController {
             offset: CharacterLength::Absolute(0.01),
-	    autostep: Some(CharacterAutostep {
-		// Autostep if the step height is smaller than 0.2, and its width larger than 0.3.
-            max_height: CharacterLength::Absolute(0.2),
-            min_width: CharacterLength::Absolute(0.3),
-            include_dynamic_bodies: true,
-        }),
+            autostep: Some(CharacterAutostep {
+                // Autostep if the step height is smaller than 0.1, and its width larger than 0.2.
+                max_height: CharacterLength::Absolute(0.1),
+                min_width: CharacterLength::Absolute(0.2),
+                include_dynamic_bodies: true,
+            }),
             ..default()
         },
         Damping {
@@ -704,33 +762,33 @@ fn spawn_view_model(
     ));
 }
 
-fn spawn_lights(mut commands: Commands) {
-    // Spawn Global Light
-    // commands.spawn((
-    //     Transform::from_xyz(-50., 500.0, 100.)
-    //         .looking_at(Vec3::ZERO, Vec3::Y)
-    //         .with_scale(Vec3::splat(2.)),
-    //     DirectionalLight {
-    //         color: Color::from(tailwind::NEUTRAL_500),
-    //         illuminance: AMBIENT_DAYLIGHT,
-    //         shadow_maps_enabled: true,
-    //         ..default()
-    //     },
-    //     Visibility::Visible,
-    // ));
+// fn spawn_lights(mut commands: Commands) {
+//     // Spawn Global Light
+//     // commands.spawn((
+//     //     Transform::from_xyz(-50., 500.0, 100.)
+//     //         .looking_at(Vec3::ZERO, Vec3::Y)
+//     //         .with_scale(Vec3::splat(2.)),
+//     //     DirectionalLight {
+//     //         color: Color::from(tailwind::NEUTRAL_500),
+//     //         illuminance: AMBIENT_DAYLIGHT,
+//     //         shadow_maps_enabled: true,
+//     //         ..default()
+//     //     },
+//     //     Visibility::Visible,
+//     // ));
 
-    // Spawn PointLight
-    commands.spawn((
-        PointLight {
-            color: Color::from(tailwind::NEUTRAL_200),
-            shadow_maps_enabled: true,
-            ..default()
-        },
-        Transform::from_xyz(-2.0, 2.0, -0.75),
-        // The light source illuminates both the world model and the view model.
-        RenderLayers::from_layers(&[DEFAULT_RENDER_LAYER, VIEW_MODEL_RENDER_LAYER]),
-    ));
-}
+//     // Spawn PointLight
+//     commands.spawn((
+//         PointLight {
+//             color: Color::from(tailwind::NEUTRAL_200),
+//             shadow_maps_enabled: true,
+//             ..default()
+//         },
+//         Transform::from_xyz(-2.0, 2.0, -0.75),
+//         // The light source illuminates both the world model and the view model.
+//         RenderLayers::from_layers(&[DEFAULT_RENDER_LAYER, VIEW_MODEL_RENDER_LAYER]),
+//     ));
+// }
 
 // /// original spawn text here
 // fn spawn_text(mut commands: Commands) {
@@ -816,7 +874,6 @@ fn change_fov(
         perspective.fov = perspective.fov.min(160.0_f32.to_radians());
     }
 }
-
 
 /// Hold right mouse button to zoom in with WorldModelCamera.
 fn ads_zoom(
