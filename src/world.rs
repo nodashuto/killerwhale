@@ -25,6 +25,7 @@ impl Plugin for WorldPlugin {
             237.0 / 255.0,
             238.0 / 255.0,
         )));
+	// app.insert_resource(ClearColor(Color::BLACK));
         app.add_systems(Startup, spawn_world_model);
         app.add_systems(Startup, spawn_lights);
         app.add_systems(Startup, spawn_stairs);
@@ -214,7 +215,7 @@ fn spawn_world_model(
     // ));
 }
 
-fn spawn_mesh(
+fn _spawn_mesh(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -346,7 +347,7 @@ fn spawn_cube(mut commands: Commands) {
     ));
 }
 
-fn spawn_wall(
+fn _spawn_wall(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -482,7 +483,7 @@ fn spawn_lights(mut commands: Commands) {
     // Spawn PointLight
     commands.spawn((
         PointLight {
-            color: Color::from(tailwind::NEUTRAL_800),
+            color: Color::from(tailwind::NEUTRAL_800), // NEUTRAL_800, EMERALD_600
             shadow_maps_enabled: true,
             ..default()
         },

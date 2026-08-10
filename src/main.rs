@@ -19,12 +19,12 @@ use crate::shootingtarget::*;
 use shootingtarget::ShootingTargetPlugin;
 
 const PLAYER_SPEED: f32 = 3.0;
+const PLAYER_SPRINTING_SPEED: f32 = 8.0;
 const PLAYER_JUMP_SPEED: f32 = 3.0;
 const PLAYER_GRAVITY: f32 = 40.0;
 // const MOUSE_SENSITIVITY: f32 = 0.002;
 
 use bevy_egui::{egui, EguiContexts, EguiPlugin, EguiPrimaryContextPass};
-
 
 fn main() {
     App::new()
@@ -39,7 +39,7 @@ fn main() {
         .init_state::<GameState>()
         .init_resource::<SoundEffect>() // for sound effect
         .add_plugins(world::WorldPlugin)
-	.add_plugins(EguiPlugin::default())
+        .add_plugins(EguiPlugin::default())
         //.add_plugins(shootingtarget::ShootingTargetPlugin)
         //.add_plugins(RapierDebugRenderPlugin::default()) // Uncomment for collider visualization
         //.insert_resource(ClearColor(Color::srgb(0.1, 0.12, 0.15)))
@@ -51,10 +51,14 @@ fn main() {
         //.add_systems(Startup, setup) //needthis
         //.add_systems(Update, mouse_look)
         // .add_systems(Update, grab_mouse)
-        .add_systems(Startup, (
-	    spawn_view_model,
-	    //spawn_lights,
-	    spawn_text))
+        .add_systems(
+            Startup,
+            (
+                spawn_view_model,
+                //spawn_lights,
+                spawn_text,
+            ),
+        )
         .add_systems(Startup, initial_grab_cursor)
         .add_systems(Startup, setup_goal)
         .add_systems(Update, (move_player, change_fov, ads_zoom))
@@ -71,13 +75,13 @@ fn main() {
         )
         .add_systems(Update, cursor_grab)
         .add_systems(Update, check_goal.run_if(in_state(GameState::Playing)))
-	.add_systems(EguiPrimaryContextPass, ui_example_system)
+        .add_systems(EguiPrimaryContextPass, ui_example_system)
         .run();
 }
 
 fn ui_example_system(mut contexts: EguiContexts) -> Result {
-    egui::Window::new("Hello").show(contexts.ctx_mut()?, |ui| {
-        ui.label("world");
+    egui::Window::new("Egui").show(contexts.ctx_mut()?, |ui| {
+        ui.label("hello ");
     });
     Ok(())
 }
@@ -216,9 +220,9 @@ fn cursor_grab(
 const GROUND_ACCEL: f32 = 20.0;
 // Air acceleration.
 // Lower than ground acceleration gives you reduced air control.
-const AIR_ACCEL: f32 = 6.0;
+const AIR_ACCEL: f32 = 10.0;
 // Jump height in world units.
-const JUMP_HEIGHT: f32 = 0.9;
+const JUMP_HEIGHT: f32 = 1.0;
 
 fn accelerate(velocity: &mut Vec3, wish_dir: Vec3, wish_speed: f32, acceleration: f32, dt: f32) {
     if wish_dir == Vec3::ZERO || wish_speed <= 0.0 {
@@ -296,6 +300,16 @@ fn check_jump(player: &mut PlayerController, keyboard: &ButtonInput<KeyCode>) {
 
 // }
 
+fn get_move_speed(keyboard: &ButtonInput<KeyCode>) -> f32 {
+    if keyboard.pressed(KeyCode::KeyW) && keyboard.pressed(KeyCode::ShiftLeft)
+        || keyboard.pressed(KeyCode::ShiftRight)
+    {
+        PLAYER_SPRINTING_SPEED
+    } else {
+        PLAYER_SPEED
+    }
+}
+
 fn player_movement(
     keyboard: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
@@ -329,7 +343,7 @@ fn player_movement(
             wish_dir = wish_dir.normalize();
         }
         let wish_speed = if wish_dir != Vec3::ZERO {
-            PLAYER_SPEED
+            get_move_speed(&keyboard)
         } else {
             0.0
         };
@@ -627,6 +641,16 @@ fn spawn_view_model(
                     fov: 65.0_f32.to_radians(),
                     ..default()
                 }),
+                // DistanceFog {
+                //     color: Color::srgba(0.35, 0.66, 0.48, 0.5),
+                //     directional_light_color: Color::srgba(1.0, 0.95, 0.85, 0.1),
+                //     directional_light_exponent: 30.0,
+                //     falloff: FogFalloff::from_visibility_colors(
+                //         15.0, // distance in world units up to which objects retain visibility (>= 5% contrast)
+                //         Color::srgb(0.35, 0.5, 0.66), // atmospheric extinction color (after light is lost due to absorption by atmospheric particles)
+                //         Color::srgb(0.8, 0.844, 1.0), // atmospheric inscattering color (light gained due to scattering from the sun)
+                //     ),
+                // },
             ),
             // Spawn view model camera.
             (
@@ -787,32 +811,6 @@ fn change_fov(
     }
 }
 
-// added myself
-// fn toggle_ADS(
-//     buttons: Res<ButtonInput<MouseButton>>,
-//     input: Res<ButtonInput<KeyCode>>,
-//     mut world_model_projection: Single<&mut Projection, With<WorldModelCamera>>,
-// ) {
-//     if !buttons.just_pressed(MouseButton::Right) {
-//         return;
-//     }
-
-//     let Projection::Perspective(perspective) = world_model_projection.as_mut() else {
-//         unreachable!(
-//             "The `Projection` component was explicitly built with `Projection::Perspective`"
-//         );
-//     };
-
-//     if input.pressed(KeyCode::ArrowUp) {
-//         perspective.fov -= 1.0_f32.to_radians();
-//         perspective.fov = perspective.fov.max(20.0_f32.to_radians());
-//     }
-//     if input.pressed(KeyCode::ArrowDown) {
-//         perspective.fov += 1.0_f32.to_radians();
-//         perspective.fov = perspective.fov.min(160.0_f32.to_radians());
-//     }
-
-// }
 
 /// Hold right mouse button to zoom in with WorldModelCamera.
 fn ads_zoom(
@@ -1075,7 +1073,6 @@ fn update_view_weapon(
 enum GameState {
     #[default]
     Playing,
-    Results,
 }
 
 #[derive(Component)]
