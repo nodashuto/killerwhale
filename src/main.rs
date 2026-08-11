@@ -2,6 +2,12 @@ use std::f32::consts::FRAC_PI_2;
 
 use bevy::{camera::visibility::RenderLayers, color::palettes::tailwind, light::NotShadowCaster};
 
+use bevy::window::PresentMode;
+use bevy::{
+    dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin, FrameTimeGraphConfig},
+    text::FontSmoothing,
+};
+
 use bevy::input::mouse::MouseMotion;
 use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll};
 use bevy::prelude::*;
@@ -18,19 +24,27 @@ use crate::shootingtarget::*;
 
 use shootingtarget::ShootingTargetPlugin;
 
-const PLAYER_SPEED: f32 = 3.0;
-const PLAYER_SPRINTING_SPEED: f32 = 20.0;
+const PLAYER_SPEED: f32 = 4.0;
+const PLAYER_SPRINTING_SPEED: f32 = 8.0;
 const PLAYER_JUMP_SPEED: f32 = 3.0;
-const PLAYER_GRAVITY: f32 = 40.0;
+const PLAYER_GRAVITY: f32 = 30.0;
 // const MOUSE_SENSITIVITY: f32 = 0.002;
 
 use bevy_egui::{egui, EguiContexts, EguiPlugin, EguiPrimaryContextPass};
+
+struct OverlayColor;
+
+impl OverlayColor {
+    const RED: Color = Color::srgb(1.0, 0.0, 0.0);
+    const GREEN: Color = Color::srgb(0.0, 1.0, 0.0);
+}
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "Basic FPS".into(),
+                present_mode: PresentMode::AutoNoVsync,
                 ..default()
             }),
             ..default()
@@ -39,6 +53,31 @@ fn main() {
         .init_state::<GameState>()
         .init_resource::<SoundEffect>() // for sound effect
         .add_plugins(world::WorldPlugin)
+        .add_plugins(FpsOverlayPlugin {
+            config: FpsOverlayConfig {
+                text_config: TextFont {
+                    // Here we define size of our overlay
+                    font_size: FontSize::Px(22.0),
+                    // If we want, we can use a custom font
+                    font: default(),
+                    // We could also disable font smoothing,
+                    font_smoothing: FontSmoothing::default(),
+                    ..default()
+                },
+                // We can also change color of the overlay
+                text_color: OverlayColor::GREEN,
+                // We can also set the refresh interval for the FPS counter
+                refresh_interval: core::time::Duration::from_millis(100),
+                enabled: true,
+                frame_time_graph_config: FrameTimeGraphConfig {
+                    enabled: true,
+                    // The minimum acceptable fps
+                    min_fps: 30.0,
+                    // The target fps
+                    target_fps: 250.0, // 144.0
+                },
+            },
+        })
         .add_plugins(EguiPlugin::default())
         //.add_plugins(shootingtarget::ShootingTargetPlugin)
         //.add_plugins(RapierDebugRenderPlugin::default()) // Uncomment for collider visualization
@@ -61,6 +100,9 @@ fn main() {
         )
         .add_systems(Startup, initial_grab_cursor)
         .add_systems(Startup, setup_goal)
+        .add_systems(Startup, spawn_crosshair)
+        //.add_systems(Update, toggle_crosshair)
+        .add_systems(Update, toggle_and_animate_crosshair)
         .add_systems(Update, (move_player, change_fov, ads_zoom))
         .add_systems(Update, (update_view_arm, update_view_weapon))
         .add_systems(Update, fire_weapon)
@@ -80,10 +122,254 @@ fn main() {
 }
 
 fn ui_example_system(mut contexts: EguiContexts) -> Result {
-    egui::Window::new("Egui").show(contexts.ctx_mut()?, |ui| {
-        ui.label("hello ");
-    });
+    egui::Window::new("Egui")
+        .anchor(egui::Align2::CENTER_TOP, egui::vec2(0.0, 10.0))
+        .show(contexts.ctx_mut()?, |ui| {
+            ui.label("ASSETS AND GAMEPLAY CURRENTLY IN DEVELOPMENT ");
+        });
     Ok(())
+}
+
+#[derive(Component)]
+struct Crosshair;
+
+#[derive(Component)]
+enum CrosshairArm {
+    Top,
+    Bottom,
+    Left,
+    Right,
+}
+
+const ARM_LENGTH: f32 = 8.0;
+const THICKNESS: f32 = 2.0;
+const OPEN_GAP: f32 = 80.0;
+const CLOSED_GAP: f32 = 2.0;
+const CROSSHAIR_SPEED: f32 = 250.0;
+
+pub fn spawn_crosshair(window_query: Query<&Window, With<PrimaryWindow>>, mut commands: Commands) {
+    let window = window_query.single().unwrap();
+
+    let center_x = window.width() / 2.0;
+    let center_y = window.height() / 2.0;
+
+    commands
+        .spawn((
+            Crosshair,
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Px(center_x),
+                top: Val::Px(center_y),
+                ..default()
+            },
+        ))
+        .with_children(|parent| {
+            let color = BackgroundColor(Color::srgba(1.0, 1.0, 1.0, 0.6));
+
+            parent.spawn((
+                CrosshairArm::Top,
+                Node {
+                    width: Val::Px(THICKNESS),
+                    height: Val::Px(ARM_LENGTH),
+                    position_type: PositionType::Absolute,
+                    left: Val::Px(-THICKNESS / 2.0),
+                    top: Val::Px(-(OPEN_GAP / 2.0 + ARM_LENGTH)),
+                    ..default()
+                },
+                color.clone(),
+            ));
+
+            parent.spawn((
+                CrosshairArm::Bottom,
+                Node {
+                    width: Val::Px(THICKNESS),
+                    height: Val::Px(ARM_LENGTH),
+                    position_type: PositionType::Absolute,
+                    left: Val::Px(-THICKNESS / 2.0),
+                    top: Val::Px(OPEN_GAP / 2.0),
+                    ..default()
+                },
+                color.clone(),
+            ));
+
+            parent.spawn((
+                CrosshairArm::Left,
+                Node {
+                    width: Val::Px(ARM_LENGTH),
+                    height: Val::Px(THICKNESS),
+                    position_type: PositionType::Absolute,
+                    left: Val::Px(-(OPEN_GAP / 2.0 + ARM_LENGTH)),
+                    top: Val::Px(-THICKNESS / 2.0),
+                    ..default()
+                },
+                color.clone(),
+            ));
+
+            parent.spawn((
+                CrosshairArm::Right,
+                Node {
+                    width: Val::Px(ARM_LENGTH),
+                    height: Val::Px(THICKNESS),
+                    position_type: PositionType::Absolute,
+                    left: Val::Px(OPEN_GAP / 2.0),
+                    top: Val::Px(-THICKNESS / 2.0),
+                    ..default()
+                },
+                color,
+            ));
+        });
+}
+
+fn toggle_and_animate_crosshair(
+    time: Res<Time>,
+    mouse: Res<ButtonInput<MouseButton>>,
+    mut crosshair_query: Query<&mut Visibility, With<Crosshair>>,
+    mut arm_query: Query<(&CrosshairArm, &mut Node)>,
+) {
+    let left_pressed = mouse.pressed(MouseButton::Left);
+    let right_pressed = mouse.pressed(MouseButton::Right);
+
+    let target_gap = if right_pressed {
+        CLOSED_GAP
+    } else {
+        OPEN_GAP
+    };
+
+    let amount = CROSSHAIR_SPEED * time.delta_secs();
+
+    let mut reached_target = true;
+
+    for (arm, mut node) in &mut arm_query {
+        match arm {
+            CrosshairArm::Top => {
+                let target = -(target_gap / 2.0 + ARM_LENGTH);
+
+                if let Val::Px(current) = node.top {
+                    let new_value = move_towards(current, target, amount);
+                    node.top = Val::Px(new_value);
+
+                    if (new_value - target).abs() > 0.01 {
+                        reached_target = false;
+                    }
+                }
+            }
+
+            CrosshairArm::Bottom => {
+                let target = target_gap / 2.0;
+
+                if let Val::Px(current) = node.top {
+                    let new_value = move_towards(current, target, amount);
+                    node.top = Val::Px(new_value);
+
+                    if (new_value - target).abs() > 0.01 {
+                        reached_target = false;
+                    }
+                }
+            }
+
+            CrosshairArm::Left => {
+                let target = -(target_gap / 2.0 + ARM_LENGTH);
+
+                if let Val::Px(current) = node.left {
+                    let new_value = move_towards(current, target, amount);
+                    node.left = Val::Px(new_value);
+
+                    if (new_value - target).abs() > 0.01 {
+                        reached_target = false;
+                    }
+                }
+            }
+
+            CrosshairArm::Right => {
+                let target = target_gap / 2.0;
+
+                if let Val::Px(current) = node.left {
+                    let new_value = move_towards(current, target, amount);
+                    node.left = Val::Px(new_value);
+
+                    if (new_value - target).abs() > 0.01 {
+                        reached_target = false;
+                    }
+                }
+            }
+        }
+    }
+
+    for mut visibility in &mut crosshair_query {
+        if right_pressed && reached_target {
+            *visibility = Visibility::Hidden;
+        } else {
+            *visibility = Visibility::Visible;
+        }
+    }
+}
+
+fn _animate_crosshair(
+    time: Res<Time>,
+    mouse: Res<ButtonInput<MouseButton>>,
+    mut query: Query<(&CrosshairArm, &mut Node)>,
+) {
+    let target_gap = if mouse.pressed(MouseButton::Right) {
+        CLOSED_GAP
+    } else {
+        OPEN_GAP
+    };
+
+    let amount = CROSSHAIR_SPEED * time.delta_secs();
+
+    for (arm, mut node) in &mut query {
+        match arm {
+            CrosshairArm::Top => {
+                let target = -(target_gap / 2.0 + ARM_LENGTH);
+
+                if let Val::Px(current) = node.top {
+                    node.top = Val::Px(move_towards(current, target, amount));
+                }
+            }
+            CrosshairArm::Bottom => {
+                let target = target_gap / 2.0;
+
+                if let Val::Px(current) = node.top {
+                    node.top = Val::Px(move_towards(current, target, amount));
+                }
+            }
+            CrosshairArm::Left => {
+                let target = -(target_gap / 2.0 + ARM_LENGTH);
+
+                if let Val::Px(current) = node.left {
+                    node.left = Val::Px(move_towards(current, target, amount));
+                }
+            }
+            CrosshairArm::Right => {
+                let target = target_gap / 2.0;
+
+                if let Val::Px(current) = node.left {
+                    node.left = Val::Px(move_towards(current, target, amount));
+                }
+            }
+        }
+    }
+}
+
+fn _toggle_crosshair(
+    mouse: Res<ButtonInput<MouseButton>>,
+    mut query: Query<&mut Visibility, With<Crosshair>>,
+) {
+    for mut visibility in &mut query {
+        *visibility = if mouse.pressed(MouseButton::Right) {
+            Visibility::Visible
+        } else {
+            Visibility::Visible
+        };
+    }
+}
+
+fn move_towards(current: f32, target: f32, amount: f32) -> f32 {
+    if (target - current).abs() <= amount {
+        target
+    } else {
+        current + (target - current).signum() * amount
+    }
 }
 
 #[derive(Component)]
@@ -182,7 +468,7 @@ impl FromWorld for SoundEffect {
     fn from_world(world: &mut World) -> Self {
         let asset_server = world.resource::<AssetServer>();
         SoundEffect {
-            handle: asset_server.load("sounds/glock_single_shot_modify.ogg"),
+            handle: asset_server.load("sounds/glock_single_shot_modifiy.ogg"),
         }
     }
 }
@@ -217,15 +503,15 @@ fn cursor_grab(
 
 // Ground acceleration.
 // Higher = reaches max speed faster.
-const GROUND_ACCEL: f32 = 20.0;
+const GROUND_ACCEL: f32 = 18.0;
 // Air acceleration.
 // Lower than ground acceleration gives you reduced air control.
 const AIR_ACCEL: f32 = 10.0;
 // Jump height in world units.
-const JUMP_HEIGHT: f32 = 1.0;
+const JUMP_HEIGHT: f32 = 0.6;
 
 // Add jump penalty
-const JUMP_PENALTY_DURATION: f32 = 0.8;
+const JUMP_PENALTY_DURATION: f32 = 0.6;
 const JUMP_SLOWDOWN_SPEED: f32 = 0.5;
 const JUMP_LAND_SLOWDOWN_TIME: f32 = 1.7;
 const JUMP_REJUMP_FACTOR: f32 = 2.5;
@@ -335,6 +621,10 @@ fn check_jump(player: &mut PlayerController, keyboard: &ButtonInput<KeyCode>) {
 }
 
 fn get_move_speed(keyboard: &ButtonInput<KeyCode>) -> f32 {
+    // if keyboard.pressed(MouseButton::Left) {
+    // 	PLAYER_SPEED
+    // }
+
     if keyboard.pressed(KeyCode::KeyW) && keyboard.pressed(KeyCode::ShiftLeft)
         || keyboard.pressed(KeyCode::ShiftRight)
     {
@@ -354,7 +644,6 @@ fn player_movement(
     )>,
 ) {
     let dt = time.delta_secs();
-
 
     for (transform, mut controller, mut player) in query.iter_mut() {
         let mut input = Vec3::ZERO;
@@ -382,8 +671,7 @@ fn player_movement(
         // Handle Player Jump
         check_jump(&mut player, &keyboard);
 
-	player.jump_penalty_time = (player.jump_penalty_time - dt).max(0.0);
-
+        player.jump_penalty_time = (player.jump_penalty_time - dt).max(0.0);
 
         // Calculate jump penalty
         let penalty_scale = if player.jump_penalty_time > 0.0 {
@@ -392,7 +680,7 @@ fn player_movement(
             1.0
         };
 
-	let wish_speed = if wish_dir != Vec3::ZERO {
+        let wish_speed = if wish_dir != Vec3::ZERO {
             get_move_speed(&keyboard) * penalty_scale
         } else {
             0.0
@@ -402,7 +690,6 @@ fn player_movement(
         // } else {
         //     0.0
         // };
-
 
         if player.isgrounded {
             walk_move(&mut player.velocity, wish_dir, wish_speed, dt);
@@ -687,7 +974,7 @@ fn spawn_view_model(
             offset: CharacterLength::Absolute(0.01),
             autostep: Some(CharacterAutostep {
                 // Autostep if the step height is smaller than 0.1, and its width larger than 0.2.
-                max_height: CharacterLength::Absolute(0.1),
+                max_height: CharacterLength::Absolute(0.05),
                 min_width: CharacterLength::Absolute(0.2),
                 include_dynamic_bodies: true,
             }),

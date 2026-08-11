@@ -5,8 +5,8 @@ use bevy::{
 };
 use bevy_rapier3d::prelude::*;
 
-use std::f32::consts::TAU;
 use std::f32::consts::PI;
+use std::f32::consts::TAU;
 
 use crate::shootingtarget::{spawn_shooting_target, ShootingTarget, ShootingTargetPlugin};
 
@@ -20,31 +20,36 @@ impl Plugin for WorldPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(RapierDebugRenderPlugin::default()); //activate gismo
         app.add_plugins(ShootingTargetPlugin);
-        app.insert_resource(ClearColor(Color::srgb(
-            226.0 / 255.0,
-            237.0 / 255.0,
-            238.0 / 255.0,
+        // app.insert_resource(ClearColor(Color::srgb(
+        //     226.0 / 255.0,
+        //     237.0 / 255.0,
+        //     238.0 / 255.0,
+        // )));
+	app.insert_resource(ClearColor(Color::srgb(
+            152.0 / 255.0,
+            192.0 / 255.0,
+            217.0 / 255.0,
         )));
-	// app.insert_resource(ClearColor(Color::BLACK));
+        // app.insert_resource(ClearColor(Color::BLACK));
         app.add_systems(Startup, spawn_world_model);
         app.add_systems(Startup, spawn_lights);
         app.add_systems(Startup, spawn_stairs);
-	app.add_systems(Startup, spawn_cube);
-	app.add_systems(Update, draw_grid);
+        app.add_systems(Startup, spawn_cube);
+        //app.add_systems(Update, draw_grid);
         //app.add_systems(Startup, spawn_mesh);
         //app.add_systems(Startup, spawn_wall);
     }
 }
 
-
 fn draw_grid(mut gizmos: Gizmos) {
-    gizmos.grid(
-        Quat::from_rotation_x(PI / 2.),
-        UVec2::splat(20),
-        Vec2::new(1., 1.),
-          Color::linear_rgb(0.7, 0., 0.4),
-        
-    ).outer_edges();
+    gizmos
+        .grid(
+            Quat::from_rotation_x(PI / 2.),
+            UVec2::splat(20),
+            Vec2::new(1., 1.),
+            Color::linear_rgb(0.7, 0., 0.4),
+        )
+        .outer_edges();
 }
 
 fn spawn_world_model(
@@ -63,15 +68,15 @@ fn spawn_world_model(
     let sand = materials.add(Color::srgb(234.0 / 255.0, 225.0 / 255.0, 208.0 / 255.0));
 
     let transparent = materials.add(StandardMaterial {
-    base_color: Color::srgba(
-        234.0 / 255.0,
-        225.0 / 255.0,
-        208.0 / 255.0,
-        0.0,
-    ),
-    alpha_mode: AlphaMode::Blend,
-    ..default()
-});
+        base_color: Color::srgb(
+            234.0 / 255.0,
+            225.0 / 255.0,
+            208.0 / 255.0,
+            //1.0,
+        ),
+        //alpha_mode: AlphaMode::Blend,
+        ..default()
+    });
 
     let _house = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
 
@@ -331,15 +336,10 @@ fn spawn_cube(mut commands: Commands) {
         [1, 6, 5],
     ];
 
-    let collider = Collider::trimesh_with_flags(
-    vertices,
-    indices,
-    TriMeshFlags::FIX_INTERNAL_EDGES,
-    ).expect("Failed to create cube trimesh collider");
+    let collider =
+        Collider::trimesh_with_flags(vertices, indices, TriMeshFlags::FIX_INTERNAL_EDGES)
+            .expect("Failed to create cube trimesh collider");
 
-
-
-    
     commands.spawn((
         RigidBody::Fixed,
         collider,
@@ -465,30 +465,55 @@ const DEFAULT_RENDER_LAYER: usize = 0;
 /// The light source belongs to both layers.
 const VIEW_MODEL_RENDER_LAYER: usize = 1;
 
-fn spawn_lights(mut commands: Commands) {
-    // Spawn Global Light
-    // commands.spawn((
-    //     Transform::from_xyz(-50., 500.0, 100.)
-    //         .looking_at(Vec3::ZERO, Vec3::Y)
-    //         .with_scale(Vec3::splat(2.)),
-    //     DirectionalLight {
-    //         color: Color::from(tailwind::NEUTRAL_500),
-    //         illuminance: AMBIENT_DAYLIGHT,
-    //         shadow_maps_enabled: true,
-    //         ..default()
-    //     },
-    //     Visibility::Visible,
-    // ));
+// fn spawn_lights(mut commands: Commands) {
+//     // Spawn Global Light
+//     // commands.spawn((
+//     //     Transform::from_xyz(-50., 500.0, 100.)
+//     //         .looking_at(Vec3::ZERO, Vec3::Y)
+//     //         .with_scale(Vec3::splat(2.)),
+//     //     DirectionalLight {
+//     //         color: Color::from(tailwind::NEUTRAL_500),
+//     //         illuminance: AMBIENT_DAYLIGHT,
+//     //         shadow_maps_enabled: true,
+//     //         ..default()
+//     //     },
+//     //     Visibility::Visible,
+//     // ));
 
-    // Spawn PointLight
+//     // Spawn PointLight
+//     commands.spawn((
+//         PointLight {
+//             color: Color::from(tailwind::NEUTRAL_800), // NEUTRAL_800, EMERALD_600
+//             shadow_maps_enabled: true,
+//             ..default()
+//         },
+//         Transform::from_xyz(-2.0, 2.0, -0.75),
+//         // The light source illuminates both the world model and the view model.
+//         RenderLayers::from_layers(&[DEFAULT_RENDER_LAYER, VIEW_MODEL_RENDER_LAYER]),
+//     ));
+// }
+
+// spawn light  withbetter in-game performance
+fn spawn_lights(mut commands: Commands) {
     commands.spawn((
-        PointLight {
-            color: Color::from(tailwind::NEUTRAL_800), // NEUTRAL_800, EMERALD_600
+        DirectionalLight {
+            illuminance: light_consts::lux::OVERCAST_DAY,
             shadow_maps_enabled: true,
             ..default()
         },
-        Transform::from_xyz(-2.0, 2.0, -0.75),
+        Transform::from_rotation(Quat::from_euler(
+            EulerRot::XYZ,
+            -45.0_f32.to_radians(),
+            -30.0_f32.to_radians(),
+            0.0,
+        )),
         // The light source illuminates both the world model and the view model.
         RenderLayers::from_layers(&[DEFAULT_RENDER_LAYER, VIEW_MODEL_RENDER_LAYER]),
+        CascadeShadowConfigBuilder {
+            first_cascade_far_bound: 10.0,
+            maximum_distance: 50.0,
+            ..default()
+        }
+        .build(),
     ));
 }
