@@ -8,34 +8,41 @@ use bevy::{
     text::FontSmoothing,
 };
 
-use bevy::input::mouse::MouseMotion;
-use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll};
+// use bevy::input::mouse::MouseMotion;
+use bevy::input::mouse::{
+    AccumulatedMouseMotion,
+    // AccumulatedMouseScroll
+};
 use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
 use bevy_rapier3d::prelude::*;
 
-use light_consts::lux::AMBIENT_DAYLIGHT;
+// use light_consts::lux::AMBIENT_DAYLIGHT;
 
 //use crate::shootingtarget;
 pub mod shootingtarget;
 pub mod world;
 
-use crate::shootingtarget::*;
+// use crate::shootingtarget::*;
 
-use shootingtarget::ShootingTargetPlugin;
+// use shootingtarget::ShootingTargetPlugin;
 
 const PLAYER_SPEED: f32 = 4.0;
 const PLAYER_SPRINTING_SPEED: f32 = 8.0;
-const PLAYER_JUMP_SPEED: f32 = 3.0;
+// const PLAYER_JUMP_SPEED: f32 = 3.0;
 const PLAYER_GRAVITY: f32 = 30.0;
 // const MOUSE_SENSITIVITY: f32 = 0.002;
 
-use bevy_egui::{egui, EguiContexts, EguiPlugin, EguiPrimaryContextPass};
+use bevy_egui::{
+    // egui, EguiContexts, 
+    EguiPlugin,
+    // EguiPrimaryContextPass
+};
 
 struct OverlayColor;
 
 impl OverlayColor {
-    const RED: Color = Color::srgb(1.0, 0.0, 0.0);
+    //const RED: Color = Color::srgb(1.0, 0.0, 0.0);
     const GREEN: Color = Color::srgb(0.0, 1.0, 0.0);
 }
 
@@ -99,7 +106,7 @@ fn main() {
             ),
         )
         .add_systems(Startup, initial_grab_cursor)
-        .add_systems(Startup, setup_goal)
+        // .add_systems(Startup, setup_goal)
         .add_systems(Startup, spawn_crosshair)
         //.add_systems(Update, toggle_crosshair)
         .add_systems(Update, toggle_and_animate_crosshair)
@@ -116,19 +123,21 @@ fn main() {
             ),
         )
         .add_systems(Update, cursor_grab)
-        .add_systems(Update, check_goal.run_if(in_state(GameState::Playing)))
-        .add_systems(EguiPrimaryContextPass, ui_example_system)
+        // .add_systems(Update, check_goal.run_if(in_state(GameState::Playing)))
+        //.add_systems(EguiPrimaryContextPass, ui_example_system)
         .run();
 }
 
-fn ui_example_system(mut contexts: EguiContexts) -> Result {
-    egui::Window::new("Egui")
-        .anchor(egui::Align2::CENTER_TOP, egui::vec2(0.0, 10.0))
-        .show(contexts.ctx_mut()?, |ui| {
-            ui.label("ASSETS AND GAMEPLAY CURRENTLY IN DEVELOPMENT ");
-        });
-    Ok(())
-}
+
+// // example system for Egui
+// fn ui_example_system(mut contexts: EguiContexts) -> Result {
+//     egui::Window::new("Egui")
+//         .anchor(egui::Align2::CENTER_TOP, egui::vec2(0.0, 10.0))
+//         .show(contexts.ctx_mut()?, |ui| {
+//             ui.label("ASSETS AND GAMEPLAY CURRENTLY IN DEVELOPMENT ");
+//         });
+//     Ok(())
+// }
 
 #[derive(Component)]
 struct Crosshair;
@@ -226,7 +235,7 @@ fn toggle_and_animate_crosshair(
     mut crosshair_query: Query<&mut Visibility, With<Crosshair>>,
     mut arm_query: Query<(&CrosshairArm, &mut Node)>,
 ) {
-    let left_pressed = mouse.pressed(MouseButton::Left);
+    let _left_pressed = mouse.pressed(MouseButton::Left);
     let right_pressed = mouse.pressed(MouseButton::Right);
 
     let target_gap = if right_pressed {
@@ -947,7 +956,8 @@ fn spawn_view_model(
     let arm_material = materials.add(Color::from(tailwind::TEAL_200));
 
     // Load the mesh from the GLB
-    let gun_mesh = asset_server.load("models/gun-model-0004.glb#Mesh0/Primitive0");
+    //let gun_mesh = asset_server.load("models/gun-model-0004.glb#Mesh0/Primitive0");
+    let gun_mesh = asset_server.load("models/20260812-glock17-viewmodel.glb#Mesh0/Primitive0");
     let gun_material = materials.add(StandardMaterial {
         base_color: Color::BLACK,
         metallic: 0.1,
@@ -966,7 +976,7 @@ fn spawn_view_model(
         MeshMaterial3d(materials.add(Color::srgb(0.2, 0.4, 1.0))),
         //RigidBody::Dynamic,
         RigidBody::KinematicPositionBased,
-        Collider::capsule_y(0.5, 0.4),
+        Collider::capsule_y(0.8, 0.3),
         Velocity::default(),
         LockedAxes::ROTATION_LOCKED,
         GravityScale(1.0),
@@ -988,6 +998,7 @@ fn spawn_view_model(
             (
                 WorldModelCamera,
                 Camera3d::default(),
+		Transform::from_xyz(0.0, 0.0, 6.0),
                 Projection::from(PerspectiveProjection {
                     fov: 65.0_f32.to_radians(),
                     ..default()
@@ -1036,9 +1047,11 @@ fn spawn_view_model(
                 MeshMaterial3d(gun_material),
                 //transform::from_xyz(0.2, -0.1, -0.25),
                 Transform {
-                    translation: Vec3::new(0.8, -0.8, -1.2),
+                    //translation: Vec3::new(0.8, -0.8, -1.2),
+		    translation: Vec3::new(0.0, 0.0, 0.0),
                     rotation: Quat::from_rotation_y(std::f32::consts::PI),
-                    scale: Vec3::new(0.1, 0.1, 0.1),
+                    //scale: Vec3::new(0.1, 0.1, 0.1),
+		    scale: Vec3::new(0.6, 0.6, 0.6),
                 },
                 // Ensure the arm is only rendered by the view model camera.
                 RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
@@ -1135,7 +1148,7 @@ fn move_player(
         // so the direction picked will for all intents and purposes be arbitrary.
         // Another issue is that for mathematical reasons, the yaw will effectively be flipped when the pitch is at the extremes.
         // To not run into these issues, we clamp the pitch to a safe range.
-        const PITCH_LIMIT: f32 = FRAC_PI_2 - 1.0;
+        const PITCH_LIMIT: f32 = FRAC_PI_2 - 0.5;
         let pitch = (pitch + delta_pitch).clamp(-PITCH_LIMIT, PITCH_LIMIT);
 
         transform.rotation = Quat::from_euler(EulerRot::YXZ, yaw, pitch, roll);
@@ -1209,8 +1222,13 @@ fn update_view_arm(
 
 #[derive(Component)]
 struct ViewWeapon;
-const WEAPON_IDLE: Vec3 = Vec3::new(0.8, -0.9, -1.25);
-const WEAPON_AIM: Vec3 = Vec3::new(0.0, -0.76, -0.4);
+// const WEAPON_IDLE: Vec3 = Vec3::new(0.8, -0.9, -1.25);
+// const WEAPON_AIM: Vec3 = Vec3::new(0.0, -0.76, -0.4);
+
+const WEAPON_IDLE: Vec3 = Vec3::new(2.0, -0.3, -3.0);
+const WEAPON_AIM: Vec3 = Vec3::new(0.0, 0.7, -2.0);
+
+
 
 fn update_view_weapon(
     buttons: Res<ButtonInput<MouseButton>>,
@@ -1425,36 +1443,40 @@ enum GameState {
     Playing,
 }
 
-#[derive(Component)]
-struct Goal {
-    radius: f32,
-}
-fn check_goal(
-    player: Query<&Transform, With<Player>>,
-    goals: Query<(&Transform, &Goal)>,
-    //mut next_state: ResMut<NextState<GameState>>,
-) {
-    let player_pos = player.single().unwrap().translation;
-    //let goal_pos = goals.single();
 
-    for (goal_transform, goal) in &goals {
-        let distance = player_pos.distance(goal_transform.translation);
+// // test Goal
+// #[derive(Component)]
+// struct Goal {
+//     radius: f32,
+// }
+// fn check_goal(
+//     player: Query<&Transform, With<Player>>,
+//     goals: Query<(&Transform, &Goal)>,
+//     //mut next_state: ResMut<NextState<GameState>>,
+// ) {
+//     let player_pos = player.single().unwrap().translation;
+//     //let goal_pos = goals.single();
 
-        if distance <= goal.radius {
-            println!("Reached the goal!");
-            // next_state.set(GameState::Results);
-        }
-    }
-}
+//     for (goal_transform, goal) in &goals {
+//         let distance = player_pos.distance(goal_transform.translation);
 
-fn setup_goal(mut commands: Commands) {
-    // Spawn goal
-    commands.spawn((
-        Goal { radius: 2.0 },
-        Transform::from_xyz(20.0, 0.0, 0.0),
-        GlobalTransform::default(),
-    ));
-}
+//         if distance <= goal.radius {
+//             println!("Reached the goal!");
+//             // next_state.set(GameState::Results);
+//         }
+//     }
+// }
+
+// fn setup_goal(mut commands: Commands) {
+//     // Spawn goal
+//     commands.spawn((
+//         Goal { radius: 2.0 },
+//         Transform::from_xyz(20.0, 0.0, 0.0),
+//         GlobalTransform::default(),
+//     ));
+// }
+
+
 
 #[derive(Component)]
 pub struct Health {
@@ -1487,7 +1509,7 @@ fn fire_weapon(
     let origin = transform.translation();
     let direction = transform.forward();
 
-    let max_distance = 100.0;
+    let max_distance = 30.0;
 
     // Exclude player's hitbox when ray casting
     let player_entity = player_query.single().unwrap();
@@ -1495,7 +1517,7 @@ fn fire_weapon(
 
     if let Ok(ctx) = rapier_context.single() {
         if let Some((entity, toi)) = ctx.cast_ray(origin, *direction, max_distance, true, filter) {
-            //println!("Hit {:?} at {}", entity, toi);
+            println!("Hit {:?} at {}", entity, toi);
 
             if let Ok(mut health) = health_query.get_mut(entity) {
                 health.current -= 50.0;

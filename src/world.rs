@@ -5,20 +5,23 @@ use bevy::{
 };
 use bevy_rapier3d::prelude::*;
 
-use std::f32::consts::PI;
-use std::f32::consts::TAU;
+// use std::f32::consts::PI;
+// use std::f32::consts::TAU;
 
-use crate::shootingtarget::{spawn_shooting_target, ShootingTarget, ShootingTargetPlugin};
+use crate::shootingtarget::{
+    spawn_shooting_target,
+    // ShootingTarget,
+    ShootingTargetPlugin};
 
 // use crate::shootingtarget::ShootingTargetPlugin;
 
-use crate::Health;
+// use crate::Health;		
 
 pub struct WorldPlugin;
 
 impl Plugin for WorldPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(RapierDebugRenderPlugin::default()); //activate gismo
+        //app.add_plugins(RapierDebugRenderPlugin::default()); //activate gismo
         app.add_plugins(ShootingTargetPlugin);
         // app.insert_resource(ClearColor(Color::srgb(
         //     226.0 / 255.0,
@@ -41,21 +44,24 @@ impl Plugin for WorldPlugin {
     }
 }
 
-fn draw_grid(mut gizmos: Gizmos) {
-    gizmos
-        .grid(
-            Quat::from_rotation_x(PI / 2.),
-            UVec2::splat(20),
-            Vec2::new(1., 1.),
-            Color::linear_rgb(0.7, 0., 0.4),
-        )
-        .outer_edges();
-}
+
+// // draw grid on floor
+// fn draw_grid(mut gizmos: Gizmos) {
+//     gizmos
+//         .grid(
+//             Quat::from_rotation_x(PI / 2.),
+//             UVec2::splat(20),
+//             Vec2::new(1., 1.),
+//             Color::linear_rgb(0.7, 0., 0.4),
+//         )
+//         .outer_edges();
+// }
 
 fn spawn_world_model(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
 ) {
     let ground = meshes.add(Plane3d::new(Vec3::Y, Vec2::splat(64.0)));
     let _cube = meshes.add(Cuboid::new(2.0, 0.5, 1.0));
@@ -65,7 +71,7 @@ fn spawn_world_model(
 
     let _wood = materials.add(Color::srgb(145.0 / 255.0, 117.0 / 255.0, 77.0 / 255.0));
 
-    let sand = materials.add(Color::srgb(234.0 / 255.0, 225.0 / 255.0, 208.0 / 255.0));
+    // let sand = materials.add(Color::srgb(234.0 / 255.0, 225.0 / 255.0, 208.0 / 255.0));
 
     let transparent = materials.add(StandardMaterial {
         base_color: Color::srgb(
@@ -91,7 +97,7 @@ fn spawn_world_model(
         MeshMaterial3d(transparent.clone()),
         RigidBody::Fixed,
         Collider::cuboid(64.0, 0.1, 64.0),
-        Transform::from_xyz(0.0, -0.1, 0.0),
+        Transform::from_xyz(0.0, -0.06, 0.0),
     ));
 
     // commands.spawn((
@@ -186,6 +192,20 @@ fn spawn_world_model(
         &mut materials,
         Vec3::new(0.0, -0.2, -10.0),
     );
+
+    /*
+     * spawns ground texture
+     */
+    
+       commands.spawn((
+        //Mesh3d(asset_server.load("models/tutorial-texture-wood.glb#Mesh0/Primitive0")),
+        WorldAssetRoot(
+            asset_server
+                .load(GltfAssetLabel::Scene(0).from_asset("models/ground_plane_002.glb")), //
+        ),
+       
+        Transform::from_xyz(0.0, -0.05, 0.0),
+    ));
 
     /*
      * spawn stair
@@ -498,7 +518,7 @@ fn spawn_lights(mut commands: Commands) {
     commands.spawn((
         DirectionalLight {
             illuminance: light_consts::lux::OVERCAST_DAY,
-            shadow_maps_enabled: true,
+            shadow_maps_enabled: false,
             ..default()
         },
         Transform::from_rotation(Quat::from_euler(
@@ -511,7 +531,7 @@ fn spawn_lights(mut commands: Commands) {
         RenderLayers::from_layers(&[DEFAULT_RENDER_LAYER, VIEW_MODEL_RENDER_LAYER]),
         CascadeShadowConfigBuilder {
             first_cascade_far_bound: 10.0,
-            maximum_distance: 50.0,
+            maximum_distance: 40.0,
             ..default()
         }
         .build(),
