@@ -5,30 +5,31 @@ use bevy::{
 };
 use bevy_rapier3d::prelude::*;
 
-// use std::f32::consts::PI;
+use std::f32::consts::PI;
 // use std::f32::consts::TAU;
 
 use crate::shootingtarget::{
     spawn_shooting_target,
     // ShootingTarget,
-    ShootingTargetPlugin};
+    ShootingTargetPlugin,
+};
 
 // use crate::shootingtarget::ShootingTargetPlugin;
 
-// use crate::Health;		
+// use crate::Health;
 
 pub struct WorldPlugin;
 
 impl Plugin for WorldPlugin {
     fn build(&self, app: &mut App) {
-        //app.add_plugins(RapierDebugRenderPlugin::default()); //activate gismo
+        app.add_plugins(RapierDebugRenderPlugin::default()); //activate gismo
         app.add_plugins(ShootingTargetPlugin);
         // app.insert_resource(ClearColor(Color::srgb(
         //     226.0 / 255.0,
         //     237.0 / 255.0,
         //     238.0 / 255.0,
         // )));
-	app.insert_resource(ClearColor(Color::srgb(
+        app.insert_resource(ClearColor(Color::srgb(
             152.0 / 255.0,
             192.0 / 255.0,
             217.0 / 255.0,
@@ -38,24 +39,26 @@ impl Plugin for WorldPlugin {
         app.add_systems(Startup, spawn_lights);
         app.add_systems(Startup, spawn_stairs);
         app.add_systems(Startup, spawn_cube);
-        //app.add_systems(Update, draw_grid);
+        app.add_systems(Update, draw_grid);
+	// app.add_systems(Startup, load_lamp).add_systems(Update, spawn_lamp_collider);
+	app.add_systems(Startup, load_map)
+    .add_systems(Update, spawn_map_collider);
         //app.add_systems(Startup, spawn_mesh);
         //app.add_systems(Startup, spawn_wall);
     }
 }
 
-
-// // draw grid on floor
-// fn draw_grid(mut gizmos: Gizmos) {
-//     gizmos
-//         .grid(
-//             Quat::from_rotation_x(PI / 2.),
-//             UVec2::splat(20),
-//             Vec2::new(1., 1.),
-//             Color::linear_rgb(0.7, 0., 0.4),
-//         )
-//         .outer_edges();
-// }
+// draw grid on floor
+fn draw_grid(mut gizmos: Gizmos) {
+    gizmos
+        .grid(
+            Quat::from_rotation_x(PI / 2.),
+            UVec2::splat(40),
+            Vec2::new(1., 1.),
+            Color::linear_rgb(0.7, 0., 0.4),
+        )
+        .outer_edges();
+}
 
 fn spawn_world_model(
     mut commands: Commands,
@@ -196,16 +199,25 @@ fn spawn_world_model(
     /*
      * spawns ground texture
      */
-    
-       commands.spawn((
-        //Mesh3d(asset_server.load("models/tutorial-texture-wood.glb#Mesh0/Primitive0")),
-        WorldAssetRoot(
-            asset_server
-                .load(GltfAssetLabel::Scene(0).from_asset("models/ground_plane_002.glb")), //
-        ),
-       
-        Transform::from_xyz(0.0, -0.05, 0.0),
-    ));
+
+    // commands.spawn((
+    //     //Mesh3d(asset_server.load("models/tutorial-texture-wood.glb#Mesh0/Primitive0")),
+    //     WorldAssetRoot(
+    //         asset_server.load(GltfAssetLabel::Scene(0).from_asset("models/ground_plane_002.glb")), //
+    //     ),
+    //     Transform::from_xyz(0.0, -0.05, 40.0),
+    // ));
+
+
+    // commands.spawn((
+    //     RigidBody::Fixed,
+    //     Transform::from_xyz(12.0, 0.0, 0.0),
+    //     Collider::from_bevy_mesh(
+    //         meshes.get(&mesh_handle).expect("mesh load error!!!!!!!!!"),
+    //         &ComputedColliderShape::TriMesh(TriMeshFlags::all()),
+    //     )
+    //     .unwrap(),
+    // ));
 
     /*
      * spawn stair
@@ -239,6 +251,128 @@ fn spawn_world_model(
     //     .build(),
     // ));
 }
+
+// #[derive(Resource)]
+// struct LampAsset {
+//     mesh: Handle<Mesh>,
+//     spawned: bool,
+// }
+
+// fn load_lamp(
+//     mut commands: Commands,
+//     asset_server: Res<AssetServer>,
+// ) {
+//     let mesh = asset_server.load::<Mesh>(
+//         "models/lamp-0001.glb#Mesh0/Primitive0"
+//     );
+
+//     commands.insert_resource(LampAsset {
+//         mesh,
+//         spawned: false,
+//     });
+// }
+
+
+// fn spawn_lamp_collider(
+//     mut commands: Commands,
+//     mut lamp: ResMut<LampAsset>,
+//     meshes: Res<Assets<Mesh>>,
+// ) {
+//     if lamp.spawned {
+//         return;
+//     }
+
+//     let Some(mesh) = meshes.get(&lamp.mesh) else {
+//         return;
+//     };
+
+//     let collider = Collider::from_bevy_mesh(
+//         mesh,
+//         &ComputedColliderShape::TriMesh(TriMeshFlags::all()),
+//     )
+//     .expect("Failed to create lamp collider");
+
+//     commands.spawn((
+//         RigidBody::Fixed,
+//         Transform::from_xyz(12.0, 5.0, -12.0),
+//         collider,
+//     ));
+
+//     lamp.spawned = true;
+// }
+
+
+#[derive(Resource)]
+struct MapAsset {
+    mesh: Handle<Mesh>,
+    spawned: bool,
+    //scene: Handle<Scene>,
+}
+
+fn load_map(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+) {
+    let mesh = asset_server.load::<Mesh>(
+        "models/lamp-0001.glb#Mesh0/Primitive0",
+    );
+
+    commands.insert_resource(MapAsset {
+        mesh,
+        spawned: false,
+    });
+}
+
+fn spawn_map_collider(
+    mut commands: Commands,
+    mut map: ResMut<MapAsset>,
+    meshes: Res<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    if map.spawned {
+        return;
+    }
+
+    let Some(mesh) = meshes.get(&map.mesh) else {
+        return;
+    };
+
+    let collider = Collider::from_bevy_mesh(
+        mesh,
+        &ComputedColliderShape::TriMesh(TriMeshFlags::all()),
+    )
+	.expect("Failed to create map collider");
+
+        let material = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.7, 0.7, 0.7),
+        perceptual_roughness: 0.8,
+        ..default()
+    });
+
+    commands.spawn((
+        RigidBody::Fixed,
+        Transform::from_xyz(12.0, 5.0, 0.0),
+
+        // Visual mesh
+        Mesh3d(map.mesh.clone()),
+
+        // Standard material
+        MeshMaterial3d(material),
+
+        // Physics collider
+        collider,
+    ));
+    
+
+    // commands.spawn((
+    //     RigidBody::Fixed,
+    //     Transform::from_xyz(12.0, 0.0, 0.0),
+    //     collider,
+    // ));
+
+    map.spawned = true;
+}
+
 
 fn _spawn_mesh(
     mut commands: Commands,

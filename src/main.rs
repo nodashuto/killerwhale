@@ -27,8 +27,8 @@ pub mod world;
 
 // use shootingtarget::ShootingTargetPlugin;
 
-const PLAYER_SPEED: f32 = 4.0;
-const PLAYER_SPRINTING_SPEED: f32 = 8.0;
+const PLAYER_SPEED: f32 = 8.0;
+const PLAYER_SPRINTING_SPEED: f32 = 16.0;
 // const PLAYER_JUMP_SPEED: f32 = 3.0;
 const PLAYER_GRAVITY: f32 = 30.0;
 // const MOUSE_SENSITIVITY: f32 = 0.002;
@@ -517,7 +517,7 @@ const GROUND_ACCEL: f32 = 18.0;
 // Lower than ground acceleration gives you reduced air control.
 const AIR_ACCEL: f32 = 10.0;
 // Jump height in world units.
-const JUMP_HEIGHT: f32 = 0.6;
+const JUMP_HEIGHT: f32 = 1.0;
 
 // Add jump penalty
 const JUMP_PENALTY_DURATION: f32 = 0.6;
@@ -929,7 +929,7 @@ impl Default for CameraSensitivity {
             // We use a component for them so that we can make them user-configurable at runtime
             // for accessibility reasons.
             // It also allows you to inspect them in an editor if you `Reflect` the component.
-            Vec2::new(0.003, 0.002),
+            Vec2::new(0.001, 0.001),
         )
     }
 }
@@ -976,7 +976,7 @@ fn spawn_view_model(
         MeshMaterial3d(materials.add(Color::srgb(0.2, 0.4, 1.0))),
         //RigidBody::Dynamic,
         RigidBody::KinematicPositionBased,
-        Collider::capsule_y(0.8, 0.3),
+        Collider::capsule_y(1.828, 0.3),
         Velocity::default(),
         LockedAxes::ROTATION_LOCKED,
         GravityScale(1.0),
