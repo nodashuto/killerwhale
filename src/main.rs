@@ -998,7 +998,7 @@ fn spawn_view_model(
             (
                 WorldModelCamera,
                 Camera3d::default(),
-		Transform::from_xyz(0.0, 0.0, 6.0),
+		Transform::from_xyz(0.0, 0.0, 0.0),
                 Projection::from(PerspectiveProjection {
                     fov: 65.0_f32.to_radians(),
                     ..default()
@@ -1148,7 +1148,7 @@ fn move_player(
         // so the direction picked will for all intents and purposes be arbitrary.
         // Another issue is that for mathematical reasons, the yaw will effectively be flipped when the pitch is at the extremes.
         // To not run into these issues, we clamp the pitch to a safe range.
-        const PITCH_LIMIT: f32 = FRAC_PI_2 - 0.5;
+        const PITCH_LIMIT: f32 = FRAC_PI_2 - 0.8;
         let pitch = (pitch + delta_pitch).clamp(-PITCH_LIMIT, PITCH_LIMIT);
 
         transform.rotation = Quat::from_euler(EulerRot::YXZ, yaw, pitch, roll);
