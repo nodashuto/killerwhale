@@ -309,10 +309,10 @@ struct MapAsset {
 }
 
 fn load_map(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let mesh = asset_server.load::<Mesh>("models/map-0002.glb#Mesh0/Primitive0");
+    let mesh = asset_server.load::<Mesh>("models/map-0003.glb#Mesh0/Primitive0");
 
     let scene =
-        asset_server.load::<WorldAsset>(GltfAssetLabel::Scene(0).from_asset("models/map-0002.glb"));
+        asset_server.load::<WorldAsset>(GltfAssetLabel::Scene(0).from_asset("models/map-0003.glb"));
 
     commands.insert_resource(MapAsset {
         mesh,
@@ -346,15 +346,17 @@ fn spawn_map_collider(
         ..default()
     });
 
-    let origin = Vec3::new(-60.0, 3.5, 0.0);
+    let origin = Vec3::new(0.0, 0.0, 0.0);
 
-    let transform = Transform::from_xyz(origin.x + -4.5, origin.y + 0.0, origin.z + -16.0);
+    let transform = Transform::from_xyz(0.0, 0.0, 0.0);
 
-    // // Spawn the visual GLB scene
-    // commands.spawn((
-    //     WorldAssetRoot(map.scene.clone()),
-    //     Transform::from_xyz(origin.x - 0.052, origin.y -3.38, origin.z+0.0).with_rotation(Quat::from_rotation_y(std::f32::consts::FRAC_PI_2)),
-    // ));
+    
+
+    // Spawn the visual GLB scene
+    commands.spawn((
+        WorldAssetRoot(map.scene.clone()),
+       transform,
+    ));
 
     // Spawn the physics collider
     commands.spawn((
@@ -362,10 +364,10 @@ fn spawn_map_collider(
         transform,
         collider,
 	// Visual mesh
-        Mesh3d(map.mesh.clone()),
-
+        //Mesh3d(map.mesh.clone()),
+	
         // Standard material
-        MeshMaterial3d(material),
+        //MeshMaterial3d(material),
 	
     ));
 

@@ -970,7 +970,7 @@ fn spawn_view_model(
             ..PlayerController::default()
         },
         CameraSensitivity::default(),
-        Transform::from_xyz(0.0, 2.0, 0.0),
+        Transform::from_xyz(0.0, 20.0, 0.0),
         Visibility::default(),
         Mesh3d(meshes.add(Capsule3d::default())),
         MeshMaterial3d(materials.add(Color::srgb(0.2, 0.4, 1.0))),
