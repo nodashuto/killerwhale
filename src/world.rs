@@ -37,12 +37,12 @@ impl Plugin for WorldPlugin {
         // app.insert_resource(ClearColor(Color::BLACK));
         app.add_systems(Startup, spawn_world_model);
         app.add_systems(Startup, spawn_lights);
-        app.add_systems(Startup, spawn_stairs);
-        app.add_systems(Startup, spawn_cube);
+        //app.add_systems(Startup, spawn_stairs);
+        // app.add_systems(Startup, spawn_cube);
         app.add_systems(Update, draw_grid);
-	// app.add_systems(Startup, load_lamp).add_systems(Update, spawn_lamp_collider);
-	app.add_systems(Startup, load_map)
-    .add_systems(Update, spawn_map_collider);
+        // app.add_systems(Startup, load_lamp).add_systems(Update, spawn_lamp_collider);
+        app.add_systems(Startup, load_map)
+            .add_systems(Update, spawn_map_collider);
         //app.add_systems(Startup, spawn_mesh);
         //app.add_systems(Startup, spawn_wall);
     }
@@ -66,7 +66,9 @@ fn spawn_world_model(
     mut materials: ResMut<Assets<StandardMaterial>>,
     asset_server: Res<AssetServer>,
 ) {
-    let ground = meshes.add(Plane3d::new(Vec3::Y, Vec2::splat(64.0)));
+
+    let size = 200.0;
+    let ground = meshes.add(Plane3d::new(Vec3::Y, Vec2::splat(size)));
     let _cube = meshes.add(Cuboid::new(2.0, 0.5, 1.0));
     let _material = materials.add(Color::WHITE);
 
@@ -99,7 +101,7 @@ fn spawn_world_model(
         Mesh3d(ground),
         MeshMaterial3d(transparent.clone()),
         RigidBody::Fixed,
-        Collider::cuboid(64.0, 0.1, 64.0),
+        Collider::cuboid(size, 0.1, size),
         Transform::from_xyz(0.0, -0.06, 0.0),
     ));
 
@@ -136,65 +138,65 @@ fn spawn_world_model(
     // 	Transform::from_xyz(3.0, 1.0, -4.0),
     // 	));
 
-    // spawn shooting target
-    spawn_shooting_target(
-        &mut commands,
-        &mut meshes,
-        &mut materials,
-        Vec3::new(0.0, 0.95, -10.0),
-    );
+    // // spawn shooting target
+    // spawn_shooting_target(
+    //     &mut commands,
+    //     &mut meshes,
+    //     &mut materials,
+    //     Vec3::new(0.0, 0.95, -10.0),
+    // );
 
-    spawn_shooting_target(
-        &mut commands,
-        &mut meshes,
-        &mut materials,
-        Vec3::new(0.5, 0.95, -10.0),
-    );
+    // spawn_shooting_target(
+    //     &mut commands,
+    //     &mut meshes,
+    //     &mut materials,
+    //     Vec3::new(0.5, 0.95, -10.0),
+    // );
 
-    spawn_shooting_target(
-        &mut commands,
-        &mut meshes,
-        &mut materials,
-        Vec3::new(1.0, 0.95, -10.0),
-    );
+    // spawn_shooting_target(
+    //     &mut commands,
+    //     &mut meshes,
+    //     &mut materials,
+    //     Vec3::new(1.0, 0.95, -10.0),
+    // );
 
-    spawn_shooting_target(
-        &mut commands,
-        &mut meshes,
-        &mut materials,
-        Vec3::new(-1.0, 0.95, -10.0),
-    );
+    // spawn_shooting_target(
+    //     &mut commands,
+    //     &mut meshes,
+    //     &mut materials,
+    //     Vec3::new(-1.0, 0.95, -10.0),
+    // );
 
-    spawn_shooting_target(
-        &mut commands,
-        &mut meshes,
-        &mut materials,
-        Vec3::new(-0.5, 0.95, -10.0),
-    );
+    // spawn_shooting_target(
+    //     &mut commands,
+    //     &mut meshes,
+    //     &mut materials,
+    //     Vec3::new(-0.5, 0.95, -10.0),
+    // );
 
-    spawn_shooting_target(
-        &mut commands,
-        &mut meshes,
-        &mut materials,
-        Vec3::new(1.5, 0.95, -10.0),
-    );
+    // spawn_shooting_target(
+    //     &mut commands,
+    //     &mut meshes,
+    //     &mut materials,
+    //     Vec3::new(1.5, 0.95, -10.0),
+    // );
 
-    spawn_shooting_target(
-        &mut commands,
-        &mut meshes,
-        &mut materials,
-        Vec3::new(-1.4, 0.95, -10.0),
-    );
+    // spawn_shooting_target(
+    //     &mut commands,
+    //     &mut meshes,
+    //     &mut materials,
+    //     Vec3::new(-1.4, 0.95, -10.0),
+    // );
 
-    /*
-     * spawns table
-     */
-    spawn_table(
-        &mut commands,
-        &mut meshes,
-        &mut materials,
-        Vec3::new(0.0, -0.2, -10.0),
-    );
+    // /*
+    //  * spawns table
+    //  */
+    // spawn_table(
+    //     &mut commands,
+    //     &mut meshes,
+    //     &mut materials,
+    //     Vec3::new(0.0, -0.2, -10.0),
+    // );
 
     /*
      * spawns ground texture
@@ -207,7 +209,6 @@ fn spawn_world_model(
     //     ),
     //     Transform::from_xyz(0.0, -0.05, 40.0),
     // ));
-
 
     // commands.spawn((
     //     RigidBody::Fixed,
@@ -272,7 +273,6 @@ fn spawn_world_model(
 //     });
 // }
 
-
 // fn spawn_lamp_collider(
 //     mut commands: Commands,
 //     mut lamp: ResMut<LampAsset>,
@@ -301,25 +301,23 @@ fn spawn_world_model(
 //     lamp.spawned = true;
 // }
 
-
 #[derive(Resource)]
 struct MapAsset {
     mesh: Handle<Mesh>,
+    scene: Handle<WorldAsset>,
     spawned: bool,
-    //scene: Handle<Scene>,
 }
 
-fn load_map(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-) {
-    let mesh = asset_server.load::<Mesh>(
-        "models/lamp-0001.glb#Mesh0/Primitive0",
-    );
+fn load_map(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let mesh = asset_server.load::<Mesh>("models/map-0002.glb#Mesh0/Primitive0");
+
+    let scene =
+        asset_server.load::<WorldAsset>(GltfAssetLabel::Scene(0).from_asset("models/map-0002.glb"));
 
     commands.insert_resource(MapAsset {
         mesh,
         spawned: false,
+        scene,
     });
 }
 
@@ -337,42 +335,44 @@ fn spawn_map_collider(
         return;
     };
 
-    let collider = Collider::from_bevy_mesh(
-        mesh,
-        &ComputedColliderShape::TriMesh(TriMeshFlags::all()),
-    )
-	.expect("Failed to create map collider");
+    let collider =
+        Collider::from_bevy_mesh(mesh, &ComputedColliderShape::TriMesh(TriMeshFlags::all()))
+            .expect("Failed to create map collider");
 
-        let material = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.7, 0.7, 0.7),
+    let material = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.4, 0.4, 0.4),
         perceptual_roughness: 0.8,
+	metallic: 1.0,
         ..default()
     });
 
+    let origin = Vec3::new(-60.0, 3.5, 0.0);
+
+    let transform = Transform::from_xyz(origin.x + -4.5, origin.y + 0.0, origin.z + -16.0);
+
+    // // Spawn the visual GLB scene
+    // commands.spawn((
+    //     WorldAssetRoot(map.scene.clone()),
+    //     Transform::from_xyz(origin.x - 0.052, origin.y -3.38, origin.z+0.0).with_rotation(Quat::from_rotation_y(std::f32::consts::FRAC_PI_2)),
+    // ));
+
+    // Spawn the physics collider
     commands.spawn((
         RigidBody::Fixed,
-        Transform::from_xyz(12.0, 5.0, 0.0),
-
-        // Visual mesh
+        transform,
+        collider,
+	// Visual mesh
         Mesh3d(map.mesh.clone()),
 
         // Standard material
         MeshMaterial3d(material),
-
-        // Physics collider
-        collider,
+	
     ));
-    
 
-    // commands.spawn((
-    //     RigidBody::Fixed,
-    //     Transform::from_xyz(12.0, 0.0, 0.0),
-    //     collider,
-    // ));
+
 
     map.spawned = true;
 }
-
 
 fn _spawn_mesh(
     mut commands: Commands,
@@ -402,7 +402,7 @@ fn _spawn_mesh(
         ),
         RigidBody::Fixed,
         Collider::cuboid(1.0, 1.0, 1.0),
-        Transform::from_xyz(0.0, 1.0, -30.0),
+        Transform::from_xyz(0.0, 1.0, 30.0),
     ));
 }
 
@@ -463,43 +463,44 @@ fn spawn_stairs(
 //     ));
 // }
 
-fn spawn_cube(mut commands: Commands) {
-    let vertices = vec![
-        Vec3::new(-0.5, -0.5, -0.5),
-        Vec3::new(0.5, -0.5, -0.5),
-        Vec3::new(0.5, 0.5, -0.5),
-        Vec3::new(-0.5, 0.5, -0.5),
-        Vec3::new(-0.5, -0.5, 0.5),
-        Vec3::new(0.5, -0.5, 0.5),
-        Vec3::new(0.5, 0.5, 0.5),
-        Vec3::new(-0.5, 0.5, 0.5),
-    ];
+// // test spawn cube collider from vertices and indices
+// fn spawn_cube(mut commands: Commands) {
+//     let vertices = vec![
+//         Vec3::new(-0.5, -0.5, -0.5),
+//         Vec3::new(0.5, -0.5, -0.5),
+//         Vec3::new(0.5, 0.5, -0.5),
+//         Vec3::new(-0.5, 0.5, -0.5),
+//         Vec3::new(-0.5, -0.5, 0.5),
+//         Vec3::new(0.5, -0.5, 0.5),
+//         Vec3::new(0.5, 0.5, 0.5),
+//         Vec3::new(-0.5, 0.5, 0.5),
+//     ];
 
-    let indices = vec![
-        [0, 2, 1],
-        [0, 3, 2],
-        [4, 5, 6],
-        [4, 6, 7],
-        [0, 1, 5],
-        [0, 5, 4],
-        [2, 3, 7],
-        [2, 7, 6],
-        [0, 4, 7],
-        [0, 7, 3],
-        [1, 2, 6],
-        [1, 6, 5],
-    ];
+//     let indices = vec![
+//         [0, 2, 1],
+//         [0, 3, 2],
+//         [4, 5, 6],
+//         [4, 6, 7],
+//         [0, 1, 5],
+//         [0, 5, 4],
+//         [2, 3, 7],
+//         [2, 7, 6],
+//         [0, 4, 7],
+//         [0, 7, 3],
+//         [1, 2, 6],
+//         [1, 6, 5],
+//     ];
 
-    let collider =
-        Collider::trimesh_with_flags(vertices, indices, TriMeshFlags::FIX_INTERNAL_EDGES)
-            .expect("Failed to create cube trimesh collider");
+//     let collider =
+//         Collider::trimesh_with_flags(vertices, indices, TriMeshFlags::FIX_INTERNAL_EDGES)
+//             .expect("Failed to create cube trimesh collider");
 
-    commands.spawn((
-        RigidBody::Fixed,
-        collider,
-        Transform::from_xyz(-16.0, 1.0, -5.0),
-    ));
-}
+//     commands.spawn((
+//         RigidBody::Fixed,
+//         collider,
+//         Transform::from_xyz(-16.0, 1.0, -5.0),
+//     ));
+// }
 
 fn _spawn_wall(
     mut commands: Commands,

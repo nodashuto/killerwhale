@@ -984,7 +984,7 @@ fn spawn_view_model(
             offset: CharacterLength::Absolute(0.01),
             autostep: Some(CharacterAutostep {
                 // Autostep if the step height is smaller than 0.1, and its width larger than 0.2.
-                max_height: CharacterLength::Absolute(0.05),
+                max_height: CharacterLength::Absolute(0.1),
                 min_width: CharacterLength::Absolute(0.2),
                 include_dynamic_bodies: true,
             }),
