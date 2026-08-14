@@ -102,46 +102,36 @@ fn main() {
                 },
             },
         })
-        .add_plugins(EguiPlugin::default())
-        //.add_plugins(shootingtarget::ShootingTargetPlugin)
-        //.add_plugins(RapierDebugRenderPlugin::default()) // Uncomment for collider visualization
-        //.insert_resource(ClearColor(Color::srgb(0.1, 0.12, 0.15)))
-        //.add_systems(Startup, setup)
-        // .add_systems(Startup, initial_grab_cursor)
-        // .add_systems(Startup, initial_grab_on_player_spawn)
-        // .add_systems(Update, player_look)
-        // .add_systems(Update, player_movement)
-        //.add_systems(Startup, setup) //needthis
-        //.add_systems(Update, mouse_look)
-        // .add_systems(Update, grab_mouse)
-        .add_systems(
-            Startup,
-            (
-                spawn_view_model,
-                //spawn_lights,
-                spawn_text,
-            ),
-        )
+        // .add_plugins(EguiPlugin::default())
+        
+        // .add_systems(
+        //     Startup,
+        //     (
+        //         spawn_view_model,
+        //         //spawn_lights,
+        //         spawn_text,
+        //     ),
+        // )
         .add_systems(Startup, initial_grab_cursor)
-        // .add_systems(Startup, setup_goal)
-        .add_systems(Startup, spawn_crosshair)
-        //.add_systems(Update, toggle_crosshair)
-        .add_systems(Update, toggle_and_animate_crosshair)
-        .add_systems(Update, (move_player, change_fov, ads_zoom))
-        .add_systems(Update, (update_view_arm, update_view_weapon))
-        .add_systems(Update, fire_weapon)
-        //.add_systems(Update,player_movement) //needthis
-        .add_systems(
-            Update,
-            (
-                player_movement,
-                update_grounded,
-                //jump_start, player_gravity
-            ),
-        )
+        
+        // .add_systems(Startup, spawn_crosshair)
+        
+        // .add_systems(Update, toggle_and_animate_crosshair)
+        // .add_systems(Update, (move_player, change_fov, ads_zoom))
+        // .add_systems(Update, (update_view_arm, update_view_weapon))
+        // .add_systems(Update, fire_weapon)
+        
+        // .add_systems(
+        //     Update,
+        //     (
+        //         player_movement,
+        //         update_grounded,
+        //         //jump_start, player_gravity
+        //     ),
+        // )
         .add_systems(Update, cursor_grab)
-        // .add_systems(Update, check_goal.run_if(in_state(GameState::Playing)))
-        //.add_systems(EguiPrimaryContextPass, ui_example_system)
+        // // .add_systems(Update, check_goal.run_if(in_state(GameState::Playing)))
+        // //.add_systems(EguiPrimaryContextPass, ui_example_system)
         .run();
 }
 
@@ -750,8 +740,8 @@ fn spawn_view_model(
                     ..default()
                 }),
                 // DistanceFog {
-                //     color: Color::srgba(0.35, 0.66, 0.48, 0.5),
-                //     directional_light_color: Color::srgba(1.0, 0.95, 0.85, 0.1),
+                //     color: Color::srgba(1.0, 1.0, 1.0, 1.0),
+                //     directional_light_color: Color::srgba(1.0, 1.0, 1.0, 1.0),
                 //     directional_light_exponent: 30.0,
                 //     falloff: FogFalloff::from_visibility_colors(
                 //         15.0, // distance in world units up to which objects retain visibility (>= 5% contrast)
