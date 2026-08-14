@@ -39,8 +39,10 @@ impl Plugin for WorldPlugin {
         app.add_systems(Startup, spawn_lights);
         //app.add_systems(Startup, spawn_stairs);
         // app.add_systems(Startup, spawn_cube);
-        app.add_systems(Update, draw_grid);
-        // app.add_systems(Startup, load_lamp).add_systems(Update, spawn_lamp_collider);
+
+	//app.add_systems(Update, draw_grid);
+
+	// app.add_systems(Startup, load_lamp).add_systems(Update, spawn_lamp_collider);
         app.add_systems(Startup, load_map)
             .add_systems(Update, spawn_map_collider);
         //app.add_systems(Startup, spawn_mesh);
@@ -67,7 +69,7 @@ fn spawn_world_model(
     asset_server: Res<AssetServer>,
 ) {
 
-    let size = 200.0;
+    let size = 100.0;
     let ground = meshes.add(Plane3d::new(Vec3::Y, Vec2::splat(size)));
     let _cube = meshes.add(Cuboid::new(2.0, 0.5, 1.0));
     let _material = materials.add(Color::WHITE);
