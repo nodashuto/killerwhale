@@ -8,11 +8,11 @@ use bevy_rapier3d::prelude::*;
 use std::f32::consts::PI;
 // use std::f32::consts::TAU;
 
-use crate::shootingtarget::{
-    spawn_shooting_target,
-    // ShootingTarget,
-    ShootingTargetPlugin,
-};
+// use crate::shootingtarget::{
+//     spawn_shooting_target,
+//     // ShootingTarget,
+//     ShootingTargetPlugin,
+// };
 
 // use crate::shootingtarget::ShootingTargetPlugin;
 
@@ -23,7 +23,7 @@ pub struct WorldPlugin;
 impl Plugin for WorldPlugin {
     fn build(&self, app: &mut App) {
         //app.add_plugins(RapierDebugRenderPlugin::default()); //activate gismo
-        app.add_plugins(ShootingTargetPlugin);
+        //app.add_plugins(ShootingTargetPlugin);
         // app.insert_resource(ClearColor(Color::srgb(
         //     226.0 / 255.0,
         //     237.0 / 255.0,
