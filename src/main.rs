@@ -1,3 +1,5 @@
+mod first_person_character;
+
 use std::f32::consts::FRAC_PI_2;
 
 use bevy::{camera::visibility::RenderLayers, color::palettes::tailwind, light::NotShadowCaster};
@@ -25,6 +27,10 @@ use bevy_rapier3d::prelude::*;
 //use crate::shootingtarget;
 pub mod shootingtarget;
 pub mod world;
+
+
+
+use first_person_character::FirstPersonCharacterPlugin;
 
 // use crate::shootingtarget::*;
 
@@ -65,6 +71,7 @@ fn main() {
         //.init_state::<GameState>()
         .init_resource::<SoundEffect>() // for sound effect
         .add_plugins(world::WorldPlugin)
+        .add_plugins(FirstPersonCharacterPlugin)
         .add_plugins(FpsOverlayPlugin {
             config: FpsOverlayConfig {
                 text_config: TextFont {
