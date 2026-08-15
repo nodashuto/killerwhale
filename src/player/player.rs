@@ -1,5 +1,6 @@
 use std::f32::consts::FRAC_PI_2;
 
+use bevy_rapier3d::prelude::*;
 use bevy::{
     camera::visibility::RenderLayers, color::palettes::tailwind,
     input::mouse::AccumulatedMouseMotion, light::NotShadowCaster, prelude::*,
@@ -23,8 +24,8 @@ fn player_plugin_loaded() {
 #[derive(Component)]
 struct Player;
 
-const MOVE_SPEED: f32 = 5.0;
-const MOUSE_SENSITIVITY: f32 = 0.002;
+const MOVE_SPEED: f32 = 8.0;
+const MOUSE_SENSITIVITY: f32 = 0.001;
 
 #[derive(Debug, Component, Deref, DerefMut)]
 struct CameraSensitivity(Vec2);
@@ -69,16 +70,126 @@ struct Head {
 
 impl Default for Head {
     fn default() -> Self {
-        Self {
-            pitch: 0.0,
-        }
+        Self { pitch: 0.0 }
     }
 }
+
+fn spawn_player(
+    mut commands: Commands,
+    mut _meshes: ResMut<Assets<Mesh>>,
+    mut _materials: ResMut<Assets<StandardMaterial>>,
+) {
+    // let arm = meshes.add(Cuboid::new(0.1, 0.1, 0.5));
+    // let arm_material = materials.add(Color::from(tailwind::TEAL_200));
+
+    // // Player body
+    // let player_mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
+    // let player_material = materials.add(Color::srgb(0.2, 0.7, 1.0));
+
+    commands
+        .spawn((
+            Player,
+            Transform::from_xyz(0.0, 0.0, 10.0),
+            Visibility::default(),
+	    // RigidBody::KinematicPositionBased,
+        //     Collider::capsule_y(1.80, 0.3),
+	//     KinematicCharacterController {
+        //     offset: CharacterLength::Absolute(0.01),
+        //     autostep: Some(CharacterAutostep {
+        //         // Autostep if the step height is smaller than 0.1, and its width larger than 0.2.
+        //         max_height: CharacterLength::Absolute(0.1),
+        //         min_width: CharacterLength::Absolute(0.2),
+        //         include_dynamic_bodies: true,
+        //     }),
+        //     ..default()
+        // },
+        // Damping {
+        //     linear_damping: 2.0,
+        //     angular_damping: 100.0,
+        // },
+        ))
+        .with_children(|player| {
+            player
+                .spawn((
+                    Head::default(),
+                    Transform::from_xyz(0.0, 1.70, 0.0),
+                    Visibility::default(),
+                ))
+                .with_children(|head| {
+                    head.spawn((PlayerCamera, Camera3d::default(), Transform::default()));
+
+                    // head.spawn((
+                    //     Camera3d::default(),
+                    //     RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
+                    // ));
+                });
+        });
+
+    // commands.spawn((
+    //     Player,
+    //     // PlayerLook::default(),
+
+    //     // Player position and horizontal rotation.
+    //     Transform::from_xyz(0.0, 0.0, 10.0),
+    //     Visibility::default(),
+    //     children![
+    //         (
+    //             PlayerCamera,
+    //             Camera3d::default(),
+    //             CameraSensitivity::default(),
+    //             Transform::from_xyz(0.0, 2.0, 0.0),
+    //         ),
+    // // World camera
+    // (
+    //     WorldModelCamera,
+    //     Camera3d::default(),
+    //     Projection::from(PerspectiveProjection {
+    //         fov: 90.0_f32.to_radians(),
+    //         ..default()
+    //     }),
+    // ),
+
+    // View-model camera
+    // (
+    //     Camera3d::default(),
+    //     Camera {
+    //         order: 1,
+    //         ..default()
+    //     },
+    //     Projection::from(PerspectiveProjection {
+    //         fov: 70.0_f32.to_radians(),
+    //         ..default()
+    //     }),
+    //     RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
+    // ),
+
+    // // Player's arm
+    // (
+    //     Mesh3d(arm),
+    //     MeshMaterial3d(arm_material),
+    //     Transform::from_xyz(0.2, -0.1, -0.25),
+    //     RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
+    //     NotShadowCaster,
+    // ),
+
+    // // Optional player body mesh
+    // (
+    //     Mesh3d(player_mesh),
+    //     MeshMaterial3d(player_material),
+    // ),
+    //     ],
+    // ));
+}
+
+
+#[derive(Debug, Component)]
+struct PlayerCamera;
+
 
 fn player_look(
     accumulated_mouse_motion: Res<AccumulatedMouseMotion>,
     mut player: Single<&mut Transform, With<Player>>,
-    mut head: Single<(&mut Transform, &mut Head), Without<Player>>,
+    head: Single<(&mut Transform, &mut Head), Without<Player>>,
 ) {
     let delta = accumulated_mouse_motion.delta;
 
@@ -99,6 +210,8 @@ fn player_look(
 
     head_transform.rotation = Quat::from_rotation_x(head.pitch);
 }
+
+
 
 fn player_movement(
     keyboard: Res<ButtonInput<KeyCode>>,
@@ -143,95 +256,3 @@ fn player_movement(
     player.translation += direction * MOVE_SPEED * time.delta_secs();
 }
 
-#[derive(Debug, Component)]
-struct PlayerCamera;
-
-fn spawn_player(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
-    let arm = meshes.add(Cuboid::new(0.1, 0.1, 0.5));
-    let arm_material = materials.add(Color::from(tailwind::TEAL_200));
-
-    // Player body
-    let player_mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
-    let player_material = materials.add(Color::srgb(0.2, 0.7, 1.0));
-
-    commands
-        .spawn((
-            Player,
-            Transform::from_xyz(0.0, 1.0, 0.0),
-            Visibility::default(),
-        ))
-        .with_children(|player| {
-            player
-                .spawn((
-                    Head::default(),
-                    Transform::from_xyz(0.0, 0.7, 0.0),
-                    Visibility::default(),
-                ))
-                .with_children(|head| {
-                    head.spawn((
-                        PlayerCamera,
-                        Camera3d::default(),
-                        Transform::default(),
-                    ));
-                });
-        });
-
-    // commands.spawn((
-    //     Player,
-    //     // PlayerLook::default(),
-
-    //     // Player position and horizontal rotation.
-    //     Transform::from_xyz(0.0, 0.0, 10.0),
-    //     Visibility::default(),
-    //     children![
-    //         (
-    //             PlayerCamera,
-    //             Camera3d::default(),
-    //             CameraSensitivity::default(),
-    //             Transform::from_xyz(0.0, 2.0, 0.0),
-    //         ),
-            // // World camera
-            // (
-            //     WorldModelCamera,
-            //     Camera3d::default(),
-            //     Projection::from(PerspectiveProjection {
-            //         fov: 90.0_f32.to_radians(),
-            //         ..default()
-            //     }),
-            // ),
-
-            // View-model camera
-            // (
-            //     Camera3d::default(),
-            //     Camera {
-            //         order: 1,
-            //         ..default()
-            //     },
-            //     Projection::from(PerspectiveProjection {
-            //         fov: 70.0_f32.to_radians(),
-            //         ..default()
-            //     }),
-            //     RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
-            // ),
-
-            // // Player's arm
-            // (
-            //     Mesh3d(arm),
-            //     MeshMaterial3d(arm_material),
-            //     Transform::from_xyz(0.2, -0.1, -0.25),
-            //     RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
-            //     NotShadowCaster,
-            // ),
-
-            // // Optional player body mesh
-            // (
-            //     Mesh3d(player_mesh),
-            //     MeshMaterial3d(player_material),
-            // ),
-    //     ],
-    // ));
-}

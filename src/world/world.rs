@@ -22,7 +22,7 @@ pub struct WorldPlugin;
 
 impl Plugin for WorldPlugin {
     fn build(&self, app: &mut App) {
-        //app.add_plugins(RapierDebugRenderPlugin::default()); //activate gismo
+        app.add_plugins(RapierDebugRenderPlugin::default()); //activate gismo
         //app.add_plugins(ShootingTargetPlugin);
         // app.insert_resource(ClearColor(Color::srgb(
         //     226.0 / 255.0,
@@ -410,44 +410,44 @@ fn _spawn_mesh(
     ));
 }
 
-fn spawn_stairs(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut _materials: ResMut<Assets<StandardMaterial>>,
-    asset_server: Res<AssetServer>,
-) {
-    // Load the mesh from the GLB
-    let _mesh = meshes.add(Cuboid::new(2.0, 0.5, 1.0));
+// fn spawn_stairs(
+//     mut commands: Commands,
+//     mut meshes: ResMut<Assets<Mesh>>,
+//     mut _materials: ResMut<Assets<StandardMaterial>>,
+//     asset_server: Res<AssetServer>,
+// ) {
+//     // Load the mesh from the GLB
+//     let _mesh = meshes.add(Cuboid::new(2.0, 0.5, 1.0));
 
-    // commands.spawn((
-    //     Mesh3d(mesh.clone()),
-    //     MeshMaterial3d(materials.add(StandardMaterial {
-    //         base_color: Color::BLACK,
-    //         ..default()
-    //     })),
-    //     RigidBody::Fixed,
-    //     Collider::cuboid(2.0, 0.5, 1.0),
-    //     Transform::from_xyz(14.0, 0.0, 0.0),
-    // ));
+//     // commands.spawn((
+//     //     Mesh3d(mesh.clone()),
+//     //     MeshMaterial3d(materials.add(StandardMaterial {
+//     //         base_color: Color::BLACK,
+//     //         ..default()
+//     //     })),
+//     //     RigidBody::Fixed,
+//     //     Collider::cuboid(2.0, 0.5, 1.0),
+//     //     Transform::from_xyz(14.0, 0.0, 0.0),
+//     // ));
 
-    let origin = Vec3::new(0.0, 0.0, 15.0);
+//     let origin = Vec3::new(0.0, 0.0, 15.0);
 
-    commands.spawn((
-        //Mesh3d(asset_server.load("models/tutorial-texture-wood.glb#Mesh0/Primitive0")),
-        WorldAssetRoot(
-            asset_server.load(GltfAssetLabel::Scene(0).from_asset("models/Stairs-0001.glb")), // models/tutorial-texture-wood.glb
-        ),
-        //RigidBody::Fixed,
-        //Collider::cuboid(0.1, 0.2, 0.1),
-        Transform::from_translation(origin.clone()),
-    ));
+//     commands.spawn((
+//         //Mesh3d(asset_server.load("models/tutorial-texture-wood.glb#Mesh0/Primitive0")),
+//         WorldAssetRoot(
+//             asset_server.load(GltfAssetLabel::Scene(0).from_asset("models/Stairs-0001.glb")), // models/tutorial-texture-wood.glb
+//         ),
+//         //RigidBody::Fixed,
+//         //Collider::cuboid(0.1, 0.2, 0.1),
+//         Transform::from_translation(origin.clone()),
+//     ));
 
-    commands.spawn((
-        RigidBody::Fixed,
-        Collider::cuboid(1.0, 0.1, 1.0),
-        Transform::from_translation(origin.clone()),
-    ));
-}
+//     commands.spawn((
+//         RigidBody::Fixed,
+//         Collider::cuboid(1.0, 0.1, 1.0),
+//         Transform::from_translation(origin.clone()),
+//     ));
+// }
 
 // fn spawn_stair(
 //     mut commands: Commands,
@@ -540,80 +540,80 @@ fn _spawn_wall(
     ));
 }
 
-pub fn spawn_table(
-    commands: &mut Commands,
-    meshes: &mut Assets<Mesh>,
-    materials: &mut Assets<StandardMaterial>,
-    position: Vec3,
-) {
-    let depth = 0.1;
-    let thickness = 0.1;
-    let width = 3.0;
-    let mesh = meshes.add(Cuboid::new(width, thickness, depth));
+// pub fn spawn_table(
+//     commands: &mut Commands,
+//     meshes: &mut Assets<Mesh>,
+//     materials: &mut Assets<StandardMaterial>,
+//     position: Vec3,
+// ) {
+//     let depth = 0.1;
+//     let thickness = 0.1;
+//     let width = 3.0;
+//     let mesh = meshes.add(Cuboid::new(width, thickness, depth));
 
-    let material = materials.add(StandardMaterial {
-        base_color: Color::srgb(99.0 / 255.0, 73.0 / 255.0, 43.0 / 255.0),
-        ..default()
-    });
+//     let material = materials.add(StandardMaterial {
+//         base_color: Color::srgb(99.0 / 255.0, 73.0 / 255.0, 43.0 / 255.0),
+//         ..default()
+//     });
 
-    let leg_length = 1.0;
+//     let leg_length = 1.0;
 
-    let leg_mesh = meshes.add(Cuboid::new(depth, leg_length, depth));
+//     let leg_mesh = meshes.add(Cuboid::new(depth, leg_length, depth));
 
-    let top_pos = Vec3::new(
-        position.x,
-        position.y + leg_length + thickness / 2.0,
-        position.z,
-    );
+//     let top_pos = Vec3::new(
+//         position.x,
+//         position.y + leg_length + thickness / 2.0,
+//         position.z,
+//     );
 
-    //spawn top
-    commands.spawn((
-        Mesh3d(mesh.clone()),
-        MeshMaterial3d(material.clone()),
-        Transform::from_translation(top_pos),
-        RigidBody::Fixed,
-        Collider::cuboid(width / 2.0, thickness / 2.0, depth / 2.0),
-    ));
+//     //spawn top
+//     commands.spawn((
+//         Mesh3d(mesh.clone()),
+//         MeshMaterial3d(material.clone()),
+//         Transform::from_translation(top_pos),
+//         RigidBody::Fixed,
+//         Collider::cuboid(width / 2.0, thickness / 2.0, depth / 2.0),
+//     ));
 
-    //spawn middle
-    commands.spawn((
-        Mesh3d(mesh.clone()),
-        MeshMaterial3d(material.clone()),
-        Transform::from_translation(Vec3::new(
-            position.x,
-            position.y + leg_length / 2.0 + thickness,
-            position.z,
-        )),
-        RigidBody::Fixed,
-        Collider::cuboid(width / 2.0, thickness / 2.0, depth / 2.0),
-    ));
+//     //spawn middle
+//     commands.spawn((
+//         Mesh3d(mesh.clone()),
+//         MeshMaterial3d(material.clone()),
+//         Transform::from_translation(Vec3::new(
+//             position.x,
+//             position.y + leg_length / 2.0 + thickness,
+//             position.z,
+//         )),
+//         RigidBody::Fixed,
+//         Collider::cuboid(width / 2.0, thickness / 2.0, depth / 2.0),
+//     ));
 
-    //spawn one leg
-    commands.spawn((
-        Mesh3d(leg_mesh.clone()),
-        MeshMaterial3d(material.clone()),
-        Transform::from_translation(Vec3::new(
-            position.x + width / 2.0 + thickness / 2.0,
-            position.y + leg_length / 2.0 + thickness,
-            position.z,
-        )),
-        RigidBody::Fixed,
-        Collider::cuboid(depth / 2.0, leg_length / 2.0, depth / 2.0),
-    ));
+//     //spawn one leg
+//     commands.spawn((
+//         Mesh3d(leg_mesh.clone()),
+//         MeshMaterial3d(material.clone()),
+//         Transform::from_translation(Vec3::new(
+//             position.x + width / 2.0 + thickness / 2.0,
+//             position.y + leg_length / 2.0 + thickness,
+//             position.z,
+//         )),
+//         RigidBody::Fixed,
+//         Collider::cuboid(depth / 2.0, leg_length / 2.0, depth / 2.0),
+//     ));
 
-    //spawn the other leg
-    commands.spawn((
-        Mesh3d(leg_mesh.clone()),
-        MeshMaterial3d(material.clone()),
-        Transform::from_translation(Vec3::new(
-            position.x - width / 2.0 - thickness / 2.0,
-            position.y + leg_length / 2.0 + thickness,
-            position.z,
-        )),
-        RigidBody::Fixed,
-        Collider::cuboid(depth / 2.0, leg_length / 2.0, depth / 2.0),
-    ));
-}
+//     //spawn the other leg
+//     commands.spawn((
+//         Mesh3d(leg_mesh.clone()),
+//         MeshMaterial3d(material.clone()),
+//         Transform::from_translation(Vec3::new(
+//             position.x - width / 2.0 - thickness / 2.0,
+//             position.y + leg_length / 2.0 + thickness,
+//             position.z,
+//         )),
+//         RigidBody::Fixed,
+//         Collider::cuboid(depth / 2.0, leg_length / 2.0, depth / 2.0),
+//     ));
+// }
 
 /// Used implicitly by all entities without a `RenderLayers` component.
 /// Our world model camera and all objects other than the player are on this layer.
