@@ -42,7 +42,7 @@ use world::WorldPlugin;
 // use shootingtarget::ShootingTargetPlugin;
 
 const PLAYER_SPEED: f32 = 8.0;
-const PLAYER_SPRINTING_SPEED: f32 = 16.0;
+const PLAYER_SPRINTING_SPEED_OLD: f32 = 16.0;
 // const PLAYER_JUMP_SPEED: f32 = 3.0;
 const PLAYER_GRAVITY: f32 = 30.0;
 // const MOUSE_SENSITIVITY: f32 = 0.002;
@@ -547,7 +547,7 @@ fn get_move_speed(keyboard: &ButtonInput<KeyCode>) -> f32 {
     if keyboard.pressed(KeyCode::KeyW) && keyboard.pressed(KeyCode::ShiftLeft)
         || keyboard.pressed(KeyCode::ShiftRight)
     {
-        PLAYER_SPRINTING_SPEED
+        PLAYER_SPRINTING_SPEED_OLD
     } else {
         PLAYER_SPEED
     }

@@ -1,10 +1,10 @@
 use std::f32::consts::FRAC_PI_2;
 
-use bevy_rapier3d::prelude::*;
 use bevy::{
     camera::visibility::RenderLayers, color::palettes::tailwind,
     input::mouse::AccumulatedMouseMotion, light::NotShadowCaster, prelude::*,
 };
+use bevy_rapier3d::prelude::*;
 
 pub struct PlayerPlugin;
 
@@ -13,7 +13,7 @@ impl Plugin for PlayerPlugin {
         // Player systems
         app.add_systems(Startup, player_plugin_loaded);
         app.add_systems(Startup, spawn_player);
-        app.add_systems(Update, (player_look, player_movement));
+        app.add_systems(Update, (update_grounded, player_look, player_movement));
     }
 }
 
@@ -89,24 +89,29 @@ fn spawn_player(
     commands
         .spawn((
             Player,
-            Transform::from_xyz(0.0, 0.0, 10.0),
+            PlayerPhysicsController {
+                ..PlayerPhysicsController::default()
+            },
+            Transform::from_xyz(0.0, 1.0, 10.0),
             Visibility::default(),
-	    // RigidBody::KinematicPositionBased,
-        //     Collider::capsule_y(1.80, 0.3),
-	//     KinematicCharacterController {
-        //     offset: CharacterLength::Absolute(0.01),
-        //     autostep: Some(CharacterAutostep {
-        //         // Autostep if the step height is smaller than 0.1, and its width larger than 0.2.
-        //         max_height: CharacterLength::Absolute(0.1),
-        //         min_width: CharacterLength::Absolute(0.2),
-        //         include_dynamic_bodies: true,
-        //     }),
-        //     ..default()
-        // },
-        // Damping {
-        //     linear_damping: 2.0,
-        //     angular_damping: 100.0,
-        // },
+            RigidBody::KinematicPositionBased,
+            Collider::capsule_y(0.9, 0.3),
+            LockedAxes::ROTATION_LOCKED,
+            GravityScale(1.0),
+            KinematicCharacterController {
+                offset: CharacterLength::Absolute(0.01),
+                autostep: Some(CharacterAutostep {
+                    // Autostep if the step height is smaller than 0.1, and its width larger than 0.2.
+                    max_height: CharacterLength::Absolute(0.1),
+                    min_width: CharacterLength::Absolute(0.005),
+                    include_dynamic_bodies: true,
+                }),
+                ..default()
+            },
+            Damping {
+                linear_damping: 2.0,
+                angular_damping: 100.0,
+            },
         ))
         .with_children(|player| {
             player
@@ -181,10 +186,8 @@ fn spawn_player(
     // ));
 }
 
-
 #[derive(Debug, Component)]
 struct PlayerCamera;
-
 
 fn player_look(
     accumulated_mouse_motion: Res<AccumulatedMouseMotion>,
@@ -211,48 +214,260 @@ fn player_look(
     head_transform.rotation = Quat::from_rotation_x(head.pitch);
 }
 
+#[derive(Component)]
+pub struct PlayerPhysicsController {
+    pub velocity: Vec3,
+    pub isgrounded: bool,
+    // Time remaining in the jump/landing penalty.
+    jump_penalty_time: f32,
+}
 
+impl Default for PlayerPhysicsController {
+    fn default() -> Self {
+        Self {
+            velocity: Vec3::ZERO,
+            //vertical_velocity: 0.0,
+            isgrounded: false,
+            // Time remaining in the jump/landing penalty.
+            jump_penalty_time: 0.0,
+        }
+    }
+}
+
+// fn player_movement(
+//     keyboard: Res<ButtonInput<KeyCode>>,
+//     time: Res<Time>,
+//     mut query: Query<
+//         (
+//             &Transform,
+//             &mut KinematicCharacterController,
+//             &mut PlayerPhysicsController,
+//         ),
+//         With<Player>,
+//     >,
+// ) {
+//     let dt = time.delta_secs();
+//     for (transform, mut controller, mut player) in query.iter_mut() {
+//         let mut input = Vec3::ZERO;
+//         if keyboard.pressed(KeyCode::KeyW) {
+//             input.z -= 1.0;
+//         }
+//         if keyboard.pressed(KeyCode::KeyS) {
+//             input.z += 1.0;
+//         }
+//         if keyboard.pressed(KeyCode::KeyA) {
+//             input.x -= 1.0;
+//         }
+//         if keyboard.pressed(KeyCode::KeyD) {
+//             input.x += 1.0;
+//         }
+//         if input.length_squared() > 0.0 {
+//             input = input.normalize();
+//         }
+//         let mut wish_dir = transform.rotation * input;
+//         wish_dir.y = 0.0;
+//         if wish_dir.length_squared() > 0.0 {
+//             wish_dir = wish_dir.normalize();
+//         }
+//         controller.translation = Some(player.velocity * dt);
+//     }
+
+// }
+
+// this need in system
+fn update_grounded(
+    mut query: Query<(
+        &mut PlayerPhysicsController,
+        &KinematicCharacterControllerOutput,
+    )>,
+) {
+    for (mut player, output) in query.iter_mut() {
+        player.isgrounded = output.grounded;
+    }
+}
+
+const PLAYER_SPEED: f32 = 10.0;
+const PLAYER_GRAVITY: f32 = 30.0;
+const PLAYER_SPRINTING_SPEED: f32 = 20.0;
+// Ground acceleration.
+// Higher = reaches max speed faster.
+const GROUND_ACCEL: f32 = 18.0;
+// Air acceleration.
+// Lower than ground acceleration gives you reduced air control.
+const AIR_ACCEL: f32 = 10.0;
+// Jump height in world units.
+const JUMP_HEIGHT: f32 = 1.0;
+
+// Add jump penalty
+const JUMP_PENALTY_DURATION: f32 = 0.6;
+const JUMP_SLOWDOWN_SPEED: f32 = 0.5;
+const JUMP_LAND_SLOWDOWN_TIME: f32 = 1.7;
+const JUMP_REJUMP_FACTOR: f32 = 2.5;
+
+fn accelerate(velocity: &mut Vec3, wish_dir: Vec3, wish_speed: f32, acceleration: f32, dt: f32) {
+    if wish_dir == Vec3::ZERO || wish_speed <= 0.0 {
+        return;
+    }
+    // Velocity in the direction the player wants to move.
+    let current_speed = velocity.dot(wish_dir);
+    // How much more speed we need.
+    let add_speed = wish_speed - current_speed;
+    if add_speed <= 0.0 {
+        return;
+    }
+    // Amount of acceleration this frame.
+    let accel_speed = acceleration * dt * wish_speed;
+    let accel_speed = accel_speed.min(add_speed);
+    *velocity += wish_dir * accel_speed;
+}
+
+fn friction(velocity: &mut Vec3, friction: f32, stop_speed: f32, dt: f32) {
+    let speed = Vec2::new(velocity.x, velocity.z).length();
+
+    if speed < 0.001 {
+        velocity.x = 0.0;
+        velocity.z = 0.0;
+        return;
+    }
+
+    let control = speed.max(stop_speed);
+    let drop = control * friction * dt;
+
+    let new_speed = (speed - drop).max(0.0);
+    let scale = new_speed / speed;
+
+    velocity.x *= scale;
+    velocity.z *= scale;
+}
+
+fn walk_move(velocity: &mut Vec3, wish_dir: Vec3, wish_speed: f32, dt: f32) {
+    friction(velocity, 15.0, 3.0, dt);
+    // Ground movement accelerates quickly toward the desired speed.
+    accelerate(velocity, wish_dir, wish_speed, GROUND_ACCEL, dt);
+    // Ground movement should not accumulate vertical velocity.
+    //
+    // We only remove downward velocity here. This prevents a small
+    // downward velocity from making the player fall through the floor.
+    if velocity.y < 0.0 {
+        velocity.y = 0.0;
+    }
+}
+
+fn air_move(velocity: &mut Vec3, wish_dir: Vec3, wish_speed: f32, dt: f32) {
+    // Air acceleration is deliberately weaker than ground acceleration.
+    accelerate(velocity, wish_dir, wish_speed, AIR_ACCEL, dt);
+}
+
+fn get_jump_land_factor(jump_penalty_time: f32) -> f32 {
+    if jump_penalty_time <= 0.0 {
+        return 1.0;
+    }
+
+    let elapsed = JUMP_PENALTY_DURATION - jump_penalty_time;
+
+    if elapsed >= JUMP_LAND_SLOWDOWN_TIME {
+        JUMP_REJUMP_FACTOR
+    } else {
+        elapsed * 1.5 / JUMP_LAND_SLOWDOWN_TIME + 1.0
+    }
+}
+
+fn check_jump(player: &mut PlayerPhysicsController, keyboard: &ButtonInput<KeyCode>) {
+    if !player.isgrounded {
+        return;
+    }
+
+    if !keyboard.just_pressed(KeyCode::Space) {
+        return;
+    }
+
+    let normal_velocity = (2.0 * PLAYER_GRAVITY * JUMP_HEIGHT).sqrt();
+
+    let land_factor = get_jump_land_factor(player.jump_penalty_time);
+
+    player.velocity.y = normal_velocity / land_factor.sqrt();
+
+    player.isgrounded = false;
+    player.jump_penalty_time = JUMP_PENALTY_DURATION;
+}
+
+fn get_move_speed(keyboard: &ButtonInput<KeyCode>) -> f32 {
+    // if keyboard.pressed(MouseButton::Left) {
+    // 	PLAYER_SPEED
+    // }
+
+    if keyboard.pressed(KeyCode::KeyW) && keyboard.pressed(KeyCode::ShiftLeft)
+        || keyboard.pressed(KeyCode::ShiftRight)
+    {
+        PLAYER_SPRINTING_SPEED
+    } else {
+        PLAYER_SPEED
+    }
+}
 
 fn player_movement(
     keyboard: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
-    mut player: Single<&mut Transform, With<Player>>,
+    mut query: Query<(
+        &Transform,
+        &mut KinematicCharacterController,
+        &mut PlayerPhysicsController,
+    )>,
 ) {
-    let mut input = Vec2::ZERO;
+    let dt = time.delta_secs();
 
-    if keyboard.pressed(KeyCode::KeyW) {
-        input.y += 1.0;
+    for (transform, mut controller, mut player) in query.iter_mut() {
+        let mut input = Vec3::ZERO;
+        if keyboard.pressed(KeyCode::KeyW) {
+            input.z -= 1.0;
+        }
+        if keyboard.pressed(KeyCode::KeyS) {
+            input.z += 1.0;
+        }
+        if keyboard.pressed(KeyCode::KeyA) {
+            input.x -= 1.0;
+        }
+        if keyboard.pressed(KeyCode::KeyD) {
+            input.x += 1.0;
+        }
+        if input.length_squared() > 0.0 {
+            input = input.normalize();
+        }
+        let mut wish_dir = transform.rotation * input;
+        wish_dir.y = 0.0;
+        if wish_dir.length_squared() > 0.0 {
+            wish_dir = wish_dir.normalize();
+        }
+
+        // Handle Player Jump
+        check_jump(&mut player, &keyboard);
+
+        player.jump_penalty_time = (player.jump_penalty_time - dt).max(0.0);
+
+        // Calculate jump penalty
+        let penalty_scale = if player.jump_penalty_time > 0.0 {
+            JUMP_SLOWDOWN_SPEED
+        } else {
+            1.0
+        };
+
+        let wish_speed = if wish_dir != Vec3::ZERO {
+            get_move_speed(&keyboard) * penalty_scale
+        } else {
+            0.0
+        };
+        // let wish_speed = if wish_dir != Vec3::ZERO {
+        //     get_move_speed(&keyboard)
+        // } else {
+        //     0.0
+        // };
+
+        if player.isgrounded {
+            walk_move(&mut player.velocity, wish_dir, wish_speed, dt);
+        } else {
+            air_move(&mut player.velocity, wish_dir, wish_speed, dt);
+            player.velocity.y -= PLAYER_GRAVITY * dt;
+        }
+        controller.translation = Some(player.velocity * dt);
     }
-
-    if keyboard.pressed(KeyCode::KeyS) {
-        input.y -= 1.0;
-    }
-
-    if keyboard.pressed(KeyCode::KeyA) {
-        input.x -= 1.0;
-    }
-
-    if keyboard.pressed(KeyCode::KeyD) {
-        input.x += 1.0;
-    }
-
-    if input == Vec2::ZERO {
-        return;
-    }
-
-    // Prevent diagonal movement from being faster.
-    let input = input.normalize();
-
-    // Player handles yaw, so its forward/right vectors are
-    // exactly what we want for horizontal movement.
-    let forward = player.forward();
-    let right = player.right();
-
-    let forward = Vec3::new(forward.x, 0.0, forward.z).normalize();
-    let right = Vec3::new(right.x, 0.0, right.z).normalize();
-
-    let direction = right * input.x + forward * input.y;
-
-    player.translation += direction * MOVE_SPEED * time.delta_secs();
 }
-
