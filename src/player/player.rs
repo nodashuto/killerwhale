@@ -24,7 +24,7 @@ fn player_plugin_loaded() {
 #[derive(Component)]
 struct Player;
 
-const MOVE_SPEED: f32 = 8.0;
+
 const MOUSE_SENSITIVITY: f32 = 0.001;
 
 #[derive(Debug, Component, Deref, DerefMut)]
@@ -286,9 +286,9 @@ fn update_grounded(
     }
 }
 
-const PLAYER_SPEED: f32 = 10.0;
-const PLAYER_GRAVITY: f32 = 30.0;
-const PLAYER_SPRINTING_SPEED: f32 = 20.0;
+const PLAYER_SPEED: f32 = 8.0;
+const PLAYER_GRAVITY: f32 = 20.32;
+const PLAYER_SPRINTING_SPEED: f32 = 14.0;
 // Ground acceleration.
 // Higher = reaches max speed faster.
 const GROUND_ACCEL: f32 = 18.0;
@@ -341,7 +341,7 @@ fn friction(velocity: &mut Vec3, friction: f32, stop_speed: f32, dt: f32) {
 }
 
 fn walk_move(velocity: &mut Vec3, wish_dir: Vec3, wish_speed: f32, dt: f32) {
-    friction(velocity, 15.0, 3.0, dt);
+    friction(velocity, 6.0, 2.0, dt);
     // Ground movement accelerates quickly toward the desired speed.
     accelerate(velocity, wish_dir, wish_speed, GROUND_ACCEL, dt);
     // Ground movement should not accumulate vertical velocity.
