@@ -311,10 +311,10 @@ struct MapAsset {
 }
 
 fn load_map(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let mesh = asset_server.load::<Mesh>("models/map-0003.glb#Mesh0/Primitive0");
+    let mesh = asset_server.load::<Mesh>("maps/mp-0001.glb#Mesh0/Primitive0");
 
     let scene =
-        asset_server.load::<WorldAsset>(GltfAssetLabel::Scene(0).from_asset("models/map-0003.glb"));
+        asset_server.load::<WorldAsset>(GltfAssetLabel::Scene(0).from_asset("maps/mp-0001.glb"));
 
     commands.insert_resource(MapAsset {
         mesh,

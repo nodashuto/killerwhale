@@ -92,10 +92,10 @@ fn spawn_player(
             PlayerPhysicsController {
                 ..PlayerPhysicsController::default()
             },
-            Transform::from_xyz(0.0, 1.0, 10.0),
+            Transform::from_xyz(0.0, 10.0, 10.0),
             Visibility::default(),
             RigidBody::KinematicPositionBased,
-            Collider::capsule_y(0.9, 0.3),
+            Collider::capsule_y(0.51, 0.40), // half height + radius = 0.91
             LockedAxes::ROTATION_LOCKED,
             GravityScale(1.0),
             KinematicCharacterController {
@@ -103,7 +103,7 @@ fn spawn_player(
                 autostep: Some(CharacterAutostep {
                     // Autostep if the step height is smaller than 0.1, and its width larger than 0.2.
                     max_height: CharacterLength::Absolute(0.1),
-                    min_width: CharacterLength::Absolute(0.005),
+                    min_width: CharacterLength::Absolute(0.5),
                     include_dynamic_bodies: true,
                 }),
                 ..default()
@@ -117,7 +117,7 @@ fn spawn_player(
             player
                 .spawn((
                     Head::default(),
-                    Transform::from_xyz(0.0, 1.40, 0.0),
+                    Transform::from_xyz(0.0, 1.3, 0.1),
                     Visibility::default(),
                 ))
                 .with_children(|head| {
@@ -202,10 +202,10 @@ fn player_look(
 
     let (mut head_transform, mut head) = head.into_inner();
 
-    // Player = yaw
+    // Player = yaw (left right)
     player.rotate_y(-delta.x * MOUSE_SENSITIVITY);
 
-    // Head = pitch
+    // Head = pitch (up down)
     head.pitch -= delta.y * MOUSE_SENSITIVITY;
 
     const PITCH_LIMIT: f32 = FRAC_PI_2 - 0.01;
