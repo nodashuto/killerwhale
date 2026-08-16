@@ -6,6 +6,8 @@ use bevy::{
 };
 use bevy_rapier3d::prelude::*;
 
+use crate::weapon::weapon::Weapon;
+
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
@@ -22,8 +24,7 @@ fn player_plugin_loaded() {
 }
 
 #[derive(Component)]
-struct Player;
-
+pub struct Player;
 
 const MOUSE_SENSITIVITY: f32 = 0.001;
 
@@ -77,7 +78,8 @@ impl Default for Head {
 fn spawn_player(
     mut commands: Commands,
     mut _meshes: ResMut<Assets<Mesh>>,
-    mut _materials: ResMut<Assets<StandardMaterial>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
 ) {
     // let arm = meshes.add(Cuboid::new(0.1, 0.1, 0.5));
     // let arm_material = materials.add(Color::from(tailwind::TEAL_200));
@@ -86,13 +88,20 @@ fn spawn_player(
     // let player_mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
     // let player_material = materials.add(Color::srgb(0.2, 0.7, 1.0));
 
+    let gun_mesh = asset_server.load("models/20260812-glock17-viewmodel.glb#Mesh0/Primitive0");
+    let gun_material = materials.add(StandardMaterial {
+        base_color: Color::BLACK,
+        metallic: 0.1,
+        ..default()
+    });
+
     commands
         .spawn((
             Player,
             PlayerPhysicsController {
                 ..PlayerPhysicsController::default()
             },
-            Transform::from_xyz(0.0, 10.0, 10.0),
+            Transform::from_xyz(0.0, 10.0, 0.0),
             Visibility::default(),
             RigidBody::KinematicPositionBased,
             Collider::capsule_y(0.51, 0.40), // half height + radius = 0.91
@@ -117,12 +126,56 @@ fn spawn_player(
             player
                 .spawn((
                     Head::default(),
-                    Transform::from_xyz(0.0, 1.3, 0.1),
+                    Transform::from_xyz(0.0, 1.35, 0.1),
                     Visibility::default(),
                 ))
                 .with_children(|head| {
-                    head.spawn((PlayerCamera, Camera3d::default(), Transform::default()));
-
+                    head.spawn((
+                        PlayerCamera,
+                        Camera3d::default(),
+                        Camera {
+                            order: 0,
+                            ..default()
+                        },
+			RenderLayers::layer(DEFAULT_RENDER_LAYER),
+                        Transform::default(),
+                    ))
+                    .with_children(|camera| {
+                        // View-model camera
+                        camera
+                            .spawn((
+                                Camera3d::default(),
+                                Camera {
+                                    order: 1,
+                                    ..default()
+                                },
+                                RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
+                                Transform::default(),
+                            ))
+                            .with_children(|view_camera| {
+                                view_camera.spawn((
+                                    Weapon {
+                                        name: "Pistol",
+                                        damage: 25.0,
+                                        range: 30.0,
+                                    },
+				    RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
+                                    //WeaponViewModel,
+                                    //SceneRoot(pistol_scene.clone()),
+                                    //Transform::from_xyz(0.3, -0.2, -0.5),
+                                    Mesh3d(gun_mesh),
+                                    MeshMaterial3d(gun_material),
+                                    //transform::from_xyz(0.2, -0.1, -0.25),
+                                    Transform {
+                                        translation: Vec3::new(0.5, 0.3, -1.5),
+                                        //translation: Vec3::new(0.0, 0.0, 0.0),
+                                        rotation: Quat::from_rotation_y(std::f32::consts::PI),
+                                        //scale: Vec3::new(0.1, 0.1, 0.1),
+                                        scale: Vec3::new(0.3, 0.3, 0.3),
+                                    },
+                                ));
+                            });
+                    });
                     // head.spawn((
                     //     Camera3d::default(),
                     //     RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
@@ -187,7 +240,7 @@ fn spawn_player(
 }
 
 #[derive(Debug, Component)]
-struct PlayerCamera;
+pub struct PlayerCamera;
 
 fn player_look(
     accumulated_mouse_motion: Res<AccumulatedMouseMotion>,
