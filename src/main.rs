@@ -31,9 +31,11 @@ pub mod shootingtarget;
 
 mod player;
 mod world;
+mod weapon;
 
 use player::PlayerPlugin;
 use world::WorldPlugin;
+use weapon::WeaponPlugin;
 
 //use first_person_character::FirstPersonCharacterPlugin;
 
@@ -77,6 +79,7 @@ fn main() {
         .init_resource::<SoundEffect>() // for sound effect
         .add_plugins(WorldPlugin)
         .add_plugins(PlayerPlugin)
+        .add_plugins(WeaponPlugin)
         .add_plugins(FpsOverlayPlugin {
             config: FpsOverlayConfig {
                 text_config: TextFont {

@@ -1,36 +1,52 @@
 use bevy::prelude::*;
 
-#[derive(Asset, TypePath, Debug)]
-pub struct WeaponDefinition {
-    pub name: String,
-    pub damage: f32,
-    pub fire_rate: f32,
-    pub magazine_size: u32,
 
-    pub behavior: WeaponBehavior,
-    pub projectile: Option<Handle<ProjectileDefinition>>,
+pub struct WeaponPlugin;
+
+impl Plugin for WeaponPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Startup, print_plugin_loaded);        
+    }
 }
 
-#[derive(Debug, Clone)]
-pub enum WeaponBehavior {
-    Melee {
-        range: f32,
-    },
-    Hitscan {
-        range: f32,
-    },
-    Projectile {
-        speed: f32,
-    },
+
+
+fn print_plugin_loaded() {
+    println!("weapon plugin is loaded");
 }
 
-#[derive(Component)]
-pub enum WeaponState {
-    Idle,
-    Firing,
-    Reloading,
-    Charging { progress: f32 },
-}
+
+// #[derive(Asset, TypePath, Debug)]
+// pub struct WeaponDefinition {
+//     pub name: String,
+//     pub damage: f32,
+//     pub fire_rate: f32,
+//     pub magazine_size: u32,
+
+//     pub behavior: WeaponBehavior,
+//     pub projectile: Option<Handle<ProjectileDefinition>>,
+// }
+
+// #[derive(Debug, Clone)]
+// pub enum WeaponBehavior {
+//     Melee {
+//         range: f32,
+//     },
+//     Hitscan {
+//         range: f32,
+//     },
+//     Projectile {
+//         speed: f32,
+//     },
+// }
+
+// #[derive(Component)]
+// pub enum WeaponState {
+//     Idle,
+//     Firing,
+//     Reloading,
+//     Charging { progress: f32 },
+// }
 
 // fn weapon_attack_system(
 //     time: Res<Time>,
@@ -69,27 +85,27 @@ pub enum WeaponState {
 //     }
 // }
 
-enum WEAP {
-    NUM_WEAP_ANIMS = 32,
-    WEAP_ANIM_ADS_UP = 32,
-    WEAP_ANIM_ADS_DOWN = 31,
-}
+// enum WEAP {
+//     NUM_WEAP_ANIMS = 32,
+//     WEAP_ANIM_ADS_UP = 32,
+//     WEAP_ANIM_ADS_DOWN = 31,
+// }
 
-fn UpdateWeaponViewmodels() {
+// fn UpdateWeaponViewmodels() {
     
-}
+// }
 
-fn UpdateHandViewmodels() {
+// fn UpdateHandViewmodels() {
     
-}
+// }
 
 
-// Hit-scan 
-fn BulletFire() {
+// // Hit-scan 
+// fn BulletFire() {
     
-}
+// }
 
 
-fn fireweapon () {
+// fn fireweapon () {
     
-}
+// }

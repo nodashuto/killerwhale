@@ -117,7 +117,7 @@ fn spawn_player(
             player
                 .spawn((
                     Head::default(),
-                    Transform::from_xyz(0.0, 1.70, 0.0),
+                    Transform::from_xyz(0.0, 1.40, 0.0),
                     Visibility::default(),
                 ))
                 .with_children(|head| {
@@ -286,9 +286,9 @@ fn update_grounded(
     }
 }
 
-const PLAYER_SPEED: f32 = 8.0;
-const PLAYER_GRAVITY: f32 = 20.32;
-const PLAYER_SPRINTING_SPEED: f32 = 14.0;
+const PLAYER_SPEED: f32 = 10.0;
+const PLAYER_GRAVITY: f32 = 50.0;
+const PLAYER_SPRINTING_SPEED: f32 = 15.0;
 // Ground acceleration.
 // Higher = reaches max speed faster.
 const GROUND_ACCEL: f32 = 18.0;
@@ -296,7 +296,7 @@ const GROUND_ACCEL: f32 = 18.0;
 // Lower than ground acceleration gives you reduced air control.
 const AIR_ACCEL: f32 = 10.0;
 // Jump height in world units.
-const JUMP_HEIGHT: f32 = 1.0;
+const JUMP_HEIGHT: f32 = 1.8;
 
 // Add jump penalty
 const JUMP_PENALTY_DURATION: f32 = 0.6;
@@ -341,7 +341,7 @@ fn friction(velocity: &mut Vec3, friction: f32, stop_speed: f32, dt: f32) {
 }
 
 fn walk_move(velocity: &mut Vec3, wish_dir: Vec3, wish_speed: f32, dt: f32) {
-    friction(velocity, 6.0, 2.0, dt);
+    friction(velocity, 20.0, 1.0, dt);
     // Ground movement accelerates quickly toward the desired speed.
     accelerate(velocity, wish_dir, wish_speed, GROUND_ACCEL, dt);
     // Ground movement should not accumulate vertical velocity.
