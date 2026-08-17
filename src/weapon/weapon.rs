@@ -9,7 +9,8 @@ pub struct WeaponPlugin;
 impl Plugin for WeaponPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, print_plugin_loaded);
-        app.add_systems(Update, fire_weapon);
+        app.add_systems(Update, weapon_ads)
+            .add_systems(Update, fire_weapon);
     }
 }
 
@@ -18,13 +19,30 @@ fn print_plugin_loaded() {
     println!("weapon plugin is loaded");
 }
 
-/// stores weapon name, damage
+// /// stores weapon name, damage
+// #[derive(Component, Debug)]
+// pub struct Weapon {
+//     // the name never changes
+//     pub name: &'static str,
+//     pub damage: f32,
+//     pub range: f32,
+// }
+
 #[derive(Component, Debug)]
 pub struct Weapon {
-    // the name never changes
     pub name: &'static str,
     pub damage: f32,
     pub range: f32,
+
+    pub hip_position: Vec3,
+    pub ads_position: Vec3,
+}
+
+#[derive(Component, Debug, Default)]
+pub struct WeaponAds {
+    /// 0.0 = hip
+    /// 1.0 = fully ADS
+    pub progress: f32,
 }
 
 #[derive(Debug)]
@@ -99,6 +117,41 @@ fn fire_weapon(
         } else {
             println!("{} missed", weapon.name);
         }
+    }
+}
+
+// for ADS animation
+fn weapon_ads(
+    time: Res<Time>,
+    buttons: Res<ButtonInput<MouseButton>>,
+    mut query: Query<(&mut Transform, &Weapon, &mut WeaponAds)>,
+) {
+    for (mut transform, weapon, mut ads) in &mut query {
+        let target = if buttons.pressed(MouseButton::Right) {
+            1.0
+        } else {
+            0.0
+        };
+
+        let ads_speed = 8.0;
+
+        ads.progress = move_toward(ads.progress, target, ads_speed * time.delta_secs());
+
+        // Smoothstep easing
+        let t = ads.progress;
+        let t = t * t * (3.0 - 2.0 * t);
+
+        transform.translation = weapon.hip_position.lerp(weapon.ads_position, t);
+    }
+}
+
+fn move_toward(current: f32, target: f32, max_delta: f32) -> f32 {
+    let delta = target - current;
+
+    if delta.abs() <= max_delta {
+        target
+    } else {
+        current + delta.signum() * max_delta
     }
 }
 

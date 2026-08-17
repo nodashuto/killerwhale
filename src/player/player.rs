@@ -7,6 +7,7 @@ use bevy::{
 use bevy_rapier3d::prelude::*;
 
 use crate::weapon::weapon::Weapon;
+use crate::weapon::weapon::WeaponAds;
 
 pub struct PlayerPlugin;
 
@@ -137,7 +138,7 @@ fn spawn_player(
                             order: 0,
                             ..default()
                         },
-			RenderLayers::layer(DEFAULT_RENDER_LAYER),
+                        RenderLayers::layer(DEFAULT_RENDER_LAYER),
                         Transform::default(),
                     ))
                     .with_children(|camera| {
@@ -155,11 +156,15 @@ fn spawn_player(
                             .with_children(|view_camera| {
                                 view_camera.spawn((
                                     Weapon {
-                                        name: "Pistol",
-                                        damage: 25.0,
-                                        range: 30.0,
+                                        name: "Rifle",
+                                        damage: 30.0,
+                                        range: 100.0,
+
+                                        hip_position: Vec3::new(0.9, 0.1, -1.5),
+                                        ads_position: Vec3::new(0.0, 0.35, -1.6),
                                     },
-				    RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
+				    WeaponAds::default(),
+                                    RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
                                     //WeaponViewModel,
                                     //SceneRoot(pistol_scene.clone()),
                                     //Transform::from_xyz(0.3, -0.2, -0.5),
@@ -167,8 +172,8 @@ fn spawn_player(
                                     MeshMaterial3d(gun_material),
                                     //transform::from_xyz(0.2, -0.1, -0.25),
                                     Transform {
-                                        translation: Vec3::new(0.5, 0.3, -1.5),
-                                        //translation: Vec3::new(0.0, 0.0, 0.0),
+                                        //translation: Vec3::new(0.5, 0.3, -1.5),
+                                        translation: Vec3::new(0.0, 0.0, 0.0),
                                         rotation: Quat::from_rotation_y(std::f32::consts::PI),
                                         //scale: Vec3::new(0.1, 0.1, 0.1),
                                         scale: Vec3::new(0.3, 0.3, 0.3),
