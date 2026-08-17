@@ -6,9 +6,11 @@ use bevy::{
 };
 use bevy_rapier3d::prelude::*;
 
+use crate::weapon::weapon::MuzzleFlash;
 use crate::weapon::weapon::Weapon;
 use crate::weapon::weapon::WeaponAds;
 use crate::weapon::weapon::WeaponMuzzle;
+use crate::weapon::weapon::MuzzleFlashLight;
 
 pub struct PlayerPlugin;
 
@@ -79,7 +81,7 @@ impl Default for Head {
 
 fn spawn_player(
     mut commands: Commands,
-    mut _meshes: ResMut<Assets<Mesh>>,
+    mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     asset_server: Res<AssetServer>,
 ) {
@@ -130,6 +132,7 @@ fn spawn_player(
                     Head::default(),
                     Transform::from_xyz(0.0, 1.35, 0.1),
                     Visibility::default(),
+                    InheritedVisibility::default(),
                 ))
                 .with_children(|head| {
                     head.spawn((
@@ -141,6 +144,7 @@ fn spawn_player(
                         },
                         RenderLayers::layer(DEFAULT_RENDER_LAYER),
                         Transform::default(),
+                        InheritedVisibility::default(),
                     ))
                     .with_children(|camera| {
                         // View-model camera
@@ -153,6 +157,7 @@ fn spawn_player(
                                 },
                                 RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
                                 Transform::default(),
+                                InheritedVisibility::default(),
                             ))
                             .with_children(|view_camera| {
                                 view_camera.spawn((
@@ -182,15 +187,42 @@ fn spawn_player(
                                 ));
 
                                 // Muzzle position
-                                view_camera.spawn((
-                                    WeaponMuzzle {
-                                        hip_position: Vec3::new(1.0, -0.4, -2.0),
-                                        ads_position: Vec3::new(0.0, -0.02, -2.5),
-                                        progress: 0.0,
-                                    },
-                                    Transform::from_xyz(0.0, 0.0, -0.8),
-                                    GlobalTransform::default(),
-                                ));
+                                view_camera
+                                    .spawn((
+                                        WeaponMuzzle {
+                                            hip_position: Vec3::new(0.62, -0.28, -2.0),
+                                            ads_position: Vec3::new(0.0, -0.02, -2.5),
+                                            progress: 0.0,
+                                        },
+                                        Transform::from_xyz(0.0, 0.0, -0.8),
+                                        GlobalTransform::default(),
+                                        Visibility::default(),
+                                        InheritedVisibility::default(),
+                                    ))
+                                    .with_children(|muzzle| {
+                                        muzzle.spawn((
+                                            MuzzleFlashLight,
+                                            PointLight {
+                                                intensity: 4000.0,
+                                                range: 50.0,
+                                                color: Color::srgb(1.0, 0.4, 0.05),
+                                                shadow_maps_enabled: true,
+                                                ..default()
+                                            },
+                                            MuzzleFlash {
+                                                timer: Timer::from_seconds(0.01, TimerMode::Once),
+                                            },
+                                            Mesh3d(meshes.add(Sphere::new(0.05))),
+                                            MeshMaterial3d(materials.add(StandardMaterial {
+                                                base_color: Color::srgba(1.0, 0.5, 0.0, 0.1),
+                                                emissive: LinearRgba::new(1.0, 0.5, 0.0, 0.1),
+                                                unlit: true,
+                                                ..default()
+                                            })),
+                                            Transform::default(),
+                                            Visibility::Hidden,
+                                        ));
+                                    });
                             });
                     });
                     // head.spawn((

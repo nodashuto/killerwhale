@@ -9,7 +9,10 @@ pub struct WeaponPlugin;
 impl Plugin for WeaponPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, print_plugin_loaded);
-        app.add_systems(Update, (weapon_ads, fire_weapon, update_tracers));
+        app.add_systems(
+            Update,
+            (weapon_ads, fire_weapon, update_tracers, update_muzzle_flash),
+        );
     }
 }
 
@@ -52,6 +55,14 @@ pub struct WeaponMuzzle {
     /// 0.0 = hip
     /// 1.0 = ADS
     pub progress: f32,
+}
+
+#[derive(Component)]
+pub struct MuzzleFlashLight;
+
+#[derive(Component)]
+pub struct MuzzleFlash {
+    pub timer: Timer,
 }
 
 #[derive(Debug)]
@@ -125,6 +136,8 @@ fn fire_weapon(
     player_query: Query<Entity, With<Player>>,
     weapon_query: Query<&Weapon>,
     muzzle_query: Query<&GlobalTransform, With<WeaponMuzzle>>,
+    mut flash_query: Query<&mut MuzzleFlash>,
+    mut light_query: Query<&mut Visibility, With<MuzzleFlashLight>>,
 
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -149,18 +162,10 @@ fn fire_weapon(
     };
 
     let end_position =
-        if let Some(hit) = bullet_fire(
-            &ctx,
-            origin,
-            *direction,
-            weapon.range,
-            player_entity,
-        ) {
+        if let Some(hit) = bullet_fire(&ctx, origin, *direction, weapon.range, player_entity) {
             println!(
                 "{} hit {:?} for {} damage",
-                weapon.name,
-                hit.entity,
-                weapon.damage
+                weapon.name, hit.entity, weapon.damage
             );
 
             hit.position
@@ -170,43 +175,46 @@ fn fire_weapon(
             origin + *direction * weapon.range
         };
 
-    let color = Srgba::rgb(0.5, 0.5, 0.5);
+    // --------------------------------------------------------
+    // MUZZLE FLASH
+    // --------------------------------------------------------
 
-    let linear_color: LinearRgba = color.into();
+    if let Ok(mut flash) = flash_query.single_mut() {
+        flash.timer.reset();
+    }
+
+    for mut visibility in &mut light_query {
+        *visibility = Visibility::Visible;
+    }
+
+    // let color = Srgba::rgb(0.5, 0.5, 0.5);
+
+    // let linear_color: LinearRgba = color.into();
+
+    // --------------------------------------------------------
+    // TRACER
+    // --------------------------------------------------------
 
     // Tracer starts at the actual gun muzzle.
     commands.spawn((
-        Mesh3d(meshes.add(Cuboid::from_size(
-            Vec3::new(0.04, 0.04, 0.5),
-        ))),
+        Mesh3d(meshes.add(Cuboid::from_size(Vec3::new(0.02, 0.02, 0.25)))),
         MeshMaterial3d(materials.add(StandardMaterial {
             //base_color: Color::srgb( 110.0 / 255.0 , 56.0 / 255.0,  200.0/255.0),
-	    base_color: Color::srgb(1.0, 0.75, 0.0),
-	    emissive: LinearRgba::new(1.0, 0.75, 0.0, 1.0),
+            base_color: Color::srgb(1.0, 0.75, 0.0),
+            emissive: LinearRgba::new(1.0, 0.75, 0.0, 10.0),
             ..default()
         })),
         Transform::from_translation(muzzle_position),
-        BulletTracer::new(
-            muzzle_position,
-            end_position,
-            100.0,
-        ),
+        BulletTracer::new(muzzle_position, end_position, 150.0),
     ));
 }
-
 
 // for ADS animation
 fn weapon_ads(
     time: Res<Time>,
     buttons: Res<ButtonInput<MouseButton>>,
-    mut weapon_query: Query<
-        (&mut Transform, &Weapon, &mut WeaponAds),
-        Without<WeaponMuzzle>,
-    >,
-    mut muzzle_query: Query<
-        (&mut Transform, &mut WeaponMuzzle),
-        With<WeaponMuzzle>,
-    >,
+    mut weapon_query: Query<(&mut Transform, &Weapon, &mut WeaponAds), Without<WeaponMuzzle>>,
+    mut muzzle_query: Query<(&mut Transform, &mut WeaponMuzzle), With<WeaponMuzzle>>,
 ) {
     let target = if buttons.pressed(MouseButton::Right) {
         1.0
@@ -221,17 +229,12 @@ fn weapon_ads(
     // -------------------------
 
     for (mut transform, weapon, mut ads) in &mut weapon_query {
-        ads.progress = move_toward(
-            ads.progress,
-            target,
-            ads_speed * time.delta_secs(),
-        );
+        ads.progress = move_toward(ads.progress, target, ads_speed * time.delta_secs());
 
         let t = ads.progress;
         let t = t * t * (3.0 - 2.0 * t);
 
-        transform.translation =
-            weapon.hip_position.lerp(weapon.ads_position, t);
+        transform.translation = weapon.hip_position.lerp(weapon.ads_position, t);
     }
 
     // -------------------------
@@ -239,17 +242,12 @@ fn weapon_ads(
     // -------------------------
 
     for (mut transform, mut muzzle) in &mut muzzle_query {
-        muzzle.progress = move_toward(
-            muzzle.progress,
-            target,
-            ads_speed * time.delta_secs(),
-        );
+        muzzle.progress = move_toward(muzzle.progress, target, ads_speed * time.delta_secs());
 
         let t = muzzle.progress;
         let t = t * t * (3.0 - 2.0 * t);
 
-        transform.translation =
-            muzzle.hip_position.lerp(muzzle.ads_position, t);
+        transform.translation = muzzle.hip_position.lerp(muzzle.ads_position, t);
     }
 }
 
@@ -288,6 +286,18 @@ fn update_tracers(
             || distance_from_start >= total_distance
         {
             commands.entity(entity).despawn();
+        }
+    }
+}
+
+fn update_muzzle_flash(time: Res<Time>, mut query: Query<(&mut MuzzleFlash, &mut Visibility)>) {
+    for (mut flash, mut visibility) in &mut query {
+        if !flash.timer.is_finished() {
+            flash.timer.tick(time.delta());
+
+            *visibility = Visibility::Visible;
+        } else {
+            *visibility = Visibility::Hidden;
         }
     }
 }

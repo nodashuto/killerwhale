@@ -652,7 +652,7 @@ fn spawn_lights(mut commands: Commands) {
     commands.spawn((
         DirectionalLight {
             //illuminance: light_consts::lux::OVERCAST_DAY,
-	    illuminance: 90.0,
+	    illuminance: 10.0,
             shadow_maps_enabled: true,
             ..default()
         },
