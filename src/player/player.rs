@@ -6,11 +6,14 @@ use bevy::{
 };
 use bevy_rapier3d::prelude::*;
 
+// use bevy::post_process::bloom::{Bloom, BloomCompositeMode};
+// use bevy::core_pipeline::tonemapping::Tonemapping;
+
 use crate::weapon::weapon::MuzzleFlash;
+use crate::weapon::weapon::MuzzleFlashLight;
 use crate::weapon::weapon::Weapon;
 use crate::weapon::weapon::WeaponAds;
 use crate::weapon::weapon::WeaponMuzzle;
-use crate::weapon::weapon::MuzzleFlashLight;
 
 pub struct PlayerPlugin;
 
@@ -145,6 +148,8 @@ fn spawn_player(
                         RenderLayers::layer(DEFAULT_RENDER_LAYER),
                         Transform::default(),
                         InheritedVisibility::default(),
+                        //Tonemapping::TonyMcMapface, // 1. Using a tonemapper that desaturates to white is recommended
+                        //Bloom::NATURAL, // 2. Enable bloom for the camera
                     ))
                     .with_children(|camera| {
                         // View-model camera
@@ -191,7 +196,7 @@ fn spawn_player(
                                     .spawn((
                                         WeaponMuzzle {
                                             hip_position: Vec3::new(0.62, -0.28, -2.0),
-                                            ads_position: Vec3::new(0.0, -0.02, -2.5),
+                                            ads_position: Vec3::new(0.0, -0.05, -2.5),
                                             progress: 0.0,
                                         },
                                         Transform::from_xyz(0.0, 0.0, -0.8),
@@ -203,8 +208,8 @@ fn spawn_player(
                                         muzzle.spawn((
                                             MuzzleFlashLight,
                                             PointLight {
-                                                intensity: 4000.0,
-                                                range: 50.0,
+                                                intensity: 800.0,
+                                                range: 10.0,
                                                 color: Color::srgb(1.0, 0.4, 0.05),
                                                 shadow_maps_enabled: true,
                                                 ..default()
@@ -214,8 +219,8 @@ fn spawn_player(
                                             },
                                             Mesh3d(meshes.add(Sphere::new(0.05))),
                                             MeshMaterial3d(materials.add(StandardMaterial {
-                                                base_color: Color::srgba(1.0, 0.5, 0.0, 0.1),
-                                                emissive: LinearRgba::new(1.0, 0.5, 0.0, 0.1),
+                                                base_color: Color::srgba(1.0, 0.5, 0.0, 0.01),
+                                                emissive: LinearRgba::new(1.0, 0.5, 0.0, 100.0),
                                                 unlit: true,
                                                 ..default()
                                             })),

@@ -22,7 +22,7 @@ pub struct WorldPlugin;
 
 impl Plugin for WorldPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(RapierDebugRenderPlugin::default()); //activate gismo
+        //app.add_plugins(RapierDebugRenderPlugin::default()); //activate gismo
         //app.add_plugins(ShootingTargetPlugin);
         // app.insert_resource(ClearColor(Color::srgb(
         //     152.0 / 255.0,
@@ -64,7 +64,7 @@ fn spawn_world_model(
     asset_server: Res<AssetServer>,
 ) {
 
-    let size = 100.0;
+    let size = 200.0;
     let ground = meshes.add(Plane3d::new(Vec3::Y, Vec2::splat(size)));
     let _cube = meshes.add(Cuboid::new(2.0, 0.5, 1.0));
     let _material = materials.add(Color::WHITE);
@@ -651,9 +651,9 @@ const VIEW_MODEL_RENDER_LAYER: usize = 1;
 fn spawn_lights(mut commands: Commands) {
     commands.spawn((
         DirectionalLight {
-            //illuminance: light_consts::lux::OVERCAST_DAY,
-	    illuminance: 10.0,
-            shadow_maps_enabled: true,
+            illuminance: light_consts::lux::OVERCAST_DAY,
+	    //illuminance: 10.0,
+            shadow_maps_enabled: false,
             ..default()
         },
         Transform::from_rotation(Quat::from_euler(

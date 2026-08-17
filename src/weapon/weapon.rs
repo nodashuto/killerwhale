@@ -81,13 +81,26 @@ pub struct BulletTracer {
     pub speed: f32,
 }
 
+// impl BulletTracer {
+//     pub fn new(start: Vec3, end: Vec3, speed: f32) -> Self {
+//         let direction = (end - start).normalize_or_zero();
+
+//         Self {
+//             start_position: start,
+//             end_position: end,
+//             direction,
+//             speed,
+//         }
+//     }
+// }
+
 impl BulletTracer {
-    pub fn new(start: Vec3, end: Vec3, speed: f32) -> Self {
-        let direction = (end - start).normalize_or_zero();
+    pub fn new(start_position: Vec3, end_position: Vec3, speed: f32) -> Self {
+        let direction = (end_position - start_position).normalize_or_zero();
 
         Self {
-            start_position: start,
-            end_position: end,
+            start_position,
+            end_position,
             direction,
             speed,
         }
@@ -195,17 +208,34 @@ fn fire_weapon(
     // TRACER
     // --------------------------------------------------------
 
-    // Tracer starts at the actual gun muzzle.
+    // // Tracer starts at the actual gun muzzle.
+    // commands.spawn((
+    //     Mesh3d(meshes.add(Cuboid::from_size(Vec3::new(0.01, 0.01, 1.0)))),
+    //     MeshMaterial3d(materials.add(StandardMaterial {
+    //         //base_color: Color::srgb( 110.0 / 255.0 , 56.0 / 255.0,  200.0/255.0),
+    //         base_color: Color::srgb(1.0, 0.75, 0.0),
+    //         emissive: LinearRgba::new(1.0, 0.75, 0.0, 1000.0),
+    //         ..default()
+    //     })),
+    //     Transform::from_translation(muzzle_position),
+    //     BulletTracer::new(muzzle_position, end_position, 100.0),
+    // ));
+
+    let direction = (end_position - muzzle_position).normalize();
+
+    let tracer_length = 1.0;
+
+    let tracer_position = muzzle_position + direction * (tracer_length * 0.5);
+
     commands.spawn((
-        Mesh3d(meshes.add(Cuboid::from_size(Vec3::new(0.02, 0.02, 0.25)))),
+        Mesh3d(meshes.add(Cuboid::from_size(Vec3::new(0.01, 0.01, tracer_length)))),
         MeshMaterial3d(materials.add(StandardMaterial {
-            //base_color: Color::srgb( 110.0 / 255.0 , 56.0 / 255.0,  200.0/255.0),
             base_color: Color::srgb(1.0, 0.75, 0.0),
-            emissive: LinearRgba::new(1.0, 0.75, 0.0, 10.0),
+            emissive: LinearRgba::new(1.0, 0.75, 0.0, 1000.0),
             ..default()
         })),
-        Transform::from_translation(muzzle_position),
-        BulletTracer::new(muzzle_position, end_position, 150.0),
+        Transform::from_translation(tracer_position).looking_to(direction, Vec3::Y),
+        BulletTracer::new(muzzle_position, end_position, 110.0),
     ));
 }
 
@@ -261,34 +291,86 @@ fn move_toward(current: f32, target: f32, max_delta: f32) -> f32 {
     }
 }
 
+// fn update_tracers(
+//     mut commands: Commands,
+//     mut query: Query<(Entity, &BulletTracer, &mut Transform)>,
+//     time: Res<Time>,
+// ) {
+//     for (entity, tracer, mut transform) in &mut query {
+//         // Move forward like a projectile.
+//         transform.translation += tracer.direction * tracer.speed * time.delta_secs();
+
+//         // Keep the tracer pointing in the shooting direction.
+//         if tracer.direction.length_squared() > 0.0 {
+//             transform.look_to(tracer.direction, Vec3::Y);
+//         }
+
+//         // Check whether we've passed the destination.
+//         let distance_to_end = transform.translation.distance(tracer.end_position);
+
+//         let distance_from_start = transform.translation.distance(tracer.start_position);
+
+//         let total_distance = tracer.start_position.distance(tracer.end_position);
+
+//         if distance_to_end < tracer.speed * time.delta_secs()
+//             || distance_from_start >= total_distance
+//         {
+//             commands.entity(entity).despawn();
+//         }
+//     }
+// }
+
 fn update_tracers(
     mut commands: Commands,
     mut query: Query<(Entity, &BulletTracer, &mut Transform)>,
     time: Res<Time>,
 ) {
     for (entity, tracer, mut transform) in &mut query {
-        // Move forward like a projectile.
-        transform.translation += tracer.direction * tracer.speed * time.delta_secs();
+        let direction = tracer.direction.normalize_or_zero();
 
-        // Keep the tracer pointing in the shooting direction.
-        if tracer.direction.length_squared() > 0.0 {
-            transform.look_to(tracer.direction, Vec3::Y);
+        // Move forward.
+        transform.translation += direction * tracer.speed * time.delta_secs();
+
+        // Point the tracer in the same direction.
+        if direction.length_squared() > 0.0 {
+            transform.look_to(direction, Vec3::Y);
         }
 
-        // Check whether we've passed the destination.
+        // Despawn when close enough to the destination.
         let distance_to_end = transform.translation.distance(tracer.end_position);
 
-        let distance_from_start = transform.translation.distance(tracer.start_position);
-
-        let total_distance = tracer.start_position.distance(tracer.end_position);
-
-        if distance_to_end < tracer.speed * time.delta_secs()
-            || distance_from_start >= total_distance
-        {
+        if distance_to_end < 1.0 {
             commands.entity(entity).despawn();
         }
     }
 }
+
+// fn update_tracers(
+//     mut commands: Commands,
+//     mut query: Query<(Entity, &BulletTracer, &mut Transform)>,
+//     time: Res<Time>,
+// ) {
+//     for (entity, tracer, mut transform) in &mut query {
+//         // Move forward like a projectile.
+//         transform.translation += tracer.direction * tracer.speed * time.delta_secs();
+
+//         // Keep the tracer pointing in the shooting direction.
+//         if tracer.direction.length_squared() > 0.0 {
+//             transform.look_to(tracer.direction, Vec3::Y);
+//         }
+
+//         // Check whether we've passed the destination.
+//         let distance_to_end = transform.translation.distance(tracer.end_position);
+
+//         let distance_from_start = transform.translation.distance(tracer.start_position);
+
+//         let total_distance = tracer.start_position.distance(tracer.end_position);
+
+//         if distance_to_end < 2.0 || distance_from_start >= total_distance {
+//             commands.entity(entity).despawn();
+//         }
+//     }
+// }
 
 fn update_muzzle_flash(time: Res<Time>, mut query: Query<(&mut MuzzleFlash, &mut Visibility)>) {
     for (mut flash, mut visibility) in &mut query {
