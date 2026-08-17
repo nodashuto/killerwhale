@@ -8,6 +8,7 @@ use bevy_rapier3d::prelude::*;
 
 use crate::weapon::weapon::Weapon;
 use crate::weapon::weapon::WeaponAds;
+use crate::weapon::weapon::WeaponMuzzle;
 
 pub struct PlayerPlugin;
 
@@ -156,14 +157,14 @@ fn spawn_player(
                             .with_children(|view_camera| {
                                 view_camera.spawn((
                                     Weapon {
-                                        name: "Rifle",
+                                        name: "Pistol",
                                         damage: 30.0,
                                         range: 100.0,
 
                                         hip_position: Vec3::new(0.9, 0.1, -1.5),
                                         ads_position: Vec3::new(0.0, 0.35, -1.6),
                                     },
-				    WeaponAds::default(),
+                                    WeaponAds::default(),
                                     RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
                                     //WeaponViewModel,
                                     //SceneRoot(pistol_scene.clone()),
@@ -178,6 +179,17 @@ fn spawn_player(
                                         //scale: Vec3::new(0.1, 0.1, 0.1),
                                         scale: Vec3::new(0.3, 0.3, 0.3),
                                     },
+                                ));
+
+                                // Muzzle position
+                                view_camera.spawn((
+                                    WeaponMuzzle {
+                                        hip_position: Vec3::new(1.0, -0.4, -2.0),
+                                        ads_position: Vec3::new(0.0, -0.02, -2.5),
+                                        progress: 0.0,
+                                    },
+                                    Transform::from_xyz(0.0, 0.0, -0.8),
+                                    GlobalTransform::default(),
                                 ));
                             });
                     });

@@ -25,16 +25,11 @@ impl Plugin for WorldPlugin {
         app.add_plugins(RapierDebugRenderPlugin::default()); //activate gismo
         //app.add_plugins(ShootingTargetPlugin);
         // app.insert_resource(ClearColor(Color::srgb(
-        //     226.0 / 255.0,
-        //     237.0 / 255.0,
-        //     238.0 / 255.0,
+        //     152.0 / 255.0,
+        //     192.0 / 255.0,
+        //     217.0 / 255.0,
         // )));
-        app.insert_resource(ClearColor(Color::srgb(
-            152.0 / 255.0,
-            192.0 / 255.0,
-            217.0 / 255.0,
-        )));
-        // app.insert_resource(ClearColor(Color::BLACK));
+        app.insert_resource(ClearColor(Color::BLACK));
         app.add_systems(Startup, spawn_world_model);
         app.add_systems(Startup, spawn_lights);
         //app.add_systems(Startup, spawn_stairs);
@@ -656,8 +651,9 @@ const VIEW_MODEL_RENDER_LAYER: usize = 1;
 fn spawn_lights(mut commands: Commands) {
     commands.spawn((
         DirectionalLight {
-            illuminance: light_consts::lux::OVERCAST_DAY,
-            shadow_maps_enabled: false,
+            //illuminance: light_consts::lux::OVERCAST_DAY,
+	    illuminance: 90.0,
+            shadow_maps_enabled: true,
             ..default()
         },
         Transform::from_rotation(Quat::from_euler(
