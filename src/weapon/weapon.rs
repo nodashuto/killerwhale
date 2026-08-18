@@ -11,7 +11,11 @@ impl Plugin for WeaponPlugin {
         app.add_systems(Startup, print_plugin_loaded);
         app.add_systems(
             Update,
-            (weapon_ads, fire_weapon, update_tracers, update_muzzle_flash),
+            (weapon_ads,
+	     fire_weapon,
+	     reload_weapon,
+	     update_reload,
+	     update_tracers, update_muzzle_flash).chain(),
         );
     }
 }
@@ -30,6 +34,16 @@ fn print_plugin_loaded() {
 //     pub range: f32,
 // }
 
+// #[derive(Component, Debug)]
+// pub struct Weapon {
+//     pub name: &'static str,
+//     pub damage: f32,
+//     pub range: f32,
+
+//     pub hip_position: Vec3,
+//     pub ads_position: Vec3,
+// }
+
 #[derive(Component, Debug)]
 pub struct Weapon {
     pub name: &'static str,
@@ -38,6 +52,27 @@ pub struct Weapon {
 
     pub hip_position: Vec3,
     pub ads_position: Vec3,
+
+    pub magazine_size: u32,
+    pub ammo_in_magazine: u32,
+    pub reserve_ammo: u32,
+
+    pub reload_duration: f32,
+}
+
+#[derive(Component, Debug)]
+pub struct WeaponState {
+    pub is_reloading: bool,
+    pub reload_timer: Timer,
+}
+
+impl Default for WeaponState {
+    fn default() -> Self {
+        Self {
+            is_reloading: false,
+            reload_timer: Timer::from_seconds(0.0, TimerMode::Once),
+        }
+    }
 }
 
 #[derive(Component, Debug, Default)]
@@ -142,12 +177,16 @@ fn bullet_fire(
 
     None
 }
+
 fn fire_weapon(
     buttons: Res<ButtonInput<MouseButton>>,
     camera: Query<&GlobalTransform, With<PlayerCamera>>,
     rapier_context: ReadRapierContext,
     player_query: Query<Entity, With<Player>>,
-    weapon_query: Query<&Weapon>,
+
+    
+    mut weapon_query: Query<(&mut Weapon, &WeaponState)>,
+    
     muzzle_query: Query<&GlobalTransform, With<WeaponMuzzle>>,
     mut flash_query: Query<&mut MuzzleFlash>,
     mut light_query: Query<&mut Visibility, With<MuzzleFlashLight>>,
@@ -161,8 +200,19 @@ fn fire_weapon(
     }
 
     let camera_transform = camera.single().unwrap();
-    let weapon = weapon_query.single().unwrap();
+    let (mut weapon, weapon_state) = weapon_query.single_mut().unwrap();
     let player_entity = player_query.single().unwrap();
+
+        // Can't fire while reloading
+    if weapon_state.is_reloading {
+        return;
+    }
+
+        // Magazine empty
+    if weapon.ammo_in_magazine == 0 {
+        println!("{}: magazine empty!", weapon.name);
+        return;
+    }
 
     let origin = camera_transform.translation();
     let direction = camera_transform.forward();
@@ -188,6 +238,18 @@ fn fire_weapon(
             origin + *direction * weapon.range
         };
 
+    
+    // Consume one bullet
+    weapon.ammo_in_magazine -= 1;
+
+    println!(
+        "{} ammo: {}/{} | reserve: {}",
+        weapon.name,
+        weapon.ammo_in_magazine,
+        weapon.magazine_size,
+        weapon.reserve_ammo
+    );
+
     // --------------------------------------------------------
     // MUZZLE FLASH
     // --------------------------------------------------------
@@ -199,43 +261,23 @@ fn fire_weapon(
     for mut visibility in &mut light_query {
         *visibility = Visibility::Visible;
     }
-
-    // let color = Srgba::rgb(0.5, 0.5, 0.5);
-
-    // let linear_color: LinearRgba = color.into();
-
     // --------------------------------------------------------
     // TRACER
     // --------------------------------------------------------
 
-    // // Tracer starts at the actual gun muzzle.
-    // commands.spawn((
-    //     Mesh3d(meshes.add(Cuboid::from_size(Vec3::new(0.01, 0.01, 1.0)))),
-    //     MeshMaterial3d(materials.add(StandardMaterial {
-    //         //base_color: Color::srgb( 110.0 / 255.0 , 56.0 / 255.0,  200.0/255.0),
-    //         base_color: Color::srgb(1.0, 0.75, 0.0),
-    //         emissive: LinearRgba::new(1.0, 0.75, 0.0, 1000.0),
-    //         ..default()
-    //     })),
-    //     Transform::from_translation(muzzle_position),
-    //     BulletTracer::new(muzzle_position, end_position, 100.0),
-    // ));
-
     let direction = (end_position - muzzle_position).normalize();
-
-    let tracer_length = 1.0;
-
+    let tracer_length = 0.75;
     let tracer_position = muzzle_position + direction * (tracer_length * 0.5);
 
     commands.spawn((
-        Mesh3d(meshes.add(Cuboid::from_size(Vec3::new(0.01, 0.01, tracer_length)))),
+        Mesh3d(meshes.add(Cuboid::from_size(Vec3::new(0.005, 0.005, tracer_length)))),
         MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Color::srgb(1.0, 0.75, 0.0),
-            emissive: LinearRgba::new(1.0, 0.75, 0.0, 1000.0),
+            base_color: Color::srgb(1.0, 0.75, 0.3),
+            emissive: LinearRgba::new(1.0, 0.60, 0.0, 1.0),
             ..default()
         })),
         Transform::from_translation(tracer_position).looking_to(direction, Vec3::Y),
-        BulletTracer::new(muzzle_position, end_position, 110.0),
+        BulletTracer::new(muzzle_position, end_position, 200.0),
     ));
 }
 
@@ -345,44 +387,95 @@ fn update_tracers(
     }
 }
 
-// fn update_tracers(
-//     mut commands: Commands,
-//     mut query: Query<(Entity, &BulletTracer, &mut Transform)>,
-//     time: Res<Time>,
-// ) {
-//     for (entity, tracer, mut transform) in &mut query {
-//         // Move forward like a projectile.
-//         transform.translation += tracer.direction * tracer.speed * time.delta_secs();
-
-//         // Keep the tracer pointing in the shooting direction.
-//         if tracer.direction.length_squared() > 0.0 {
-//             transform.look_to(tracer.direction, Vec3::Y);
-//         }
-
-//         // Check whether we've passed the destination.
-//         let distance_to_end = transform.translation.distance(tracer.end_position);
-
-//         let distance_from_start = transform.translation.distance(tracer.start_position);
-
-//         let total_distance = tracer.start_position.distance(tracer.end_position);
-
-//         if distance_to_end < 2.0 || distance_from_start >= total_distance {
-//             commands.entity(entity).despawn();
-//         }
-//     }
-// }
-
 fn update_muzzle_flash(time: Res<Time>, mut query: Query<(&mut MuzzleFlash, &mut Visibility)>) {
     for (mut flash, mut visibility) in &mut query {
         if !flash.timer.is_finished() {
             flash.timer.tick(time.delta());
 
             *visibility = Visibility::Visible;
+	    //*visibility = Visibility::Hidden;
         } else {
             *visibility = Visibility::Hidden;
         }
     }
 }
+
+fn reload_weapon(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut weapon_query: Query<(&Weapon, &mut WeaponState)>,
+) {
+    if !keys.just_pressed(KeyCode::KeyR) {
+        return;
+    }
+
+    let Ok((weapon, mut state)) = weapon_query.single_mut() else {
+        return;
+    };
+
+    if state.is_reloading {
+        return;
+    }
+
+    if weapon.ammo_in_magazine >= weapon.magazine_size {
+        return;
+    }
+
+    if weapon.reserve_ammo == 0 {
+        return;
+    }
+
+    state.is_reloading = true;
+
+    state.reload_timer = Timer::from_seconds(
+        weapon.reload_duration,
+        TimerMode::Once,
+    );
+
+    println!(
+        "{}: reloading ({:.1}s)",
+        weapon.name,
+        weapon.reload_duration
+    );
+}
+
+fn update_reload(
+    time: Res<Time>,
+    mut weapon_query: Query<(&mut Weapon, &mut WeaponState)>,
+) {
+    let Ok((mut weapon, mut state)) = weapon_query.single_mut() else {
+        return;
+    };
+
+    if !state.is_reloading {
+        return;
+    }
+
+    state.reload_timer.tick(time.delta());
+
+    if state.reload_timer.just_finished() {
+        let needed =
+            weapon.magazine_size - weapon.ammo_in_magazine;
+
+        let amount =
+            needed.min(weapon.reserve_ammo);
+
+        weapon.ammo_in_magazine += amount;
+        weapon.reserve_ammo -= amount;
+
+        state.is_reloading = false;
+
+        println!(
+            "{}: reload complete, {}/{} | reserve: {}",
+            weapon.name,
+            weapon.ammo_in_magazine,
+            weapon.magazine_size,
+            weapon.reserve_ammo
+        );
+    }
+}
+
+
+
 // #[derive(Asset, TypePath, Debug)]
 // pub struct WeaponDefinition {
 //     pub name: String,

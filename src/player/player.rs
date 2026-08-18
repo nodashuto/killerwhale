@@ -13,6 +13,7 @@ use crate::weapon::weapon::MuzzleFlash;
 use crate::weapon::weapon::MuzzleFlashLight;
 use crate::weapon::weapon::Weapon;
 use crate::weapon::weapon::WeaponAds;
+use crate::weapon::weapon::WeaponState;
 use crate::weapon::weapon::WeaponMuzzle;
 
 pub struct PlayerPlugin;
@@ -173,8 +174,15 @@ fn spawn_player(
 
                                         hip_position: Vec3::new(0.9, 0.1, -1.5),
                                         ads_position: Vec3::new(0.0, 0.35, -1.6),
+
+					 magazine_size: 7,
+					ammo_in_magazine: 7,
+					reserve_ammo: 14,
+					
+					reload_duration: 2.0,
                                     },
                                     WeaponAds::default(),
+				    WeaponState::default(),
                                     RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
                                     //WeaponViewModel,
                                     //SceneRoot(pistol_scene.clone()),
@@ -196,7 +204,7 @@ fn spawn_player(
                                     .spawn((
                                         WeaponMuzzle {
                                             hip_position: Vec3::new(0.62, -0.28, -2.0),
-                                            ads_position: Vec3::new(0.0, -0.05, -2.5),
+                                            ads_position: Vec3::new(0.0, -0.03, -2.5),
                                             progress: 0.0,
                                         },
                                         Transform::from_xyz(0.0, 0.0, -0.8),
