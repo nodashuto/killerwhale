@@ -11,11 +11,16 @@ impl Plugin for WeaponPlugin {
         app.add_systems(Startup, print_plugin_loaded);
         app.add_systems(
             Update,
-            (weapon_ads,
-	     fire_weapon,
-	     reload_weapon,
-	     update_reload,
-	     update_tracers, update_muzzle_flash).chain(),
+            (
+                weapon_ads,
+                fire_weapon,
+                reload_weapon,
+                update_reload,
+                update_tracers,
+                update_muzzle_flash,
+		update_weapon_fire_timer,
+            )
+                .chain(),
         );
     }
 }
@@ -44,6 +49,12 @@ fn print_plugin_loaded() {
 //     pub ads_position: Vec3,
 // }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FireMode {
+    SemiAuto,
+    FullAuto,
+}
+
 #[derive(Component, Debug)]
 pub struct Weapon {
     pub name: &'static str,
@@ -58,19 +69,29 @@ pub struct Weapon {
     pub reserve_ammo: u32,
 
     pub reload_duration: f32,
+    // Fire mode
+    pub fire_mode: FireMode,
+    pub fire_rate: f32,
 }
 
 #[derive(Component, Debug)]
 pub struct WeaponState {
     pub is_reloading: bool,
     pub reload_timer: Timer,
+    pub fire_timer: Timer,
 }
 
-impl Default for WeaponState {
-    fn default() -> Self {
+impl WeaponState {
+    pub fn new(fire_rate: f32) -> Self {
+        let mut fire_timer =
+            Timer::from_seconds(1.0 / fire_rate, TimerMode::Once);
+
+        fire_timer.finish();
+
         Self {
             is_reloading: false,
             reload_timer: Timer::from_seconds(0.0, TimerMode::Once),
+            fire_timer,
         }
     }
 }
@@ -184,9 +205,8 @@ fn fire_weapon(
     rapier_context: ReadRapierContext,
     player_query: Query<Entity, With<Player>>,
 
-    
-    mut weapon_query: Query<(&mut Weapon, &WeaponState)>,
-    
+    mut weapon_query: Query<(&mut Weapon, &mut WeaponState)>,
+
     muzzle_query: Query<&GlobalTransform, With<WeaponMuzzle>>,
     mut flash_query: Query<&mut MuzzleFlash>,
     mut light_query: Query<&mut Visibility, With<MuzzleFlashLight>>,
@@ -195,20 +215,36 @@ fn fire_weapon(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    if !buttons.just_pressed(MouseButton::Left) {
+    // let (mut weapon, weapon_state) = weapon_query.single_mut().unwrap();
+        let Ok((mut weapon, mut weapon_state)) = weapon_query.single_mut() else {
+        return;
+    };
+
+    let should_fire = match weapon.fire_mode {
+        FireMode::SemiAuto => buttons.just_pressed(MouseButton::Left),
+
+        FireMode::FullAuto => buttons.pressed(MouseButton::Left),
+    };
+
+    if !should_fire {
         return;
     }
 
     let camera_transform = camera.single().unwrap();
-    let (mut weapon, weapon_state) = weapon_query.single_mut().unwrap();
+
     let player_entity = player_query.single().unwrap();
 
-        // Can't fire while reloading
+    // Can't fire while reloading
     if weapon_state.is_reloading {
         return;
     }
 
-        // Magazine empty
+        // Fire-rate check
+    if !weapon_state.fire_timer.is_finished() {
+        return;
+    }
+
+    // Magazine empty
     if weapon.ammo_in_magazine == 0 {
         println!("{}: magazine empty!", weapon.name);
         return;
@@ -238,17 +274,16 @@ fn fire_weapon(
             origin + *direction * weapon.range
         };
 
-    
     // Consume one bullet
     weapon.ammo_in_magazine -= 1;
 
     println!(
         "{} ammo: {}/{} | reserve: {}",
-        weapon.name,
-        weapon.ammo_in_magazine,
-        weapon.magazine_size,
-        weapon.reserve_ammo
+        weapon.name, weapon.ammo_in_magazine, weapon.magazine_size, weapon.reserve_ammo
     );
+
+    // Reset fire timer
+    weapon_state.fire_timer.reset();
 
     // --------------------------------------------------------
     // MUZZLE FLASH
@@ -393,7 +428,7 @@ fn update_muzzle_flash(time: Res<Time>, mut query: Query<(&mut MuzzleFlash, &mut
             flash.timer.tick(time.delta());
 
             *visibility = Visibility::Visible;
-	    //*visibility = Visibility::Hidden;
+        //*visibility = Visibility::Hidden;
         } else {
             *visibility = Visibility::Hidden;
         }
@@ -426,22 +461,15 @@ fn reload_weapon(
 
     state.is_reloading = true;
 
-    state.reload_timer = Timer::from_seconds(
-        weapon.reload_duration,
-        TimerMode::Once,
-    );
+    state.reload_timer = Timer::from_seconds(weapon.reload_duration, TimerMode::Once);
 
     println!(
         "{}: reloading ({:.1}s)",
-        weapon.name,
-        weapon.reload_duration
+        weapon.name, weapon.reload_duration
     );
 }
 
-fn update_reload(
-    time: Res<Time>,
-    mut weapon_query: Query<(&mut Weapon, &mut WeaponState)>,
-) {
+fn update_reload(time: Res<Time>, mut weapon_query: Query<(&mut Weapon, &mut WeaponState)>) {
     let Ok((mut weapon, mut state)) = weapon_query.single_mut() else {
         return;
     };
@@ -453,11 +481,9 @@ fn update_reload(
     state.reload_timer.tick(time.delta());
 
     if state.reload_timer.just_finished() {
-        let needed =
-            weapon.magazine_size - weapon.ammo_in_magazine;
+        let needed = weapon.magazine_size - weapon.ammo_in_magazine;
 
-        let amount =
-            needed.min(weapon.reserve_ammo);
+        let amount = needed.min(weapon.reserve_ammo);
 
         weapon.ammo_in_magazine += amount;
         weapon.reserve_ammo -= amount;
@@ -466,15 +492,22 @@ fn update_reload(
 
         println!(
             "{}: reload complete, {}/{} | reserve: {}",
-            weapon.name,
-            weapon.ammo_in_magazine,
-            weapon.magazine_size,
-            weapon.reserve_ammo
+            weapon.name, weapon.ammo_in_magazine, weapon.magazine_size, weapon.reserve_ammo
         );
     }
 }
 
 
+fn update_weapon_fire_timer(
+    time: Res<Time>,
+    mut weapon_query: Query<&mut WeaponState>,
+) {
+    let Ok(mut state) = weapon_query.single_mut() else {
+        return;
+    };
+
+    state.fire_timer.tick(time.delta());
+}
 
 // #[derive(Asset, TypePath, Debug)]
 // pub struct WeaponDefinition {

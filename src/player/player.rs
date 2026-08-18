@@ -9,12 +9,9 @@ use bevy_rapier3d::prelude::*;
 // use bevy::post_process::bloom::{Bloom, BloomCompositeMode};
 // use bevy::core_pipeline::tonemapping::Tonemapping;
 
-use crate::weapon::weapon::MuzzleFlash;
-use crate::weapon::weapon::MuzzleFlashLight;
-use crate::weapon::weapon::Weapon;
-use crate::weapon::weapon::WeaponAds;
-use crate::weapon::weapon::WeaponState;
-use crate::weapon::weapon::WeaponMuzzle;
+use crate::weapon::weapon::{
+    FireMode, MuzzleFlash, MuzzleFlashLight, Weapon, WeaponAds, WeaponMuzzle, WeaponState,
+};
 
 pub struct PlayerPlugin;
 
@@ -103,6 +100,25 @@ fn spawn_player(
         ..default()
     });
 
+    let weapon = Weapon {
+        name: "Pistol",
+        damage: 30.0,
+        range: 100.0,
+
+        hip_position: Vec3::new(0.9, 0.1, -1.5),
+        ads_position: Vec3::new(0.0, 0.35, -1.6),
+
+        magazine_size: 9999,
+        ammo_in_magazine: 9999,
+        reserve_ammo: 9999,
+
+        reload_duration: 2.0,
+        fire_rate: 70.0,
+        fire_mode: FireMode::FullAuto,
+    };
+
+    let weapon_state = WeaponState::new(weapon.fire_rate);
+
     commands
         .spawn((
             Player,
@@ -167,22 +183,9 @@ fn spawn_player(
                             ))
                             .with_children(|view_camera| {
                                 view_camera.spawn((
-                                    Weapon {
-                                        name: "Pistol",
-                                        damage: 30.0,
-                                        range: 100.0,
-
-                                        hip_position: Vec3::new(0.9, 0.1, -1.5),
-                                        ads_position: Vec3::new(0.0, 0.35, -1.6),
-
-					 magazine_size: 7,
-					ammo_in_magazine: 7,
-					reserve_ammo: 14,
-					
-					reload_duration: 2.0,
-                                    },
+                                    weapon,
+                                    weapon_state,
                                     WeaponAds::default(),
-				    WeaponState::default(),
                                     RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
                                     //WeaponViewModel,
                                     //SceneRoot(pistol_scene.clone()),
