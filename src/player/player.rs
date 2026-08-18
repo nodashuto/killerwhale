@@ -31,6 +31,9 @@ fn player_plugin_loaded() {
 #[derive(Component)]
 pub struct Player;
 
+#[derive(Component)]
+pub struct EquippedWeapon;	// marker for equiped weap
+
 const MOUSE_SENSITIVITY: f32 = 0.001;
 
 #[derive(Debug, Component, Deref, DerefMut)]
@@ -101,23 +104,31 @@ fn spawn_player(
     });
 
     let weapon = Weapon {
-        name: "Pistol",
+	id: "Pistol",
+        name: "WEAPON_SMG_LONGRANGE",
         damage: 30.0,
         range: 100.0,
 
-        hip_position: Vec3::new(0.9, 0.1, -1.5),
-        ads_position: Vec3::new(0.0, 0.35, -1.6),
+        hip_weapon_position: Vec3::new(0.9, 0.1, -1.5),
+        ads_weapon_position: Vec3::new(0.0, 0.35, -1.8),
 
-        magazine_size: 9999,
-        ammo_in_magazine: 9999,
-        reserve_ammo: 9999,
+	hip_muzzle_position: Vec3::new(0.62, -0.28, -2.0),
+        ads_muzzle_position: Vec3::new(0.0, -0.03, -2.5),
+
+        magazine_size: 7,
+        ammo_in_magazine: 7,
+        reserve_ammo: 21,
 
         reload_duration: 2.0,
-        fire_rate: 70.0,
+        fire_rate: 6.0,
         fire_mode: FireMode::FullAuto,
     };
 
     let weapon_state = WeaponState::new(weapon.fire_rate);
+
+    let hip_muzzle_position = weapon.hip_muzzle_position;
+    let ads_muzzle_position = weapon.ads_muzzle_position;
+
 
     commands
         .spawn((
@@ -185,6 +196,7 @@ fn spawn_player(
                                 view_camera.spawn((
                                     weapon,
                                     weapon_state,
+				    EquippedWeapon,
                                     WeaponAds::default(),
                                     RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
                                     //WeaponViewModel,
@@ -206,8 +218,8 @@ fn spawn_player(
                                 view_camera
                                     .spawn((
                                         WeaponMuzzle {
-                                            hip_position: Vec3::new(0.62, -0.28, -2.0),
-                                            ads_position: Vec3::new(0.0, -0.03, -2.5),
+                                            hip_position: hip_muzzle_position,
+                                            ads_position: ads_muzzle_position,
                                             progress: 0.0,
                                         },
                                         Transform::from_xyz(0.0, 0.0, -0.8),
@@ -219,8 +231,9 @@ fn spawn_player(
                                         muzzle.spawn((
                                             MuzzleFlashLight,
                                             PointLight {
-                                                intensity: 800.0,
-                                                range: 10.0,
+                                                intensity: 8000.0,
+                                                // range: 100.0,
+						// radius: 10.0,
                                                 color: Color::srgb(1.0, 0.4, 0.05),
                                                 shadow_maps_enabled: true,
                                                 ..default()
@@ -228,7 +241,7 @@ fn spawn_player(
                                             MuzzleFlash {
                                                 timer: Timer::from_seconds(0.01, TimerMode::Once),
                                             },
-                                            Mesh3d(meshes.add(Sphere::new(0.05))),
+                                            Mesh3d(meshes.add(Sphere::new(0.001))),
                                             MeshMaterial3d(materials.add(StandardMaterial {
                                                 base_color: Color::srgba(1.0, 0.5, 0.0, 0.01),
                                                 emissive: LinearRgba::new(1.0, 0.5, 0.0, 100.0),

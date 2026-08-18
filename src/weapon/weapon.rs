@@ -57,12 +57,17 @@ pub enum FireMode {
 
 #[derive(Component, Debug)]
 pub struct Weapon {
+    pub id: &'static str,
     pub name: &'static str,
     pub damage: f32,
     pub range: f32,
 
-    pub hip_position: Vec3,
-    pub ads_position: Vec3,
+    pub hip_weapon_position: Vec3,
+    pub ads_weapon_position: Vec3,
+
+    pub hip_muzzle_position: Vec3,
+    pub ads_muzzle_position: Vec3,
+
 
     pub magazine_size: u32,
     pub ammo_in_magazine: u32,
@@ -246,7 +251,7 @@ fn fire_weapon(
 
     // Magazine empty
     if weapon.ammo_in_magazine == 0 {
-        println!("{}: magazine empty!", weapon.name);
+        // println!("{}: magazine empty!", weapon.name);
         return;
     }
 
@@ -301,18 +306,18 @@ fn fire_weapon(
     // --------------------------------------------------------
 
     let direction = (end_position - muzzle_position).normalize();
-    let tracer_length = 0.75;
+    let tracer_length = 2.75;
     let tracer_position = muzzle_position + direction * (tracer_length * 0.5);
 
     commands.spawn((
-        Mesh3d(meshes.add(Cuboid::from_size(Vec3::new(0.005, 0.005, tracer_length)))),
+        Mesh3d(meshes.add(Cuboid::from_size(Vec3::new(0.008, 0.008, tracer_length)))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: Color::srgb(1.0, 0.75, 0.3),
             emissive: LinearRgba::new(1.0, 0.60, 0.0, 1.0),
             ..default()
         })),
         Transform::from_translation(tracer_position).looking_to(direction, Vec3::Y),
-        BulletTracer::new(muzzle_position, end_position, 200.0),
+        BulletTracer::new(muzzle_position, end_position, 600.0),
     ));
 }
 
@@ -341,7 +346,7 @@ fn weapon_ads(
         let t = ads.progress;
         let t = t * t * (3.0 - 2.0 * t);
 
-        transform.translation = weapon.hip_position.lerp(weapon.ads_position, t);
+        transform.translation = weapon.hip_weapon_position.lerp(weapon.ads_weapon_position, t);
     }
 
     // -------------------------

@@ -32,10 +32,12 @@ pub mod shootingtarget;
 mod player;
 mod world;
 mod weapon;
+mod hud;
 
 use player::PlayerPlugin;
 use world::WorldPlugin;
 use weapon::WeaponPlugin;
+use hud::HudPlugin;
 
 //use first_person_character::FirstPersonCharacterPlugin;
 
@@ -80,6 +82,7 @@ fn main() {
         .add_plugins(WorldPlugin)
         .add_plugins(PlayerPlugin)
         .add_plugins(WeaponPlugin)
+        .add_plugins(HudPlugin)
         .add_plugins(FpsOverlayPlugin {
             config: FpsOverlayConfig {
                 text_config: TextFont {
