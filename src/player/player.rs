@@ -32,7 +32,7 @@ fn player_plugin_loaded() {
 pub struct Player;
 
 #[derive(Component)]
-pub struct EquippedWeapon;	// marker for equiped weap
+pub struct EquippedWeapon; // marker for equiped weap
 
 const MOUSE_SENSITIVITY: f32 = 0.001;
 
@@ -96,7 +96,7 @@ fn spawn_player(
     // let player_mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
     // let player_material = materials.add(Color::srgb(0.2, 0.7, 1.0));
 
-    let gun_mesh = asset_server.load("models/20260812-glock17-viewmodel.glb#Mesh0/Primitive0");
+    //let gun_mesh = asset_server.load("models/20260812-glock17-viewmodel.glb#Mesh0/Primitive0");
     let gun_material = materials.add(StandardMaterial {
         base_color: Color::BLACK,
         metallic: 0.1,
@@ -104,15 +104,19 @@ fn spawn_player(
     });
 
     let weapon = Weapon {
-	id: "Pistol",
+        id: "Pistol",
         name: "WEAPON_SMG_LONGRANGE",
         damage: 30.0,
         range: 100.0,
 
-        hip_weapon_position: Vec3::new(0.9, 0.1, -1.5),
-        ads_weapon_position: Vec3::new(0.0, 0.35, -1.8),
+	model_path: "models/20260812-glock17-viewmodel.glb",
 
-	hip_muzzle_position: Vec3::new(0.62, -0.28, -2.0),
+        // hip_weapon_position: Vec3::new(0.9, 0.1, -1.5),
+        // ads_weapon_position: Vec3::new(0.0, 0.35, -1.8),
+        hip_weapon_position: Vec3::new(0.9, -0.8, -1.5),
+        ads_weapon_position: Vec3::new(0.0, -0.5, -1.8),
+
+        hip_muzzle_position: Vec3::new(0.62, -0.28, -2.0),
         ads_muzzle_position: Vec3::new(0.0, -0.03, -2.5),
 
         magazine_size: 7,
@@ -129,6 +133,7 @@ fn spawn_player(
     let hip_muzzle_position = weapon.hip_muzzle_position;
     let ads_muzzle_position = weapon.ads_muzzle_position;
 
+    let model_path = weapon.model_path;
 
     commands
         .spawn((
@@ -196,14 +201,22 @@ fn spawn_player(
                                 view_camera.spawn((
                                     weapon,
                                     weapon_state,
-				    EquippedWeapon,
+                                    EquippedWeapon,
                                     WeaponAds::default(),
                                     RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
                                     //WeaponViewModel,
                                     //SceneRoot(pistol_scene.clone()),
                                     //Transform::from_xyz(0.3, -0.2, -0.5),
-                                    Mesh3d(gun_mesh),
-                                    MeshMaterial3d(gun_material),
+
+                                    //Mesh3d(gun_mesh),
+                                    //MeshMaterial3d(gun_material),
+                                    WorldAssetRoot(
+                                        asset_server.load(
+                                            GltfAssetLabel::Scene(0).from_asset(
+                                                model_path,
+                                            ),
+                                        ),
+                                    ),
                                     //transform::from_xyz(0.2, -0.1, -0.25),
                                     Transform {
                                         //translation: Vec3::new(0.5, 0.3, -1.5),
@@ -233,7 +246,7 @@ fn spawn_player(
                                             PointLight {
                                                 intensity: 8000.0,
                                                 // range: 100.0,
-						// radius: 10.0,
+                                                // radius: 10.0,
                                                 color: Color::srgb(1.0, 0.4, 0.05),
                                                 shadow_maps_enabled: true,
                                                 ..default()
@@ -417,12 +430,12 @@ fn update_grounded(
     }
 }
 
-const PLAYER_SPEED: f32 = 10.0;
-const PLAYER_GRAVITY: f32 = 50.0;
-const PLAYER_SPRINTING_SPEED: f32 = 15.0;
+const PLAYER_SPEED: f32 = 14.826;
+const PLAYER_GRAVITY: f32 = 40.32;
+const PLAYER_SPRINTING_SPEED: f32 = 17.239;
 // Ground acceleration.
 // Higher = reaches max speed faster.
-const GROUND_ACCEL: f32 = 18.0;
+const GROUND_ACCEL: f32 = 50.0;
 // Air acceleration.
 // Lower than ground acceleration gives you reduced air control.
 const AIR_ACCEL: f32 = 10.0;
@@ -472,7 +485,7 @@ fn friction(velocity: &mut Vec3, friction: f32, stop_speed: f32, dt: f32) {
 }
 
 fn walk_move(velocity: &mut Vec3, wish_dir: Vec3, wish_speed: f32, dt: f32) {
-    friction(velocity, 20.0, 1.0, dt);
+    friction(velocity, 10.0, 1.0, dt);
     // Ground movement accelerates quickly toward the desired speed.
     accelerate(velocity, wish_dir, wish_speed, GROUND_ACCEL, dt);
     // Ground movement should not accumulate vertical velocity.

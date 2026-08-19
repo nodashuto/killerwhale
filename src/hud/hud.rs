@@ -51,9 +51,10 @@ fn setup_hud(mut commands: Commands) {
             ..default()
         },
         TextFont {
-            font_size: FontSize::Px(33.0),
+            font_size: FontSize::Px(24.0),
             ..default()
         },
+	TextColor(Color::srgb(1.0, 1.0, 0.0)),
         Visibility::Hidden,
     ));
 

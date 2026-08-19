@@ -59,8 +59,12 @@ pub enum FireMode {
 pub struct Weapon {
     pub id: &'static str,
     pub name: &'static str,
+    pub model_path: &'static str,
+
     pub damage: f32,
     pub range: f32,
+
+    
 
     pub hip_weapon_position: Vec3,
     pub ads_weapon_position: Vec3,
