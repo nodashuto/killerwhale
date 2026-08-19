@@ -53,10 +53,19 @@ fn print_plugin_loaded() {
 pub enum FireMode {
     SemiAuto,
     FullAuto,
+    Burst,
 }
 
-#[derive(Component, Debug)]
+#[derive(Component)]
 pub struct Weapon {
+    pub definition: WeaponDefinition,
+
+    pub ammo_in_magazine: u32,
+    pub reserve_ammo: u32,
+}
+
+#[derive(Component, Debug, Clone)]
+pub struct WeaponDefinition {
     pub id: &'static str,
     pub name: &'static str,
     pub model_path: &'static str,
@@ -74,8 +83,8 @@ pub struct Weapon {
 
 
     pub magazine_size: u32,
-    pub ammo_in_magazine: u32,
-    pub reserve_ammo: u32,
+    //pub ammo_in_magazine: u32,
+    //pub reserve_ammo: u32,
 
     pub reload_duration: f32,
     // Fire mode
@@ -229,10 +238,12 @@ fn fire_weapon(
         return;
     };
 
-    let should_fire = match weapon.fire_mode {
+    let should_fire = match weapon.definition.fire_mode {
         FireMode::SemiAuto => buttons.just_pressed(MouseButton::Left),
 
         FireMode::FullAuto => buttons.pressed(MouseButton::Left),
+
+	FireMode::Burst => buttons.just_pressed(MouseButton::Left),
     };
 
     if !should_fire {
@@ -270,17 +281,17 @@ fn fire_weapon(
     };
 
     let end_position =
-        if let Some(hit) = bullet_fire(&ctx, origin, *direction, weapon.range, player_entity) {
+        if let Some(hit) = bullet_fire(&ctx, origin, *direction, weapon.definition.range, player_entity) {
             println!(
                 "{} hit {:?} for {} damage",
-                weapon.name, hit.entity, weapon.damage
+                weapon.definition.name, hit.entity, weapon.definition.damage
             );
 
             hit.position
         } else {
-            println!("{} missed", weapon.name);
+            println!("{} missed", weapon.definition.name);
 
-            origin + *direction * weapon.range
+            origin + *direction * weapon.definition.range
         };
 
     // Consume one bullet
@@ -288,7 +299,7 @@ fn fire_weapon(
 
     println!(
         "{} ammo: {}/{} | reserve: {}",
-        weapon.name, weapon.ammo_in_magazine, weapon.magazine_size, weapon.reserve_ammo
+        weapon.definition.name, weapon.ammo_in_magazine, weapon.definition.magazine_size, weapon.reserve_ammo
     );
 
     // Reset fire timer
@@ -350,7 +361,7 @@ fn weapon_ads(
         let t = ads.progress;
         let t = t * t * (3.0 - 2.0 * t);
 
-        transform.translation = weapon.hip_weapon_position.lerp(weapon.ads_weapon_position, t);
+        transform.translation = weapon.definition.hip_weapon_position.lerp(weapon.definition.ads_weapon_position, t);
     }
 
     // -------------------------
@@ -460,7 +471,7 @@ fn reload_weapon(
         return;
     }
 
-    if weapon.ammo_in_magazine >= weapon.magazine_size {
+    if weapon.ammo_in_magazine >= weapon.definition.magazine_size {
         return;
     }
 
@@ -470,11 +481,11 @@ fn reload_weapon(
 
     state.is_reloading = true;
 
-    state.reload_timer = Timer::from_seconds(weapon.reload_duration, TimerMode::Once);
+    state.reload_timer = Timer::from_seconds(weapon.definition.reload_duration, TimerMode::Once);
 
     println!(
         "{}: reloading ({:.1}s)",
-        weapon.name, weapon.reload_duration
+        weapon.definition.name, weapon.definition.reload_duration
     );
 }
 
@@ -490,7 +501,7 @@ fn update_reload(time: Res<Time>, mut weapon_query: Query<(&mut Weapon, &mut Wea
     state.reload_timer.tick(time.delta());
 
     if state.reload_timer.just_finished() {
-        let needed = weapon.magazine_size - weapon.ammo_in_magazine;
+        let needed = weapon.definition.magazine_size - weapon.ammo_in_magazine;
 
         let amount = needed.min(weapon.reserve_ammo);
 
@@ -501,7 +512,7 @@ fn update_reload(time: Res<Time>, mut weapon_query: Query<(&mut Weapon, &mut Wea
 
         println!(
             "{}: reload complete, {}/{} | reserve: {}",
-            weapon.name, weapon.ammo_in_magazine, weapon.magazine_size, weapon.reserve_ammo
+            weapon.definition.name, weapon.ammo_in_magazine, weapon.definition.magazine_size, weapon.reserve_ammo
         );
     }
 }

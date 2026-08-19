@@ -10,7 +10,8 @@ use bevy_rapier3d::prelude::*;
 // use bevy::core_pipeline::tonemapping::Tonemapping;
 
 use crate::weapon::weapon::{
-    FireMode, MuzzleFlash, MuzzleFlashLight, Weapon, WeaponAds, WeaponMuzzle, WeaponState,
+    FireMode, MuzzleFlash, MuzzleFlashLight, Weapon, WeaponAds, WeaponDefinition, WeaponMuzzle,
+    WeaponState,
 };
 
 pub struct PlayerPlugin;
@@ -103,16 +104,15 @@ fn spawn_player(
         ..default()
     });
 
-    let weapon = Weapon {
+    let pistol = WeaponDefinition {
         id: "Pistol",
         name: "WEAPON_SMG_LONGRANGE",
+
+        model_path: "models/20260812-glock17-viewmodel.glb",
+
         damage: 30.0,
         range: 100.0,
 
-	model_path: "models/20260812-glock17-viewmodel.glb",
-
-        // hip_weapon_position: Vec3::new(0.9, 0.1, -1.5),
-        // ads_weapon_position: Vec3::new(0.0, 0.35, -1.8),
         hip_weapon_position: Vec3::new(0.9, -0.8, -1.5),
         ads_weapon_position: Vec3::new(0.0, -0.5, -1.8),
 
@@ -120,20 +120,23 @@ fn spawn_player(
         ads_muzzle_position: Vec3::new(0.0, -0.03, -2.5),
 
         magazine_size: 7,
-        ammo_in_magazine: 7,
-        reserve_ammo: 21,
-
         reload_duration: 2.0,
         fire_rate: 6.0,
         fire_mode: FireMode::FullAuto,
     };
 
-    let weapon_state = WeaponState::new(weapon.fire_rate);
+    let weapon = Weapon {
+        definition: pistol.clone(),
+        ammo_in_magazine: pistol.magazine_size,
+        reserve_ammo: 21,
+    };
 
-    let hip_muzzle_position = weapon.hip_muzzle_position;
-    let ads_muzzle_position = weapon.ads_muzzle_position;
+    let weapon_state = WeaponState::new(weapon.definition.fire_rate);
 
-    let model_path = weapon.model_path;
+    let hip_muzzle_position = weapon.definition.hip_muzzle_position;
+    let ads_muzzle_position = weapon.definition.ads_muzzle_position;
+
+    let model_path = weapon.definition.model_path;
 
     commands
         .spawn((
@@ -211,11 +214,8 @@ fn spawn_player(
                                     //Mesh3d(gun_mesh),
                                     //MeshMaterial3d(gun_material),
                                     WorldAssetRoot(
-                                        asset_server.load(
-                                            GltfAssetLabel::Scene(0).from_asset(
-                                                model_path,
-                                            ),
-                                        ),
+                                        asset_server
+                                            .load(GltfAssetLabel::Scene(0).from_asset(model_path)),
                                     ),
                                     //transform::from_xyz(0.2, -0.1, -0.25),
                                     Transform {

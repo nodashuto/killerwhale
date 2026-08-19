@@ -38,7 +38,8 @@ fn setup_hud(mut commands: Commands) {
             font_size: FontSize::Px(15.0),
             ..default()
         },
-        BackgroundColor(Color::BLACK),
+        //BackgroundColor(Color::BLACK),
+	BackgroundColor(Color::srgba(0.1, 0.1, 0.1, 0.4)),
     ));
 
     commands.spawn((
@@ -162,7 +163,7 @@ fn update_weapon_hud(
     if let Ok(mut text) = queries.p0().single_mut() {
         text.0 = format!(
             "{}: {} / {}",
-            weapon.name, weapon.ammo_in_magazine, weapon.reserve_ammo,
+            weapon.definition.name, weapon.ammo_in_magazine, weapon.reserve_ammo,
         );
     }
 
