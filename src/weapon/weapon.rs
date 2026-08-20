@@ -1,8 +1,13 @@
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
 
-use crate::player::player::Player;
-use crate::player::player::PlayerCamera;
+// use crate::player::player::Player;
+// use crate::player::player::PlayerCamera;
+
+use crate::player::player::{Player, PlayerCamera, WeaponAnimationPlayer};
+
+use bevy::animation::AnimationPlayer;
+use bevy::animation::RepeatAnimation;
 
 pub struct WeaponPlugin;
 
@@ -18,7 +23,7 @@ impl Plugin for WeaponPlugin {
                 update_reload,
                 update_tracers,
                 update_muzzle_flash,
-		update_weapon_fire_timer,
+                update_weapon_fire_timer,
             )
                 .chain(),
         );
@@ -59,19 +64,15 @@ pub struct WeaponDefinition {
     pub damage: f32,
     pub range: f32,
 
-    
-
     pub hip_weapon_position: Vec3,
     pub ads_weapon_position: Vec3,
 
     pub hip_muzzle_position: Vec3,
     pub ads_muzzle_position: Vec3,
 
-
     pub magazine_size: u32,
     //pub ammo_in_magazine: u32,
     //pub reserve_ammo: u32,
-
     pub reload_duration: f32,
     // Fire mode
     pub fire_mode: FireMode,
@@ -87,8 +88,7 @@ pub struct WeaponState {
 
 impl WeaponState {
     pub fn new(fire_rate: f32) -> Self {
-        let mut fire_timer =
-            Timer::from_seconds(1.0 / fire_rate, TimerMode::Once);
+        let mut fire_timer = Timer::from_seconds(1.0 / fire_rate, TimerMode::Once);
 
         fire_timer.finish();
 
@@ -140,7 +140,6 @@ pub struct BulletTracer {
     pub direction: Vec3,
     pub speed: f32,
 }
-
 
 impl BulletTracer {
     pub fn new(start_position: Vec3, end_position: Vec3, speed: f32) -> Self {
@@ -206,9 +205,10 @@ fn fire_weapon(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut animation_query: Query<(&mut AnimationPlayer, &WeaponAnimationPlayer)>,
 ) {
     // let (mut weapon, weapon_state) = weapon_query.single_mut().unwrap();
-        let Ok((mut weapon, mut weapon_state)) = weapon_query.single_mut() else {
+    let Ok((mut weapon, mut weapon_state)) = weapon_query.single_mut() else {
         return;
     };
 
@@ -217,7 +217,7 @@ fn fire_weapon(
 
         FireMode::FullAuto => buttons.pressed(MouseButton::Left),
 
-	FireMode::Burst => buttons.just_pressed(MouseButton::Left),
+        FireMode::Burst => buttons.just_pressed(MouseButton::Left),
     };
 
     if !should_fire {
@@ -233,7 +233,7 @@ fn fire_weapon(
         return;
     }
 
-        // Fire-rate check
+    // Fire-rate check
     if !weapon_state.fire_timer.is_finished() {
         return;
     }
@@ -254,30 +254,58 @@ fn fire_weapon(
         return;
     };
 
-    let end_position =
-        if let Some(hit) = bullet_fire(&ctx, origin, *direction, weapon.definition.range, player_entity) {
-            println!(
-                "{} hit {:?} for {} damage",
-                weapon.definition.name, hit.entity, weapon.definition.damage
-            );
+    let end_position = if let Some(hit) = bullet_fire(
+        &ctx,
+        origin,
+        *direction,
+        weapon.definition.range,
+        player_entity,
+    ) {
+        println!(
+            "{} hit {:?} for {} damage",
+            weapon.definition.name, hit.entity, weapon.definition.damage
+        );
 
-            hit.position
-        } else {
-            println!("{} missed", weapon.definition.name);
+        hit.position
 
-            origin + *direction * weapon.definition.range
-        };
+	    
+    } else {
+        println!("{} missed", weapon.definition.name);
+
+        origin + *direction * weapon.definition.range
+    };
 
     // Consume one bullet
     weapon.ammo_in_magazine -= 1;
 
+    
+
     println!(
         "{} ammo: {}/{} | reserve: {}",
-        weapon.definition.name, weapon.ammo_in_magazine, weapon.definition.magazine_size, weapon.reserve_ammo
+        weapon.definition.name,
+        weapon.ammo_in_magazine,
+        weapon.definition.magazine_size,
+        weapon.reserve_ammo
     );
 
     // Reset fire timer
     weapon_state.fire_timer.reset();
+
+    
+
+    for (mut player, animations) in &mut animation_query {
+        player
+            .play(animations.fire)
+            .set_speed(4.0)
+            .set_repeat(RepeatAnimation::Count(1))
+                .replay(); 
+            //.seek_to(0.0);
+    }
+
+    // https://docs.rs/bevy/latest/bevy/animation/struct.ActiveAnimation.html#implementations
+    
+    // https://docs.rs/bevy/latest/bevy/animation/enum.RepeatAnimation.html
+
 
     // --------------------------------------------------------
     // MUZZLE FLASH
@@ -335,7 +363,10 @@ fn weapon_ads(
         let t = ads.progress;
         let t = t * t * (3.0 - 2.0 * t);
 
-        transform.translation = weapon.definition.hip_weapon_position.lerp(weapon.definition.ads_weapon_position, t);
+        transform.translation = weapon
+            .definition
+            .hip_weapon_position
+            .lerp(weapon.definition.ads_weapon_position, t);
     }
 
     // -------------------------
@@ -486,16 +517,15 @@ fn update_reload(time: Res<Time>, mut weapon_query: Query<(&mut Weapon, &mut Wea
 
         println!(
             "{}: reload complete, {}/{} | reserve: {}",
-            weapon.definition.name, weapon.ammo_in_magazine, weapon.definition.magazine_size, weapon.reserve_ammo
+            weapon.definition.name,
+            weapon.ammo_in_magazine,
+            weapon.definition.magazine_size,
+            weapon.reserve_ammo
         );
     }
 }
 
-
-fn update_weapon_fire_timer(
-    time: Res<Time>,
-    mut weapon_query: Query<&mut WeaponState>,
-) {
+fn update_weapon_fire_timer(time: Res<Time>, mut weapon_query: Query<&mut WeaponState>) {
     let Ok(mut state) = weapon_query.single_mut() else {
         return;
     };

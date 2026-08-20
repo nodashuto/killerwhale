@@ -3,8 +3,12 @@ use std::f32::consts::FRAC_PI_2;
 use bevy::{
     camera::visibility::RenderLayers, color::palettes::tailwind,
     input::mouse::AccumulatedMouseMotion, light::NotShadowCaster, prelude::*,
+    world_serialization::WorldInstanceReady,
 };
 use bevy_rapier3d::prelude::*;
+
+use bevy::animation::AnimationPlayer;
+use bevy::scene::*;
 
 // use bevy::post_process::bloom::{Bloom, BloomCompositeMode};
 // use bevy::core_pipeline::tonemapping::Tonemapping;
@@ -84,11 +88,110 @@ impl Default for Head {
     }
 }
 
+// A component that stores a reference to an animation we want to play. This is
+// created when we start loading the mesh (see `setup_mesh_and_animation`) and
+// read when the mesh has spawned (see `play_animation_once_loaded`).
+// see: https://bevy.org/examples/animation/animated-mesh/
+#[derive(Component)]
+struct AnimationToPlay {
+    graph_handle: Handle<AnimationGraph>,
+    index: AnimationNodeIndex,
+}
+
+#[derive(Component)]
+pub struct WeaponAnimations {
+    pub graph: Handle<AnimationGraph>,
+    pub idle: AnimationNodeIndex,
+    pub fire: AnimationNodeIndex,
+    //pub reload: AnimationNodeIndex,
+}
+
+#[derive(Component)]
+pub struct WeaponAnimationPlayer {
+    pub idle: AnimationNodeIndex,
+    pub fire: AnimationNodeIndex,
+    //pub reload: AnimationNodeIndex,
+}
+
+fn setup_weapon_animation(
+    ready: On<WorldInstanceReady>,
+    mut commands: Commands,
+
+    children: Query<&Children>,
+    weapons: Query<&WeaponAnimations>,
+    mut players: Query<&mut AnimationPlayer>,
+) {
+    let Ok(animations) = weapons.get(ready.entity) else {
+        return;
+    };
+
+    for child in children.iter_descendants(ready.entity) {
+        let Ok(mut player) = players.get_mut(child) else {
+            continue;
+        };
+
+        commands.entity(child).insert((
+            AnimationGraphHandle(animations.graph.clone()),
+                WeaponAnimationPlayer {
+        idle: animations.idle,
+        fire: animations.fire,
+        //reload: animations.reload,
+    },
+        ));
+
+        player.play(animations.idle).repeat();
+    }
+}
+
+fn fire_animation(
+    mut query: Query<(
+        &mut AnimationPlayer,
+        &WeaponAnimationPlayer,
+    )>,
+) {
+    for (mut player, animations) in &mut query {
+        player.play(animations.fire);
+    }
+}
+
+
+
+
+// fn setup_weapon_animation(
+//     ready: On<WorldInstanceReady>,
+//     mut commands: Commands,
+
+//     children: Query<&Children>,
+
+//     weapons: Query<&WeaponAnimations>,
+
+//     mut players: Query<&mut AnimationPlayer>,
+// ) {
+//     let Ok(animations) = weapons.get(ready.entity) else {
+//         return;
+//     };
+
+//     for child in children.iter_descendants(ready.entity) {
+//         let Ok(mut player) = players.get_mut(child) else {
+//             continue;
+//         };
+
+//         // Connect the AnimationPlayer to our animation graph.
+//         commands.entity(child).insert(
+//             AnimationGraphHandle(animations.graph.clone()),
+//         );
+
+//         // Start idle animation.
+//         player.play(animations.idle).repeat();
+//     }
+// }
+
 fn spawn_player(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     asset_server: Res<AssetServer>,
+    mut animation_graphs: ResMut<Assets<AnimationGraph>>,
 ) {
     // let arm = meshes.add(Cuboid::new(0.1, 0.1, 0.5));
     // let arm_material = materials.add(Color::from(tailwind::TEAL_200));
@@ -141,6 +244,40 @@ fn spawn_player(
     let ads_muzzle_position = weapon.definition.ads_muzzle_position;
 
     let model_path = weapon.definition.model_path;
+
+    //
+    // animation starts
+
+    let mut graph = AnimationGraph::new();
+
+    let idle = graph.add_clip(
+        asset_server.load(
+            GltfAssetLabel::Animation(weapon.definition.idle_animation).from_asset(model_path),
+        ),
+        1.0,
+        graph.root,
+    );
+
+    let fire = graph.add_clip(
+        asset_server.load(
+            GltfAssetLabel::Animation(weapon.definition.fire_animation).from_asset(model_path),
+        ),
+        1.0,
+        graph.root,
+    );
+
+    // let reload = graph.add_clip(
+    //     asset_server.load(
+    //         GltfAssetLabel::Animation(weapon.definition.reload_animation)
+    //             .from_asset(model_path),
+    //     ),
+    //     1.0,
+    //     graph.root,
+    // );
+
+    let graph_handle = animation_graphs.add(graph);
+
+    //animation
 
     commands
         .spawn((
@@ -209,6 +346,12 @@ fn spawn_player(
                                     weapon,
                                     weapon_state,
                                     EquippedWeapon,
+                                    WeaponAnimations {
+                                        graph: graph_handle,
+                                        idle,
+                                        fire,
+                                        //reload,
+                                    },
                                     WeaponAds::default(),
                                     RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
                                     //WeaponViewModel,
@@ -229,7 +372,8 @@ fn spawn_player(
                                         //scale: Vec3::new(0.1, 0.1, 0.1),
                                         scale: Vec3::new(0.3, 0.3, 0.3),
                                     },
-                                ));
+                                ))
+				    .observe(setup_weapon_animation);
 
                                 // Muzzle position
                                 view_camera
