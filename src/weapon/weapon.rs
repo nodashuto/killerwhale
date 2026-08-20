@@ -30,25 +30,6 @@ fn print_plugin_loaded() {
     println!("weapon plugin is loaded");
 }
 
-// /// stores weapon name, damage
-// #[derive(Component, Debug)]
-// pub struct Weapon {
-//     // the name never changes
-//     pub name: &'static str,
-//     pub damage: f32,
-//     pub range: f32,
-// }
-
-// #[derive(Component, Debug)]
-// pub struct Weapon {
-//     pub name: &'static str,
-//     pub damage: f32,
-//     pub range: f32,
-
-//     pub hip_position: Vec3,
-//     pub ads_position: Vec3,
-// }
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FireMode {
     SemiAuto,
@@ -69,6 +50,11 @@ pub struct WeaponDefinition {
     pub id: &'static str,
     pub name: &'static str,
     pub model_path: &'static str,
+
+    // index for blender animation
+    pub idle_animation: usize,
+    pub fire_animation: usize,
+    pub reload_animation: usize,
 
     pub damage: f32,
     pub range: f32,
@@ -155,18 +141,6 @@ pub struct BulletTracer {
     pub speed: f32,
 }
 
-// impl BulletTracer {
-//     pub fn new(start: Vec3, end: Vec3, speed: f32) -> Self {
-//         let direction = (end - start).normalize_or_zero();
-
-//         Self {
-//             start_position: start,
-//             end_position: end,
-//             direction,
-//             speed,
-//         }
-//     }
-// }
 
 impl BulletTracer {
     pub fn new(start_position: Vec3, end_position: Vec3, speed: f32) -> Self {

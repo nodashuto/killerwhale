@@ -105,16 +105,20 @@ fn spawn_player(
     });
 
     let pistol = WeaponDefinition {
-        id: "Pistol",
+        id: "SMG",
         name: "WEAPON_SMG_LONGRANGE",
 
-        model_path: "models/20260812-glock17-viewmodel.glb",
+        model_path: "models/20260821-gun-viewmodel-0002-with-simpleanim.glb",
+
+        idle_animation: 0,
+        fire_animation: 1,
+        reload_animation: 2,
 
         damage: 30.0,
         range: 100.0,
 
         hip_weapon_position: Vec3::new(0.9, -0.8, -1.5),
-        ads_weapon_position: Vec3::new(0.0, -0.5, -1.8),
+        ads_weapon_position: Vec3::new(0.0, -0.525, -1.2),
 
         hip_muzzle_position: Vec3::new(0.62, -0.28, -2.0),
         ads_muzzle_position: Vec3::new(0.0, -0.03, -2.5),
