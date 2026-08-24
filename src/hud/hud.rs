@@ -1,5 +1,9 @@
 use bevy::prelude::*;
 
+use bevy::window::PrimaryWindow;
+
+use super::crosshair::{spawn_crosshair, toggle_and_animate_crosshair};
+
 use crate::player::player::EquippedWeapon;
 use crate::weapon::weapon::Weapon;
 
@@ -7,8 +11,8 @@ pub struct HudPlugin;
 
 impl Plugin for HudPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup_hud)
-            .add_systems(Update, update_weapon_hud);
+        app.add_systems(Startup, (setup_hud, spawn_crosshair))
+            .add_systems(Update, (update_weapon_hud, toggle_and_animate_crosshair));
     }
 }
 

@@ -24,12 +24,12 @@ impl Plugin for WorldPlugin {
     fn build(&self, app: &mut App) {
         //app.add_plugins(RapierDebugRenderPlugin::default()); //activate gismo
         //app.add_plugins(ShootingTargetPlugin);
-        // app.insert_resource(ClearColor(Color::srgb(
-        //     152.0 / 255.0,
-        //     192.0 / 255.0,
-        //     217.0 / 255.0,
-        // )));
-        app.insert_resource(ClearColor(Color::BLACK));
+        app.insert_resource(ClearColor(Color::srgb(
+            152.0 / 255.0,
+            192.0 / 255.0,
+            217.0 / 255.0,
+        )));
+        // app.insert_resource(ClearColor(Color::BLACK));
         app.add_systems(Startup, spawn_world_model);
         app.add_systems(Startup, spawn_lights);
         //app.add_systems(Startup, spawn_stairs);
@@ -50,7 +50,7 @@ fn draw_grid(mut gizmos: Gizmos) {
     gizmos
         .grid(
             Quat::from_rotation_x(PI / 2.),
-            UVec2::splat(40),
+            UVec2::splat(400),
             Vec2::new(1., 1.),
             Color::linear_rgb(0.7, 0., 0.4),
         )
@@ -66,7 +66,7 @@ fn spawn_world_model(
 
     let size = 200.0;
     let ground = meshes.add(Plane3d::new(Vec3::Y, Vec2::splat(size)));
-    let _cube = meshes.add(Cuboid::new(2.0, 0.5, 1.0));
+    let _cube = meshes.add(Cuboid::new(2.0, 0.001, 1.0));
     let _material = materials.add(Color::WHITE);
 
     // let grass = materials.add(Color::srgb(0.4, 1.0, 0.2));
@@ -99,7 +99,7 @@ fn spawn_world_model(
         MeshMaterial3d(transparent.clone()),
         RigidBody::Fixed,
         Collider::cuboid(size, 0.1, size),
-        Transform::from_xyz(0.0, -0.06, 0.0),
+        Transform::from_xyz(0.0, -0.01, 0.0),
     ));
 
     // commands.spawn((
@@ -306,10 +306,10 @@ struct MapAsset {
 }
 
 fn load_map(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let mesh = asset_server.load::<Mesh>("maps/mp-0001.glb#Mesh0/Primitive0");
+    let mesh = asset_server.load::<Mesh>("maps/mp-0003.glb#Mesh0/Primitive0");
 
     let scene =
-        asset_server.load::<WorldAsset>(GltfAssetLabel::Scene(0).from_asset("maps/mp-0001.glb"));
+        asset_server.load::<WorldAsset>(GltfAssetLabel::Scene(0).from_asset("maps/mp-0003.glb"));
 
     commands.insert_resource(MapAsset {
         mesh,

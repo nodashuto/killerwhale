@@ -1,3 +1,6 @@
+use bevy::prelude::*;
+use bevy::window::PrimaryWindow;
+
 
 const ARM_LENGTH: f32 = 8.0;
 const THICKNESS: f32 = 2.0;
@@ -6,10 +9,10 @@ const CLOSED_GAP: f32 = 2.0;
 const CROSSHAIR_SPEED: f32 = 250.0;
 
 #[derive(Component)]
-struct Crosshair;
+pub struct Crosshair;
 
 #[derive(Component)]
-enum CrosshairArm {
+pub enum CrosshairArm {
     Top,
     Bottom,
     Left,
@@ -90,7 +93,7 @@ pub fn spawn_crosshair(window_query: Query<&Window, With<PrimaryWindow>>, mut co
         });
 }
 
-fn toggle_and_animate_crosshair(
+pub fn toggle_and_animate_crosshair(
     time: Res<Time>,
     mouse: Res<ButtonInput<MouseButton>>,
     mut crosshair_query: Query<&mut Visibility, With<Crosshair>>,
@@ -221,7 +224,7 @@ fn _animate_crosshair(
     }
 }
 
-fn _toggle_crosshair(
+pub fn _toggle_crosshair(
     mouse: Res<ButtonInput<MouseButton>>,
     mut query: Query<&mut Visibility, With<Crosshair>>,
 ) {
