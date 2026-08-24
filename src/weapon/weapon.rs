@@ -25,7 +25,6 @@ impl Plugin for WeaponPlugin {
                 update_muzzle_flash,
                 update_weapon_fire_timer,
             )
-                .chain(),
         );
     }
 }
@@ -297,8 +296,8 @@ fn fire_weapon(
         player
             .play(animations.fire)
             .set_speed(4.0)
-            .set_repeat(RepeatAnimation::Count(1))
-                .replay(); 
+            // .set_repeat(RepeatAnimation::Count(1))
+                .set_repeat(RepeatAnimation::Never).replay(); 
             //.seek_to(0.0);
     }
 

@@ -226,16 +226,16 @@ fn spawn_player(
         hip_muzzle_position: Vec3::new(0.62, -0.28, -2.0),
         ads_muzzle_position: Vec3::new(0.0, -0.03, -2.5),
 
-        magazine_size: 7,
+        magazine_size: 17,
         reload_duration: 2.0,
-        fire_rate: 6.0,
+        fire_rate: 10.0,
         fire_mode: FireMode::FullAuto,
     };
 
     let weapon = Weapon {
         definition: pistol.clone(),
         ammo_in_magazine: pistol.magazine_size,
-        reserve_ammo: 21,
+        reserve_ammo: 102,
     };
 
     let weapon_state = WeaponState::new(weapon.definition.fire_rate);
@@ -353,7 +353,7 @@ fn spawn_player(
                                         //reload,
                                     },
                                     WeaponAds::default(),
-                                    RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
+                                    
                                     //WeaponViewModel,
                                     //SceneRoot(pistol_scene.clone()),
                                     //Transform::from_xyz(0.3, -0.2, -0.5),
@@ -364,6 +364,7 @@ fn spawn_player(
                                         asset_server
                                             .load(GltfAssetLabel::Scene(0).from_asset(model_path)),
                                     ),
+				    RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
                                     //transform::from_xyz(0.2, -0.1, -0.25),
                                     Transform {
                                         //translation: Vec3::new(0.5, 0.3, -1.5),
@@ -393,8 +394,8 @@ fn spawn_player(
                                             MuzzleFlashLight,
                                             PointLight {
                                                 intensity: 8000.0,
-                                                // range: 100.0,
-                                                // radius: 10.0,
+                                                 range: 100.0,
+                                                 //radius: 1000.0,
                                                 color: Color::srgb(1.0, 0.4, 0.05),
                                                 shadow_maps_enabled: true,
                                                 ..default()
