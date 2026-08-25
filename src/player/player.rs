@@ -52,7 +52,7 @@ impl Default for CameraSensitivity {
             // We use a component for them so that we can make them user-configurable at runtime
             // for accessibility reasons.
             // It also allows you to inspect them in an editor if you `Reflect` the component.
-            Vec2::new(0.003, 0.002),
+            Vec2::new(0.001, 0.001),
         )
     }
 }
@@ -132,30 +132,24 @@ fn setup_weapon_animation(
 
         commands.entity(child).insert((
             AnimationGraphHandle(animations.graph.clone()),
-                WeaponAnimationPlayer {
-        idle: animations.idle,
-        fire: animations.fire,
-        //reload: animations.reload,
-    },
+            WeaponAnimationPlayer {
+                idle: animations.idle,
+                fire: animations.fire,
+                //reload: animations.reload,
+            },
+	    
         ));
 
         player.play(animations.idle).repeat();
     }
 }
 
-fn fire_animation(
-    mut query: Query<(
-        &mut AnimationPlayer,
-        &WeaponAnimationPlayer,
-    )>,
-) {
-    for (mut player, animations) in &mut query {
-        player.play(animations.fire);
-    }
-}
-
-
-
+// /// fire animation is in weapon fire in weapon.rs
+// fn fire_animation(mut query: Query<(&mut AnimationPlayer, &WeaponAnimationPlayer)>) {
+//     for (mut player, animations) in &mut query {
+//         player.play(animations.fire);
+//     }
+// }
 
 // fn setup_weapon_animation(
 //     ready: On<WorldInstanceReady>,
@@ -285,7 +279,7 @@ fn spawn_player(
             PlayerPhysicsController {
                 ..PlayerPhysicsController::default()
             },
-            Transform::from_xyz(0.0, 10.0, 0.0),
+            Transform::from_xyz(0.0, 30.0, 0.0),
             Visibility::default(),
             RigidBody::KinematicPositionBased,
             Collider::capsule_y(0.51, 0.40), // half height + radius = 0.91
@@ -337,44 +331,50 @@ fn spawn_player(
                                     order: 1,
                                     ..default()
                                 },
+                                Projection::Perspective(PerspectiveProjection {
+                                    near: 0.01,
+                                    far: 10.0,
+                                    ..default()
+                                }),
                                 RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
                                 Transform::default(),
                                 InheritedVisibility::default(),
                             ))
                             .with_children(|view_camera| {
-                                view_camera.spawn((
-                                    weapon,
-                                    weapon_state,
-                                    EquippedWeapon,
-                                    WeaponAnimations {
-                                        graph: graph_handle,
-                                        idle,
-                                        fire,
-                                        //reload,
-                                    },
-                                    WeaponAds::default(),
-                                    
-                                    //WeaponViewModel,
-                                    //SceneRoot(pistol_scene.clone()),
-                                    //Transform::from_xyz(0.3, -0.2, -0.5),
+                                view_camera
+                                    .spawn((
+                                        weapon,
+                                        weapon_state,
+                                        EquippedWeapon,
+                                        WeaponAnimations {
+                                            graph: graph_handle,
+                                            idle,
+                                            fire,
+                                            //reload,
+                                        },
+                                        WeaponAds::default(),
+                                        //WeaponViewModel,
+                                        //SceneRoot(pistol_scene.clone()),
+                                        //Transform::from_xyz(0.3, -0.2, -0.5),
 
-                                    //Mesh3d(gun_mesh),
-                                    //MeshMaterial3d(gun_material),
-                                    WorldAssetRoot(
-                                        asset_server
-                                            .load(GltfAssetLabel::Scene(0).from_asset(model_path)),
-                                    ),
-				    RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
-                                    //transform::from_xyz(0.2, -0.1, -0.25),
-                                    Transform {
-                                        //translation: Vec3::new(0.5, 0.3, -1.5),
-                                        translation: Vec3::new(0.0, 0.0, 0.0),
-                                        rotation: Quat::from_rotation_y(std::f32::consts::PI),
-                                        //scale: Vec3::new(0.1, 0.1, 0.1),
-                                        scale: Vec3::new(0.3, 0.3, 0.3),
-                                    },
-                                ))
-				    .observe(setup_weapon_animation);
+                                        //Mesh3d(gun_mesh),
+                                        //MeshMaterial3d(gun_material),
+                                        WorldAssetRoot(
+                                            asset_server.load(
+                                                GltfAssetLabel::Scene(0).from_asset(model_path),
+                                            ),
+                                        ),
+                                        RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
+                                        //transform::from_xyz(0.2, -0.1, -0.25),
+                                        Transform {
+                                            //translation: Vec3::new(0.5, 0.3, -1.5),
+                                            translation: Vec3::new(0.0, 0.0, 0.0),
+                                            rotation: Quat::from_rotation_y(std::f32::consts::PI),
+                                            //scale: Vec3::new(0.1, 0.1, 0.1),
+                                            scale: Vec3::new(0.3, 0.3, 0.3),
+                                        },
+                                    ))
+                                    .observe(setup_weapon_animation);
 
                                 // Muzzle position
                                 view_camera
@@ -394,8 +394,8 @@ fn spawn_player(
                                             MuzzleFlashLight,
                                             PointLight {
                                                 intensity: 8000.0,
-                                                 range: 100.0,
-                                                 //radius: 1000.0,
+                                                range: 100.0,
+                                                //radius: 1000.0,
                                                 color: Color::srgb(1.0, 0.4, 0.05),
                                                 shadow_maps_enabled: true,
                                                 ..default()
@@ -567,7 +567,7 @@ impl Default for PlayerPhysicsController {
 
 // }
 
-// this need in system
+/// update_grounded is needed in system to check if player is grounded. 
 fn update_grounded(
     mut query: Query<(
         &mut PlayerPhysicsController,
@@ -581,7 +581,7 @@ fn update_grounded(
 
 const PLAYER_SPEED: f32 = 14.826;
 const PLAYER_GRAVITY: f32 = 40.32;
-const PLAYER_SPRINTING_SPEED: f32 = 17.239;
+const PLAYER_SPRINTING_SPEED: f32 = 20.0; // 17.239
 // Ground acceleration.
 // Higher = reaches max speed faster.
 const GROUND_ACCEL: f32 = 50.0;
@@ -689,8 +689,9 @@ fn get_move_speed(keyboard: &ButtonInput<KeyCode>) -> f32 {
     // 	PLAYER_SPEED
     // }
 
-    if keyboard.pressed(KeyCode::KeyW) && keyboard.pressed(KeyCode::ShiftLeft)
-        || keyboard.pressed(KeyCode::ShiftRight)
+    if keyboard.pressed(KeyCode::KeyW)
+    && (keyboard.pressed(KeyCode::ShiftLeft)
+        || keyboard.pressed(KeyCode::ShiftRight))
     {
         PLAYER_SPRINTING_SPEED
     } else {
