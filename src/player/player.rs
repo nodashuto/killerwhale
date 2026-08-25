@@ -60,6 +60,7 @@ impl Default for CameraSensitivity {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlayerState {
     Ground,
+    Sprinting,
     Air,
     Sliding,
     WallRunning,
@@ -137,7 +138,6 @@ fn setup_weapon_animation(
                 fire: animations.fire,
                 //reload: animations.reload,
             },
-	    
         ));
 
         player.play(animations.idle).repeat();
@@ -513,6 +513,12 @@ pub struct PlayerPhysicsController {
     pub isgrounded: bool,
     // Time remaining in the jump/landing penalty.
     jump_penalty_time: f32,
+
+    // Sprint state
+    // Sprint
+    pub sprint_remaining: f32,
+    pub sprint_recharge_delay: f32,
+    pub is_sprinting: bool,
 }
 
 impl Default for PlayerPhysicsController {
@@ -523,6 +529,10 @@ impl Default for PlayerPhysicsController {
             isgrounded: false,
             // Time remaining in the jump/landing penalty.
             jump_penalty_time: 0.0,
+            // sprint
+            sprint_remaining: MAX_SPRINT_TIME,
+            sprint_recharge_delay: 0.0,
+            is_sprinting: false,
         }
     }
 }
@@ -567,7 +577,7 @@ impl Default for PlayerPhysicsController {
 
 // }
 
-/// update_grounded is needed in system to check if player is grounded. 
+/// update_grounded is needed in system to check if player is grounded.
 fn update_grounded(
     mut query: Query<(
         &mut PlayerPhysicsController,
@@ -579,15 +589,25 @@ fn update_grounded(
     }
 }
 
-const PLAYER_SPEED: f32 = 14.826;
+// player speed
+const PLAYER_SPEED: f32 = 10.0; // 14.826
 const PLAYER_GRAVITY: f32 = 40.32;
-const PLAYER_SPRINTING_SPEED: f32 = 20.0; // 17.239
+const PLAYER_SPRINTING_SPEED: f32 = 23.0; // 17.239
+
+// sprint stamina
+const MAX_SPRINT_TIME: f32 = 5.0;
+const SPRINT_RECHARGE_PAUSE: f32 = 0.3;
+
+const ADS_SPEED_MULTIPLIER: f32 = 0.4;
+
 // Ground acceleration.
 // Higher = reaches max speed faster.
 const GROUND_ACCEL: f32 = 50.0;
+
 // Air acceleration.
 // Lower than ground acceleration gives you reduced air control.
 const AIR_ACCEL: f32 = 10.0;
+
 // Jump height in world units.
 const JUMP_HEIGHT: f32 = 1.8;
 
@@ -684,16 +704,17 @@ fn check_jump(player: &mut PlayerPhysicsController, keyboard: &ButtonInput<KeyCo
     player.jump_penalty_time = JUMP_PENALTY_DURATION;
 }
 
+// simple sprint (do nothing)
 fn get_move_speed(keyboard: &ButtonInput<KeyCode>) -> f32 {
     // if keyboard.pressed(MouseButton::Left) {
     // 	PLAYER_SPEED
     // }
 
     if keyboard.pressed(KeyCode::KeyW)
-    && (keyboard.pressed(KeyCode::ShiftLeft)
-        || keyboard.pressed(KeyCode::ShiftRight))
+        && (keyboard.pressed(KeyCode::ShiftLeft) || keyboard.pressed(KeyCode::ShiftRight))
     {
-        PLAYER_SPRINTING_SPEED
+        //PLAYER_SPRINTING_SPEED
+        PLAYER_SPEED
     } else {
         PLAYER_SPEED
     }
@@ -701,6 +722,7 @@ fn get_move_speed(keyboard: &ButtonInput<KeyCode>) -> f32 {
 
 fn player_movement(
     keyboard: Res<ButtonInput<KeyCode>>,
+    mouse: Res<ButtonInput<MouseButton>>,
     time: Res<Time>,
     mut query: Query<(
         &Transform,
@@ -709,6 +731,7 @@ fn player_movement(
     )>,
 ) {
     let dt = time.delta_secs();
+    let current_time = time.elapsed_secs();
 
     for (transform, mut controller, mut player) in query.iter_mut() {
         let mut input = Vec3::ZERO;
@@ -733,6 +756,22 @@ fn player_movement(
             wish_dir = wish_dir.normalize();
         }
 
+        // -------------------------
+        // Sprint
+        // -------------------------
+
+        // let shift_held = shift_held(&keyboard);
+        // let wants_sprint = wants_to_sprint(&keyboard, input);
+        let wants_sprint = wants_to_sprint(&keyboard, input);
+
+        update_sprint(&mut player, wants_sprint, dt);
+
+        let base_speed = if player.is_sprinting {
+            PLAYER_SPRINTING_SPEED
+        } else {
+            PLAYER_SPEED
+        };
+
         // Handle Player Jump
         check_jump(&mut player, &keyboard);
 
@@ -745,16 +784,28 @@ fn player_movement(
             1.0
         };
 
-        let wish_speed = if wish_dir != Vec3::ZERO {
-            get_move_speed(&keyboard) * penalty_scale
-        } else {
-            0.0
-        };
+        // // old Movement speed
         // let wish_speed = if wish_dir != Vec3::ZERO {
-        //     get_move_speed(&keyboard)
+        //     get_move_speed(&keyboard) * penalty_scale
         // } else {
         //     0.0
         // };
+
+        // -------------------------
+        // Movement speed
+        // -------------------------
+
+        let ads_multiplier = if mouse.pressed(MouseButton::Right) {
+            ADS_SPEED_MULTIPLIER
+        } else {
+            1.0
+        };
+
+        let wish_speed = if wish_dir != Vec3::ZERO {
+            base_speed * penalty_scale * ads_multiplier
+        } else {
+            0.0
+        };
 
         if player.isgrounded {
             walk_move(&mut player.velocity, wish_dir, wish_speed, dt);
@@ -764,4 +815,98 @@ fn player_movement(
         }
         controller.translation = Some(player.velocity * dt);
     }
+}
+
+// /// Check whether the player is sprinting
+// fn is_sprinting(player: &PlayerPhysicsController) -> bool {
+//     player.sprint_start_time.is_some() && player.sprint_end_time.is_none()
+// }
+
+// /// Calculate sprint remaining
+// fn get_sprint_left(player: &PlayerPhysicsController, current_time: f32) -> f32 {
+//     let max_sprint_time = MAX_SPRINT_TIME;
+
+//     let Some(start) = player.sprint_start_time else {
+//         return max_sprint_time;
+//     };
+
+//     // Currently sprinting.
+//     if player.sprint_end_time.is_none() {
+//         let elapsed = current_time - start;
+
+//         return (player.sprint_start_max_length - elapsed).clamp(0.0, max_sprint_time);
+//     }
+
+//     // Last sprint has ended.
+//     let end = player.sprint_end_time.unwrap();
+
+//     let sprint_duration = end - start;
+
+//     let mut sprint_left = player.sprint_start_max_length - sprint_duration;
+
+//     let recharge_elapsed = current_time - end;
+
+//     if player.sprint_delay {
+//         sprint_left += (recharge_elapsed - SPRINT_RECHARGE_PAUSE).max(0.0);
+//     } else {
+//         sprint_left += recharge_elapsed;
+//     }
+
+//     sprint_left.clamp(0.0, max_sprint_time)
+// }
+
+/// Start and stop sprinting
+fn update_sprint(player: &mut PlayerPhysicsController, wants_sprint: bool, dt: f32) {
+    // --------------------------------
+    // Currently sprinting
+    // --------------------------------
+
+    if player.is_sprinting {
+        if wants_sprint && player.sprint_remaining > 0.0 {
+            // Consume sprint time.
+            player.sprint_remaining = (player.sprint_remaining - dt).max(0.0);
+
+            // Exhausted.
+            if player.sprint_remaining <= 0.0 {
+                player.is_sprinting = false;
+                player.sprint_recharge_delay = SPRINT_RECHARGE_PAUSE;
+            }
+        } else {
+            // Player released sprint.
+            player.is_sprinting = false;
+            player.sprint_recharge_delay = SPRINT_RECHARGE_PAUSE;
+        }
+
+        return;
+    }
+
+    // --------------------------------
+    // Not sprinting
+    // --------------------------------
+
+    if !wants_sprint {
+        // Recharge.
+        if player.sprint_recharge_delay > 0.0 {
+            player.sprint_recharge_delay = (player.sprint_recharge_delay - dt).max(0.0);
+        } else {
+            player.sprint_remaining = (player.sprint_remaining + dt).min(MAX_SPRINT_TIME);
+        }
+    }
+
+    // --------------------------------
+    // Start sprint
+    // --------------------------------
+
+    if wants_sprint && player.sprint_recharge_delay <= 0.0 && player.sprint_remaining > 0.0 {
+        player.is_sprinting = true;
+    }
+}
+
+/// wants_to_sprint
+fn shift_held(keyboard: &ButtonInput<KeyCode>) -> bool {
+    keyboard.pressed(KeyCode::ShiftLeft) || keyboard.pressed(KeyCode::ShiftRight)
+}
+
+fn wants_to_sprint(keyboard: &ButtonInput<KeyCode>, input: Vec3) -> bool {
+    shift_held(keyboard) && input.z < 0.0
 }
