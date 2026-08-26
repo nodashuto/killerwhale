@@ -306,10 +306,10 @@ struct MapAsset {
 }
 
 fn load_map(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let mesh = asset_server.load::<Mesh>("maps/mp-0003.glb#Mesh0/Primitive0");
+    let mesh = asset_server.load::<Mesh>("maps/mp-0004.glb#Mesh0/Primitive0");
 
     let scene =
-        asset_server.load::<WorldAsset>(GltfAssetLabel::Scene(0).from_asset("maps/mp-0003.glb"));
+        asset_server.load::<WorldAsset>(GltfAssetLabel::Scene(0).from_asset("maps/mp-0004.glb"));
 
     commands.insert_resource(MapAsset {
         mesh,
@@ -653,7 +653,7 @@ fn spawn_lights(mut commands: Commands) {
         DirectionalLight {
             illuminance: light_consts::lux::OVERCAST_DAY,
 	    //illuminance: 10.0,
-            shadow_maps_enabled: false,
+            shadow_maps_enabled: true,
             ..default()
         },
         Transform::from_rotation(Quat::from_euler(

@@ -519,6 +519,8 @@ pub struct PlayerPhysicsController {
     pub sprint_remaining: f32,
     pub sprint_recharge_delay: f32,
     pub is_sprinting: bool,
+    // ADS
+    pub is_ads: bool,
 }
 
 impl Default for PlayerPhysicsController {
@@ -533,6 +535,8 @@ impl Default for PlayerPhysicsController {
             sprint_remaining: MAX_SPRINT_TIME,
             sprint_recharge_delay: 0.0,
             is_sprinting: false,
+
+	     is_ads: false,
         }
     }
 }
@@ -592,10 +596,10 @@ fn update_grounded(
 // player speed
 const PLAYER_SPEED: f32 = 10.0; // 14.826
 const PLAYER_GRAVITY: f32 = 40.32;
-const PLAYER_SPRINTING_SPEED: f32 = 23.0; // 17.239
+const PLAYER_SPRINTING_SPEED: f32 = 20.0; // 17.239
 
 // sprint stamina
-const MAX_SPRINT_TIME: f32 = 5.0;
+const MAX_SPRINT_TIME: f32 = 2.0;
 const SPRINT_RECHARGE_PAUSE: f32 = 0.3;
 
 const ADS_SPEED_MULTIPLIER: f32 = 0.4;
@@ -606,7 +610,7 @@ const GROUND_ACCEL: f32 = 50.0;
 
 // Air acceleration.
 // Lower than ground acceleration gives you reduced air control.
-const AIR_ACCEL: f32 = 10.0;
+const AIR_ACCEL: f32 = 2.0;
 
 // Jump height in world units.
 const JUMP_HEIGHT: f32 = 1.8;
@@ -771,6 +775,18 @@ fn player_movement(
         } else {
             PLAYER_SPEED
         };
+
+        // -------------------------
+        // ADS
+        // -------------------------
+
+        let wants_ads = mouse.pressed(MouseButton::Right);
+
+        if player.is_sprinting {
+            player.is_ads = false;
+        } else {
+            player.is_ads = wants_ads;
+        }
 
         // Handle Player Jump
         check_jump(&mut player, &keyboard);

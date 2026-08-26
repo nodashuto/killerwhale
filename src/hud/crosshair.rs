@@ -4,9 +4,9 @@ use bevy::window::PrimaryWindow;
 
 const ARM_LENGTH: f32 = 8.0;
 const THICKNESS: f32 = 2.0;
-const OPEN_GAP: f32 = 80.0;
+const OPEN_GAP: f32 = 40.0;
 const CLOSED_GAP: f32 = 2.0;
-const CROSSHAIR_SPEED: f32 = 250.0;
+const CROSSHAIR_SPEED: f32 = 300.0;
 
 #[derive(Component)]
 pub struct Crosshair;
