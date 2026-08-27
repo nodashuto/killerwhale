@@ -221,6 +221,12 @@ fn spawn_player(
         hip_muzzle_position: Vec3::new(0.62, -0.28, -2.0),
         ads_muzzle_position: Vec3::new(0.0, -0.03, -2.5),
 
+        sprint_weapon_position: Vec3::new(0.0, -1.0, -1.5),
+
+        hip_weapon_rotation: Quat::from_rotation_y(std::f32::consts::PI), //Quat::IDENTITY,
+        ads_weapon_rotation: Quat::from_rotation_y(std::f32::consts::PI), //Quat::IDENTITY,
+        sprint_weapon_rotation: Quat::from_rotation_y(-std::f32::consts::PI / 2.0),
+
         magazine_size: 17,
         reload_duration: 2.0,
         fire_rate: 10.0,
@@ -1036,10 +1042,7 @@ impl Default for WeaponWalkSway {
 // }
 pub fn weapon_walk_sway(
     time: Res<Time>,
-    mut weapon_query: Query<
-        (&mut Transform, &mut WeaponWalkSway),
-        With<EquippedWeapon>,
-    >,
+    mut weapon_query: Query<(&mut Transform, &mut WeaponWalkSway), With<EquippedWeapon>>,
     player_query: Query<&GlobalTransform, With<Player>>,
 ) {
     let dt = time.delta_secs();
@@ -1065,9 +1068,7 @@ pub fn weapon_walk_sway(
 
         let target_weight = (speed / 6.0).clamp(0.0, 1.0);
 
-        sway.current_weight +=
-            (target_weight - sway.current_weight)
-                * (1.0 - (-12.0 * dt).exp());
+        sway.current_weight += (target_weight - sway.current_weight) * (1.0 - (-12.0 * dt).exp());
 
         sway.phase += speed * 0.5 * dt;
 
@@ -1075,8 +1076,7 @@ pub fn weapon_walk_sway(
         let bob2 = (sway.phase * 2.0).sin();
 
         // Reduce walk sway while ADS, but leave 1% residual sway.
-        let ads_sway_factor =
-            0.0001 + 0.9999 * (1.0 - sway.ads_progress).powi(3);
+        let ads_sway_factor = 0.0001 + 0.9999 * (1.0 - sway.ads_progress).powi(3);
 
         let weight = sway.current_weight * ads_sway_factor;
 
@@ -1089,13 +1089,10 @@ pub fn weapon_walk_sway(
 
         let sway_translation = Vec3::new(x, y, 0.0);
 
-        let sway_rotation =
-            Quat::from_euler(EulerRot::XYZ, pitch, yaw, roll);
+        let sway_rotation = Quat::from_euler(EulerRot::XYZ, pitch, yaw, roll);
 
-        transform.translation =
-            sway.base_translation + sway_translation;
+        transform.translation = sway.base_translation + sway_translation;
 
-        transform.rotation =
-            sway.base_rotation * sway_rotation;
+        transform.rotation = sway.base_rotation * sway_rotation;
     }
 }
