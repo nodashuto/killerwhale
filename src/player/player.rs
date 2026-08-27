@@ -221,11 +221,16 @@ fn spawn_player(
         hip_muzzle_position: Vec3::new(0.62, -0.28, -2.0),
         ads_muzzle_position: Vec3::new(0.0, -0.03, -2.5),
 
-        sprint_weapon_position: Vec3::new(0.0, -1.0, -1.5),
+        sprint_weapon_position: Vec3::new(-0.2, -1.0, -2.0),
 
         hip_weapon_rotation: Quat::from_rotation_y(std::f32::consts::PI), //Quat::IDENTITY,
         ads_weapon_rotation: Quat::from_rotation_y(std::f32::consts::PI), //Quat::IDENTITY,
-        sprint_weapon_rotation: Quat::from_rotation_y(-std::f32::consts::PI / 1.8),
+        sprint_weapon_rotation: Quat::from_euler(
+            EulerRot::XYZ,
+            -0.15,                       // X
+            -std::f32::consts::PI / 1.4, // Y
+            0.00,                        // Z
+        ),
 
         magazine_size: 17,
         reload_duration: 2.0,
@@ -540,6 +545,7 @@ pub struct PlayerPhysicsController {
     pub is_sprinting: bool,
     // ADS
     pub is_ads: bool,
+    
 }
 
 impl Default for PlayerPhysicsController {
@@ -777,17 +783,37 @@ fn player_movement(
         wish_dir.y = 0.0;
         if wish_dir.length_squared() > 0.0 {
             wish_dir = wish_dir.normalize();
+
+	    
         }
 
+
+	// -------------------------
+	// ADS
+	// -------------------------
+	player.is_ads = mouse.pressed(MouseButton::Right);
+
+	let is_ads = player.is_ads;
+	
         // -------------------------
         // Sprint
         // -------------------------
 
-        // let shift_held = shift_held(&keyboard);
-        // let wants_sprint = wants_to_sprint(&keyboard, input);
+
         let wants_sprint = wants_to_sprint(&keyboard, input);
 
-        update_sprint(&mut player, wants_sprint, dt);
+	
+
+	//let is_ads = player.is_ads;
+
+        //update_sprint(&mut player, wants_sprint, dt);
+	update_sprint(
+            &mut player,
+            wants_sprint,
+            is_ads,
+            dt,
+        );
+
 
         let base_speed = if player.is_sprinting {
             PLAYER_SPRINTING_SPEED
@@ -795,17 +821,7 @@ fn player_movement(
             PLAYER_SPEED
         };
 
-        // -------------------------
-        // ADS
-        // -------------------------
 
-        let wants_ads = mouse.pressed(MouseButton::Right);
-
-        if player.is_sprinting {
-            player.is_ads = false;
-        } else {
-            player.is_ads = wants_ads;
-        }
 
         // Handle Player Jump
         check_jump(&mut player, &keyboard);
@@ -901,26 +917,48 @@ fn player_movement(
 //     sprint_left.clamp(0.0, max_sprint_time)
 // }
 
+fn update_aiming(
+    player: &mut PlayerPhysicsController,
+    mouse: &ButtonInput<MouseButton>,
+) {
+    player.is_ads = mouse.pressed(MouseButton::Right);
+}
+
 /// Start and stop sprinting
-fn update_sprint(player: &mut PlayerPhysicsController, wants_sprint: bool, dt: f32) {
+fn update_sprint(
+    player: &mut PlayerPhysicsController,
+    wants_sprint: bool,
+    is_ads:  bool,
+    dt: f32,
+) {
+    // ADS always cancels sprint.
+    if is_ads {
+        if player.is_sprinting {
+            player.is_sprinting = false;
+            player.sprint_recharge_delay = SPRINT_RECHARGE_PAUSE;
+        }
+
+        return;
+    }
+
     // --------------------------------
     // Currently sprinting
     // --------------------------------
 
     if player.is_sprinting {
         if wants_sprint && player.sprint_remaining > 0.0 {
-            // Consume sprint time.
-            player.sprint_remaining = (player.sprint_remaining - dt).max(0.0);
+            player.sprint_remaining =
+                (player.sprint_remaining - dt).max(0.0);
 
-            // Exhausted.
             if player.sprint_remaining <= 0.0 {
                 player.is_sprinting = false;
-                player.sprint_recharge_delay = SPRINT_RECHARGE_PAUSE;
+                player.sprint_recharge_delay =
+                    SPRINT_RECHARGE_PAUSE;
             }
         } else {
-            // Player released sprint.
             player.is_sprinting = false;
-            player.sprint_recharge_delay = SPRINT_RECHARGE_PAUSE;
+            player.sprint_recharge_delay =
+                SPRINT_RECHARGE_PAUSE;
         }
 
         return;
@@ -931,11 +969,13 @@ fn update_sprint(player: &mut PlayerPhysicsController, wants_sprint: bool, dt: f
     // --------------------------------
 
     if !wants_sprint {
-        // Recharge.
         if player.sprint_recharge_delay > 0.0 {
-            player.sprint_recharge_delay = (player.sprint_recharge_delay - dt).max(0.0);
+            player.sprint_recharge_delay =
+                (player.sprint_recharge_delay - dt).max(0.0);
         } else {
-            player.sprint_remaining = (player.sprint_remaining + dt).min(MAX_SPRINT_TIME);
+            player.sprint_remaining =
+                (player.sprint_remaining + dt)
+                    .min(MAX_SPRINT_TIME);
         }
     }
 
@@ -943,10 +983,14 @@ fn update_sprint(player: &mut PlayerPhysicsController, wants_sprint: bool, dt: f
     // Start sprint
     // --------------------------------
 
-    if wants_sprint && player.sprint_recharge_delay <= 0.0 && player.sprint_remaining > 0.0 {
+    if wants_sprint
+        && player.sprint_recharge_delay <= 0.0
+        && player.sprint_remaining > 0.0
+    {
         player.is_sprinting = true;
     }
 }
+
 
 /// wants_to_sprint
 fn shift_held(keyboard: &ButtonInput<KeyCode>) -> bool {
@@ -955,6 +999,10 @@ fn shift_held(keyboard: &ButtonInput<KeyCode>) -> bool {
 
 fn wants_to_sprint(keyboard: &ButtonInput<KeyCode>, input: Vec3) -> bool {
     shift_held(keyboard) && input.z < 0.0
+}
+
+fn is_ads(keyboard: &ButtonInput<MouseButton>) -> bool {
+    keyboard.pressed(MouseButton::Right)
 }
 
 #[derive(Component)]
@@ -1040,9 +1088,70 @@ impl Default for WeaponWalkSway {
 //         transform.rotation = sway.base_rotation * Quat::from_euler(EulerRot::XYZ, pitch, yaw, roll);
 //     }
 // }
+
+// pub fn weapon_walk_sway(
+//     time: Res<Time>,
+//     mut weapon_query: Query<(&mut Transform, &mut WeaponWalkSway), With<EquippedWeapon>>,
+//     player_query: Query<&GlobalTransform, With<Player>>,
+// ) {
+//     let dt = time.delta_secs();
+
+//     let Ok(player_transform) = player_query.single() else {
+//         return;
+//     };
+
+//     let player_pos = player_transform.translation();
+
+//     for (mut transform, mut sway) in weapon_query.iter_mut() {
+//         if !sway.initialized {
+//             sway.previous_position = player_pos;
+//             sway.initialized = true;
+//             continue;
+//         }
+
+//         let delta = player_pos - sway.previous_position;
+//         sway.previous_position = player_pos;
+
+//         let horizontal = Vec2::new(delta.x, delta.z);
+//         let speed = horizontal.length() / dt.max(0.0001);
+
+//         let target_weight = (speed / 6.0).clamp(0.0, 1.0);
+
+//         sway.current_weight += (target_weight - sway.current_weight) * (1.0 - (-12.0 * dt).exp());
+
+//         sway.phase += speed * 0.5 * dt;
+
+//         let bob = sway.phase.sin();
+//         let bob2 = (sway.phase * 2.0).sin();
+
+//         // Reduce walk sway while ADS, but leave 1% residual sway.
+//         let ads_sway_factor = 0.0 + 1.0 *  (1.0 - sway.ads_progress).powi(3);
+
+//         let weight = sway.current_weight * ads_sway_factor;
+
+//         let x = bob * 0.001 * weight;
+//         let y = bob2 * 0.005 * weight;
+
+//         let roll = bob * 0.003 * weight;
+//         let pitch = bob2 * 0.002 * weight;
+//         let yaw = bob * 0.015 * weight;
+
+//         let sway_translation = Vec3::new(x, y, 0.0);
+
+//         let sway_rotation = Quat::from_euler(EulerRot::XYZ, pitch, yaw, roll);
+
+//         transform.translation = sway.base_translation + sway_translation;
+
+//         transform.rotation = sway.base_rotation * sway_rotation;
+//     }
+// }
+
 pub fn weapon_walk_sway(
     time: Res<Time>,
-    mut weapon_query: Query<(&mut Transform, &mut WeaponWalkSway), With<EquippedWeapon>>,
+    mut weapon_query: Query<
+        (&mut Transform, &mut WeaponWalkSway, &WeaponState),
+        With<EquippedWeapon>,
+    >,
     player_query: Query<&GlobalTransform, With<Player>>,
 ) {
     let dt = time.delta_secs();
@@ -1053,7 +1162,7 @@ pub fn weapon_walk_sway(
 
     let player_pos = player_transform.translation();
 
-    for (mut transform, mut sway) in weapon_query.iter_mut() {
+    for (mut transform, mut sway, weapon_state) in weapon_query.iter_mut() {
         if !sway.initialized {
             sway.previous_position = player_pos;
             sway.initialized = true;
@@ -1066,33 +1175,81 @@ pub fn weapon_walk_sway(
         let horizontal = Vec2::new(delta.x, delta.z);
         let speed = horizontal.length() / dt.max(0.0001);
 
+        // ------------------------------------------------------------
+        // Walk sway
+        // ------------------------------------------------------------
+
         let target_weight = (speed / 6.0).clamp(0.0, 1.0);
 
         sway.current_weight += (target_weight - sway.current_weight) * (1.0 - (-12.0 * dt).exp());
 
-        sway.phase += speed * 0.5 * dt;
+        // Sprint progress is already smoothly animated elsewhere.
+        let sprint = weapon_state.sprint_progress.clamp(0.0, 1.0);
 
-        let bob = sway.phase.sin();
+        // Faster oscillation while sprinting.
+        let walk_frequency = 0.5;
+        let sprint_frequency = 0.85;
+
+        let frequency = walk_frequency + (sprint_frequency - walk_frequency) * sprint;
+
+        sway.phase += speed * frequency * dt;
+
+        let bob = (sway.phase * 0.8).sin();
         let bob2 = (sway.phase * 2.0).sin();
+        let bob3 = (sway.phase * 0.3).sin();
 
-        // Reduce walk sway while ADS, but leave 1% residual sway.
-        let ads_sway_factor = 0.0 + 1.0 *  (1.0 - sway.ads_progress).powi(3);
+        // ------------------------------------------------------------
+        // ADS
+        // ------------------------------------------------------------
 
-        let weight = sway.current_weight * ads_sway_factor;
+        let ads_sway_factor = (1.0 - sway.ads_progress).powi(3);
 
-        let x = bob * 0.001 * weight;
-        let y = bob2 * 0.005 * weight;
+        // ------------------------------------------------------------
+        // Walk sway
+        // ------------------------------------------------------------
 
-        let roll = bob * 0.003 * weight;
-        let pitch = bob2 * 0.002 * weight;
-        let yaw = bob * 0.015 * weight;
+        let walk_weight = sway.current_weight * ads_sway_factor * (1.0 - sprint);
 
-        let sway_translation = Vec3::new(x, y, 0.0);
+        let walk_x = bob * 0.001 * walk_weight;
+        let walk_y = bob2 * 0.002 * walk_weight;
 
-        let sway_rotation = Quat::from_euler(EulerRot::XYZ, pitch, yaw, roll);
+        let walk_roll = bob * 0.002 * walk_weight;
+        let walk_pitch = bob2 * 0.000 * walk_weight;
+        let walk_yaw = bob * 0.015 * walk_weight;
 
-        transform.translation = sway.base_translation + sway_translation;
+        // ------------------------------------------------------------
+        // Sprint sway
+        // ------------------------------------------------------------
 
-        transform.rotation = sway.base_rotation * sway_rotation;
+        // Don't depend entirely on speed here. sprint_progress is
+        // what makes the animation feel responsive.
+        let sprint_weight = sprint * sway.current_weight;
+
+        let sprint_x = bob3 * 0.0001 * sprint_weight;
+        let sprint_y = bob3 * 0.012 * sprint_weight;
+
+        let sprint_roll = bob3 * 0.10 * sprint_weight;
+        let sprint_pitch = bob3 * 0.100 * sprint_weight;
+        let sprint_yaw = bob3 * 0.01 * sprint_weight;
+
+        // Sprint pushes the weapon slightly down and forward.
+        let sprint_offset = Vec3::new(0.1 * bob3 * sprint , -0.025 * sprint, -0.035 * sprint);
+
+        // ------------------------------------------------------------
+        // Combine
+        // ------------------------------------------------------------
+
+        let translation = Vec3::new(walk_x + sprint_x, walk_y + sprint_y, 0.0) + sprint_offset;
+
+        let rotation = Quat::from_euler(
+            EulerRot::XYZ,
+            walk_pitch + sprint_pitch,
+            walk_yaw + sprint_yaw,
+            walk_roll + sprint_roll,
+        );
+
+        transform.translation = sway.base_translation + translation;
+
+        transform.rotation = sway.base_rotation * rotation;
     }
 }

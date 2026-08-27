@@ -689,7 +689,6 @@ fn update_weapon_fire_timer(time: Res<Time>, mut weapon_query: Query<&mut Weapon
 //     }
 // }
 
-
 pub fn weapon_pose(
     time: Res<Time>,
     buttons: Res<ButtonInput<MouseButton>>,
@@ -710,9 +709,14 @@ pub fn weapon_pose(
         // ADS
         // -------------------------
 
-        let ads_target = if buttons.pressed(MouseButton::Right)
-            && !state.is_sprinting
-        {
+        let wants_ads = buttons.pressed(MouseButton::Right);
+
+        // RMB cancels sprint.
+        if wants_ads {
+            state.is_sprinting = false;
+        }
+
+        let ads_target = if wants_ads {
             1.0
         } else {
             0.0
@@ -782,6 +786,99 @@ pub fn weapon_pose(
         );
     }
 }
+
+// pub fn weapon_pose(
+//     time: Res<Time>,
+//     buttons: Res<ButtonInput<MouseButton>>,
+//     mut weapon_query: Query<
+//         (
+//             &Weapon,
+//             &mut WeaponState,
+//             &mut WeaponAds,
+//             &mut WeaponWalkSway,
+//         ),
+//         Without<WeaponMuzzle>,
+//     >,
+// ) {
+//     let dt = time.delta_secs();
+
+//     for (weapon, mut state, mut ads, mut sway) in &mut weapon_query {
+//         // -------------------------
+//         // ADS
+//         // -------------------------
+
+//         let ads_target = if buttons.pressed(MouseButton::Right)
+//             && !state.is_sprinting
+//         {
+//             1.0
+//         } else {
+//             0.0
+//         };
+
+//         ads.progress = move_toward(
+//             ads.progress,
+//             ads_target,
+//             8.0 * dt,
+//         );
+
+//         let ads_t = ads.progress;
+//         let ads_t = ads_t * ads_t * (3.0 - 2.0 * ads_t);
+
+//         // -------------------------
+//         // Sprint
+//         // -------------------------
+
+//         let sprint_target = if state.is_sprinting {
+//             1.0
+//         } else {
+//             0.0
+//         };
+
+//         state.sprint_progress = move_toward(
+//             state.sprint_progress,
+//             sprint_target,
+//             8.0 * dt,
+//         );
+
+//         let sprint_t = state.sprint_progress;
+//         let sprint_t =
+//             sprint_t * sprint_t * (3.0 - 2.0 * sprint_t);
+
+//         // -------------------------
+//         // HIP -> ADS
+//         // -------------------------
+
+//         let normal_translation = weapon
+//             .definition
+//             .hip_weapon_position
+//             .lerp(
+//                 weapon.definition.ads_weapon_position,
+//                 ads_t,
+//             );
+
+//         let normal_rotation = weapon
+//             .definition
+//             .hip_weapon_rotation
+//             .slerp(
+//                 weapon.definition.ads_weapon_rotation,
+//                 ads_t,
+//             );
+
+//         // -------------------------
+//         // HIP/ADS -> SPRINT
+//         // -------------------------
+
+//         sway.base_translation = normal_translation.lerp(
+//             weapon.definition.sprint_weapon_position,
+//             sprint_t,
+//         );
+
+//         sway.base_rotation = normal_rotation.slerp(
+//             weapon.definition.sprint_weapon_rotation,
+//             sprint_t,
+//         );
+//     }
+// }
 
 // #[derive(Asset, TypePath, Debug)]
 // pub struct WeaponDefinition {

@@ -24,15 +24,7 @@ use std::f32::consts::PI;
 //     217.0 / 255.0,
 // );
 
-const WORLD_CLEAR_COLOR: Color = Color::srgb(
-    0.0 / 255.0,
-    60.0 / 255.0,
-    92.0 / 255.0,
-);
-
-
-
-
+const WORLD_CLEAR_COLOR: Color = Color::srgb(0.0 / 255.0, 60.0 / 255.0, 92.0 / 255.0);
 
 pub struct WorldPlugin;
 
@@ -46,9 +38,9 @@ impl Plugin for WorldPlugin {
         //app.add_systems(Startup, spawn_stairs);
         // app.add_systems(Startup, spawn_cube);
 
-	//app.add_systems(Update, draw_grid);
+        //app.add_systems(Update, draw_grid);
 
-	// app.add_systems(Startup, load_lamp).add_systems(Update, spawn_lamp_collider);
+        // app.add_systems(Startup, load_lamp).add_systems(Update, spawn_lamp_collider);
         app.add_systems(Startup, load_map)
             .add_systems(Update, spawn_map_collider);
         //app.add_systems(Startup, spawn_mesh);
@@ -74,7 +66,6 @@ fn spawn_world_model(
     mut materials: ResMut<Assets<StandardMaterial>>,
     asset_server: Res<AssetServer>,
 ) {
-
     let size = 200.0;
     let ground = meshes.add(Plane3d::new(Vec3::Y, Vec2::splat(size)));
     let _cube = meshes.add(Cuboid::new(2.0, 0.001, 1.0));
@@ -350,7 +341,7 @@ fn spawn_map_collider(
     let material = materials.add(StandardMaterial {
         base_color: Color::srgb(0.4, 0.4, 0.4),
         perceptual_roughness: 0.8,
-	metallic: 1.0,
+        metallic: 1.0,
         ..default()
     });
 
@@ -358,28 +349,20 @@ fn spawn_map_collider(
 
     let transform = Transform::from_xyz(0.0, 0.0, 0.0);
 
-    
-
     // Spawn the visual GLB scene
-    commands.spawn((
-        WorldAssetRoot(map.scene.clone()),
-       transform,
-    ));
+    commands.spawn((WorldAssetRoot(map.scene.clone()), transform));
 
     // Spawn the physics collider
     commands.spawn((
         RigidBody::Fixed,
         transform,
         collider,
-	// Visual mesh
+        // Visual mesh
         //Mesh3d(map.mesh.clone()),
-	
+
         // Standard material
         //MeshMaterial3d(material),
-	
     ));
-
-
 
     map.spawned = true;
 }
@@ -663,7 +646,7 @@ fn spawn_lights(mut commands: Commands) {
     commands.spawn((
         DirectionalLight {
             illuminance: light_consts::lux::OVERCAST_DAY,
-	    //illuminance: 10.0,
+            //illuminance: 10.0,
             shadow_maps_enabled: true,
             ..default()
         },
