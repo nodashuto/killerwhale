@@ -26,6 +26,7 @@ impl Plugin for PlayerPlugin {
         app.add_systems(Startup, player_plugin_loaded);
         app.add_systems(Startup, spawn_player);
         app.add_systems(Update, (update_grounded, player_look, player_movement));
+        app.add_systems(Update, weapon_walk_sway.after(player_movement));
     }
 }
 
@@ -234,6 +235,8 @@ fn spawn_player(
 
     let weapon_state = WeaponState::new(weapon.definition.fire_rate);
 
+    let hip_weapon_pos = weapon.definition.hip_weapon_position;
+
     let hip_muzzle_position = weapon.definition.hip_muzzle_position;
     let ads_muzzle_position = weapon.definition.ads_muzzle_position;
 
@@ -312,6 +315,10 @@ fn spawn_player(
                     head.spawn((
                         PlayerCamera,
                         Camera3d::default(),
+                        Projection::from(PerspectiveProjection {
+                            fov: 65.0_f32.to_radians(),
+                            ..default()
+                        }),
                         Camera {
                             order: 0,
                             ..default()
@@ -331,9 +338,8 @@ fn spawn_player(
                                     order: 1,
                                     ..default()
                                 },
-                                Projection::Perspective(PerspectiveProjection {
-                                    near: 0.01,
-                                    far: 10.0,
+                                Projection::from(PerspectiveProjection {
+                                    fov: 65.0_f32.to_radians(),
                                     ..default()
                                 }),
                                 RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
@@ -372,6 +378,13 @@ fn spawn_player(
                                             rotation: Quat::from_rotation_y(std::f32::consts::PI),
                                             //scale: Vec3::new(0.1, 0.1, 0.1),
                                             scale: Vec3::new(0.3, 0.3, 0.3),
+                                        },
+                                        WeaponWalkSway {
+                                            base_translation: hip_weapon_pos,
+                                            base_rotation: Quat::from_rotation_y(
+                                                std::f32::consts::PI,
+                                            ),
+                                            ..default()
                                         },
                                     ))
                                     .observe(setup_weapon_animation);
@@ -536,7 +549,7 @@ impl Default for PlayerPhysicsController {
             sprint_recharge_delay: 0.0,
             is_sprinting: false,
 
-	     is_ads: false,
+            is_ads: false,
         }
     }
 }
@@ -594,9 +607,9 @@ fn update_grounded(
 }
 
 // player speed
-const PLAYER_SPEED: f32 = 10.0; // 14.826
+const PLAYER_SPEED: f32 = 15.0; // 14.826
 const PLAYER_GRAVITY: f32 = 40.32;
-const PLAYER_SPRINTING_SPEED: f32 = 20.0; // 17.239
+const PLAYER_SPRINTING_SPEED: f32 = 22.50; // 17.239
 
 // sprint stamina
 const MAX_SPRINT_TIME: f32 = 2.0;
@@ -817,8 +830,19 @@ fn player_movement(
             1.0
         };
 
+        // Forward = 100%
+        // Sideways = 80%
+        // Backward = 70%
+        let movement_multiplier = if keyboard.pressed(KeyCode::KeyS) {
+            0.5
+        } else if keyboard.pressed(KeyCode::KeyA) || keyboard.pressed(KeyCode::KeyD) {
+            0.7
+        } else {
+            1.0
+        };
+
         let wish_speed = if wish_dir != Vec3::ZERO {
-            base_speed * penalty_scale * ads_multiplier
+            base_speed * penalty_scale * ads_multiplier * movement_multiplier
         } else {
             0.0
         };
@@ -925,4 +949,85 @@ fn shift_held(keyboard: &ButtonInput<KeyCode>) -> bool {
 
 fn wants_to_sprint(keyboard: &ButtonInput<KeyCode>, input: Vec3) -> bool {
     shift_held(keyboard) && input.z < 0.0
+}
+
+#[derive(Component)]
+pub struct WeaponWalkSway {
+    pub base_translation: Vec3,
+    pub base_rotation: Quat,
+
+    pub previous_position: Vec3,
+    pub initialized: bool,
+
+    pub phase: f32,
+    pub current_weight: f32,
+}
+
+impl Default for WeaponWalkSway {
+    fn default() -> Self {
+        Self {
+            base_translation: Vec3::ZERO,
+            base_rotation: Quat::IDENTITY,
+            previous_position: Vec3::ZERO,
+            initialized: false,
+            phase: 0.0,
+            current_weight: 0.0,
+        }
+    }
+}
+
+fn weapon_walk_sway(
+    time: Res<Time>,
+    mut weapon_query: Query<(&mut Transform, &mut WeaponWalkSway), With<EquippedWeapon>>,
+    player_query: Query<&GlobalTransform, With<Player>>,
+) {
+    let dt = time.delta_secs();
+
+    let Ok(player_transform) = player_query.single() else {
+        return;
+    };
+
+    let player_pos = player_transform.translation();
+
+    for (mut transform, mut sway) in weapon_query.iter_mut() {
+        // First frame initialization
+        if !sway.initialized {
+            sway.previous_position = player_pos;
+            sway.initialized = true;
+            continue;
+        }
+
+        // Horizontal movement only
+        let delta = player_pos - sway.previous_position;
+        sway.previous_position = player_pos;
+
+        let horizontal = Vec2::new(delta.x, delta.z);
+
+        let speed = horizontal.length() / dt.max(0.0001);
+
+        // Normalize walking influence
+        let target_weight = (speed / 6.0).clamp(0.0, 1.0);
+
+        // Smoothly blend sway in/out
+        sway.current_weight += (target_weight - sway.current_weight) * (1.0 - (-12.0 * dt).exp());
+
+        // Advance walking cycle
+        sway.phase += speed * 0.5 * dt;
+
+        let bob = sway.phase.sin();
+        let bob2 = (sway.phase * 2.0).sin();
+
+        // Positional sway
+        let x = bob * 0.015 * sway.current_weight;
+        let y = bob2 * 0.025 * sway.current_weight;
+
+        // Rotational sway
+        let roll = bob * 0.003 * sway.current_weight;
+        let pitch = bob2 * 0.002 * sway.current_weight;
+        let yaw = bob * 0.015 * sway.current_weight;
+
+        transform.translation = sway.base_translation + Vec3::new(x, y, 0.0);
+
+        transform.rotation = sway.base_rotation * Quat::from_euler(EulerRot::XYZ, pitch, yaw, roll);
+    }
 }

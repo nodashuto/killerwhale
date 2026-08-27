@@ -52,7 +52,7 @@ fn setup_hud(mut commands: Commands) {
         Node {
             position_type: PositionType::Absolute,
             bottom: Val::Percent(25.0),
-            left: Val::Percent(45.0),
+            left: Val::Percent(46.0),
             ..default()
         },
         TextFont {
