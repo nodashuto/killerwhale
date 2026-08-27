@@ -961,6 +961,7 @@ pub struct WeaponWalkSway {
 
     pub phase: f32,
     pub current_weight: f32,
+    pub ads_progress: f32,
 }
 
 impl Default for WeaponWalkSway {
@@ -970,15 +971,75 @@ impl Default for WeaponWalkSway {
             base_rotation: Quat::IDENTITY,
             previous_position: Vec3::ZERO,
             initialized: false,
+
             phase: 0.0,
             current_weight: 0.0,
+            ads_progress: 0.0,
         }
     }
 }
 
-fn weapon_walk_sway(
+// fn weapon_walk_sway(
+//     time: Res<Time>,
+//     mut weapon_query: Query<(&mut Transform, &mut WeaponWalkSway), With<EquippedWeapon>>,
+//     player_query: Query<&GlobalTransform, With<Player>>,
+// ) {
+//     let dt = time.delta_secs();
+
+//     let Ok(player_transform) = player_query.single() else {
+//         return;
+//     };
+
+//     let player_pos = player_transform.translation();
+
+//     for (mut transform, mut sway) in weapon_query.iter_mut() {
+//         // First frame initialization
+//         if !sway.initialized {
+//             sway.previous_position = player_pos;
+//             sway.initialized = true;
+//             continue;
+//         }
+
+//         // Horizontal movement only
+//         let delta = player_pos - sway.previous_position;
+//         sway.previous_position = player_pos;
+
+//         let horizontal = Vec2::new(delta.x, delta.z);
+
+//         let speed = horizontal.length() / dt.max(0.0001);
+
+//         // Normalize walking influence
+//         let target_weight = (speed / 6.0).clamp(0.0, 1.0);
+
+//         // Smoothly blend sway in/out
+//         sway.current_weight += (target_weight - sway.current_weight) * (1.0 - (-12.0 * dt).exp());
+
+//         // Advance walking cycle
+//         sway.phase += speed * 0.5 * dt;
+
+//         let bob = sway.phase.sin();
+//         let bob2 = (sway.phase * 2.0).sin();
+
+//         // Positional sway
+//         let x = bob * 0.015 * sway.current_weight;
+//         let y = bob2 * 0.025 * sway.current_weight;
+
+//         // Rotational sway
+//         let roll = bob * 0.003 * sway.current_weight;
+//         let pitch = bob2 * 0.002 * sway.current_weight;
+//         let yaw = bob * 0.015 * sway.current_weight;
+
+//         transform.translation = sway.base_translation + Vec3::new(x, y, 0.0);
+
+//         transform.rotation = sway.base_rotation * Quat::from_euler(EulerRot::XYZ, pitch, yaw, roll);
+//     }
+// }
+pub fn weapon_walk_sway(
     time: Res<Time>,
-    mut weapon_query: Query<(&mut Transform, &mut WeaponWalkSway), With<EquippedWeapon>>,
+    mut weapon_query: Query<
+        (&mut Transform, &mut WeaponWalkSway),
+        With<EquippedWeapon>,
+    >,
     player_query: Query<&GlobalTransform, With<Player>>,
 ) {
     let dt = time.delta_secs();
@@ -990,44 +1051,51 @@ fn weapon_walk_sway(
     let player_pos = player_transform.translation();
 
     for (mut transform, mut sway) in weapon_query.iter_mut() {
-        // First frame initialization
         if !sway.initialized {
             sway.previous_position = player_pos;
             sway.initialized = true;
             continue;
         }
 
-        // Horizontal movement only
         let delta = player_pos - sway.previous_position;
         sway.previous_position = player_pos;
 
         let horizontal = Vec2::new(delta.x, delta.z);
-
         let speed = horizontal.length() / dt.max(0.0001);
 
-        // Normalize walking influence
         let target_weight = (speed / 6.0).clamp(0.0, 1.0);
 
-        // Smoothly blend sway in/out
-        sway.current_weight += (target_weight - sway.current_weight) * (1.0 - (-12.0 * dt).exp());
+        sway.current_weight +=
+            (target_weight - sway.current_weight)
+                * (1.0 - (-12.0 * dt).exp());
 
-        // Advance walking cycle
         sway.phase += speed * 0.5 * dt;
 
         let bob = sway.phase.sin();
         let bob2 = (sway.phase * 2.0).sin();
 
-        // Positional sway
-        let x = bob * 0.015 * sway.current_weight;
-        let y = bob2 * 0.025 * sway.current_weight;
+        // Reduce walk sway while ADS, but leave 1% residual sway.
+        let ads_sway_factor =
+            0.0001 + 0.9999 * (1.0 - sway.ads_progress).powi(3);
 
-        // Rotational sway
-        let roll = bob * 0.003 * sway.current_weight;
-        let pitch = bob2 * 0.002 * sway.current_weight;
-        let yaw = bob * 0.015 * sway.current_weight;
+        let weight = sway.current_weight * ads_sway_factor;
 
-        transform.translation = sway.base_translation + Vec3::new(x, y, 0.0);
+        let x = bob * 0.001 * weight;
+        let y = bob2 * 0.005 * weight;
 
-        transform.rotation = sway.base_rotation * Quat::from_euler(EulerRot::XYZ, pitch, yaw, roll);
+        let roll = bob * 0.003 * weight;
+        let pitch = bob2 * 0.002 * weight;
+        let yaw = bob * 0.015 * weight;
+
+        let sway_translation = Vec3::new(x, y, 0.0);
+
+        let sway_rotation =
+            Quat::from_euler(EulerRot::XYZ, pitch, yaw, roll);
+
+        transform.translation =
+            sway.base_translation + sway_translation;
+
+        transform.rotation =
+            sway.base_rotation * sway_rotation;
     }
 }

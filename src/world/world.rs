@@ -45,17 +45,17 @@ impl Plugin for WorldPlugin {
     }
 }
 
-// draw grid on floor
-fn draw_grid(mut gizmos: Gizmos) {
-    gizmos
-        .grid(
-            Quat::from_rotation_x(PI / 2.),
-            UVec2::splat(400),
-            Vec2::new(1., 1.),
-            Color::linear_rgb(0.7, 0., 0.4),
-        )
-        .outer_edges();
-}
+// /// draw grid on floor
+// fn draw_grid(mut gizmos: Gizmos) {
+//     gizmos
+//         .grid(
+//             Quat::from_rotation_x(PI / 2.),
+//             UVec2::splat(400),
+//             Vec2::new(1., 1.),
+//             Color::linear_rgb(0.7, 0., 0.4),
+//         )
+//         .outer_edges();
+// }
 
 fn spawn_world_model(
     mut commands: Commands,

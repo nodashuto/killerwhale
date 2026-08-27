@@ -4,7 +4,7 @@ use bevy_rapier3d::prelude::*;
 // use crate::player::player::Player;
 // use crate::player::player::PlayerCamera;
 
-use crate::player::player::{Player, PlayerCamera, WeaponAnimationPlayer};
+use crate::player::player::{Player, PlayerCamera, WeaponAnimationPlayer, WeaponWalkSway};
 
 use bevy::animation::AnimationPlayer;
 use bevy::animation::RepeatAnimation;
@@ -337,11 +337,60 @@ fn fire_weapon(
     ));
 }
 
-// for ADS animation
+// // for ADS animation
+// fn weapon_ads(
+//     time: Res<Time>,
+//     buttons: Res<ButtonInput<MouseButton>>,
+//     mut weapon_query: Query<(&mut Transform, &Weapon, &mut WeaponAds), Without<WeaponMuzzle>>,
+//     mut muzzle_query: Query<(&mut Transform, &mut WeaponMuzzle), With<WeaponMuzzle>>,
+// ) {
+//     let target = if buttons.pressed(MouseButton::Right) {
+//         1.0
+//     } else {
+//         0.0
+//     };
+
+//     let ads_speed = 8.0;
+
+//     // -------------------------
+//     // Weapon
+//     // -------------------------
+
+//     for (mut transform, weapon, mut ads) in &mut weapon_query {
+//         ads.progress = move_toward(ads.progress, target, ads_speed * time.delta_secs());
+
+//         let t = ads.progress;
+//         let t = t * t * (3.0 - 2.0 * t);
+
+//         transform.translation = weapon
+//             .definition
+//             .hip_weapon_position
+//             .lerp(weapon.definition.ads_weapon_position, t);
+//     }
+
+//     // -------------------------
+//     // Muzzle
+//     // -------------------------
+
+//     for (mut transform, mut muzzle) in &mut muzzle_query {
+//         muzzle.progress = move_toward(muzzle.progress, target, ads_speed * time.delta_secs());
+
+//         let t = muzzle.progress;
+//         let t = t * t * (3.0 - 2.0 * t);
+
+//         transform.translation = muzzle.hip_position.lerp(muzzle.ads_position, t);
+//     }
+// }
+
+
+/// new ADS compatible with sway anim
 fn weapon_ads(
     time: Res<Time>,
     buttons: Res<ButtonInput<MouseButton>>,
-    mut weapon_query: Query<(&mut Transform, &Weapon, &mut WeaponAds), Without<WeaponMuzzle>>,
+    mut weapon_query: Query<
+        (&Weapon, &mut WeaponAds, &mut WeaponWalkSway),
+        Without<WeaponMuzzle>,
+    >,
     mut muzzle_query: Query<(&mut Transform, &mut WeaponMuzzle), With<WeaponMuzzle>>,
 ) {
     let target = if buttons.pressed(MouseButton::Right) {
@@ -351,34 +400,42 @@ fn weapon_ads(
     };
 
     let ads_speed = 8.0;
+    let dt = time.delta_secs();
 
-    // -------------------------
-    // Weapon
-    // -------------------------
-
-    for (mut transform, weapon, mut ads) in &mut weapon_query {
-        ads.progress = move_toward(ads.progress, target, ads_speed * time.delta_secs());
+    for (weapon, mut ads, mut sway) in &mut weapon_query {
+        ads.progress = move_toward(
+            ads.progress,
+            target,
+            ads_speed * dt,
+        );
 
         let t = ads.progress;
         let t = t * t * (3.0 - 2.0 * t);
 
-        transform.translation = weapon
+        sway.base_translation = weapon
             .definition
             .hip_weapon_position
             .lerp(weapon.definition.ads_weapon_position, t);
+
+        // If your Weapon definition has rotations:
+        // sway.base_rotation = weapon
+        //     .definition
+        //     .hip_weapon_rotation
+        //     .slerp(weapon.definition.ads_weapon_rotation, t);
     }
 
-    // -------------------------
-    // Muzzle
-    // -------------------------
-
     for (mut transform, mut muzzle) in &mut muzzle_query {
-        muzzle.progress = move_toward(muzzle.progress, target, ads_speed * time.delta_secs());
+        muzzle.progress = move_toward(
+            muzzle.progress,
+            target,
+            ads_speed * dt,
+        );
 
         let t = muzzle.progress;
         let t = t * t * (3.0 - 2.0 * t);
 
-        transform.translation = muzzle.hip_position.lerp(muzzle.ads_position, t);
+        transform.translation =
+            muzzle.hip_position.lerp(muzzle.ads_position, t);
     }
 }
 
