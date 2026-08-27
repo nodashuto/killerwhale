@@ -225,7 +225,7 @@ fn spawn_player(
 
         hip_weapon_rotation: Quat::from_rotation_y(std::f32::consts::PI), //Quat::IDENTITY,
         ads_weapon_rotation: Quat::from_rotation_y(std::f32::consts::PI), //Quat::IDENTITY,
-        sprint_weapon_rotation: Quat::from_rotation_y(-std::f32::consts::PI / 2.0),
+        sprint_weapon_rotation: Quat::from_rotation_y(-std::f32::consts::PI / 1.8),
 
         magazine_size: 17,
         reload_duration: 2.0,
@@ -613,15 +613,15 @@ fn update_grounded(
 }
 
 // player speed
-const PLAYER_SPEED: f32 = 15.0; // 14.826
+const PLAYER_SPEED: f32 = 14.826; // 14.826
 const PLAYER_GRAVITY: f32 = 40.32;
-const PLAYER_SPRINTING_SPEED: f32 = 22.50; // 17.239
+const PLAYER_SPRINTING_SPEED: f32 = 17.239; // 17.239
 
 // sprint stamina
 const MAX_SPRINT_TIME: f32 = 2.0;
 const SPRINT_RECHARGE_PAUSE: f32 = 0.3;
 
-const ADS_SPEED_MULTIPLIER: f32 = 0.4;
+const ADS_SPEED_MULTIPLIER: f32 = 0.6;
 
 // Ground acceleration.
 // Higher = reaches max speed faster.
@@ -677,7 +677,7 @@ fn friction(velocity: &mut Vec3, friction: f32, stop_speed: f32, dt: f32) {
 }
 
 fn walk_move(velocity: &mut Vec3, wish_dir: Vec3, wish_speed: f32, dt: f32) {
-    friction(velocity, 10.0, 1.0, dt);
+    friction(velocity, 10.0, 10.0, dt);
     // Ground movement accelerates quickly toward the desired speed.
     accelerate(velocity, wish_dir, wish_speed, GROUND_ACCEL, dt);
     // Ground movement should not accumulate vertical velocity.
@@ -1076,7 +1076,7 @@ pub fn weapon_walk_sway(
         let bob2 = (sway.phase * 2.0).sin();
 
         // Reduce walk sway while ADS, but leave 1% residual sway.
-        let ads_sway_factor = 0.0001 + 0.9999 * (1.0 - sway.ads_progress).powi(3);
+        let ads_sway_factor = 0.0 + 1.0 *  (1.0 - sway.ads_progress).powi(3);
 
         let weight = sway.current_weight * ads_sway_factor;
 
