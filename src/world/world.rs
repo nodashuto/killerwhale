@@ -18,18 +18,29 @@ use std::f32::consts::PI;
 
 // use crate::Health;
 
+// const WORLD_CLEAR_COLOR: Color = Color::srgb(
+//     152.0 / 255.0,
+//     192.0 / 255.0,
+//     217.0 / 255.0,
+// );
+
+const WORLD_CLEAR_COLOR: Color = Color::srgb(
+    0.0 / 255.0,
+    60.0 / 255.0,
+    92.0 / 255.0,
+);
+
+
+
+
+
 pub struct WorldPlugin;
 
 impl Plugin for WorldPlugin {
     fn build(&self, app: &mut App) {
         //app.add_plugins(RapierDebugRenderPlugin::default()); //activate gismo
         //app.add_plugins(ShootingTargetPlugin);
-        app.insert_resource(ClearColor(Color::srgb(
-            152.0 / 255.0,
-            192.0 / 255.0,
-            217.0 / 255.0,
-        )));
-        // app.insert_resource(ClearColor(Color::BLACK));
+        app.insert_resource(ClearColor(WORLD_CLEAR_COLOR));
         app.add_systems(Startup, spawn_world_model);
         app.add_systems(Startup, spawn_lights);
         //app.add_systems(Startup, spawn_stairs);
