@@ -215,21 +215,21 @@ fn spawn_player(
         damage: 30.0,
         range: 100.0,
 
-        hip_weapon_position: Vec3::new(0.9, -0.8, -1.5),
+        hip_weapon_position: Vec3::new(0.9, -0.8, -2.0),
         ads_weapon_position: Vec3::new(0.0, -0.525, -1.2),
 
-        hip_muzzle_position: Vec3::new(0.62, -0.28, -2.0),
+        hip_muzzle_position: Vec3::new(0.62, -0.28, -3.0),
         ads_muzzle_position: Vec3::new(0.0, -0.03, -2.5),
 
-        sprint_weapon_position: Vec3::new(-0.2, -1.0, -2.0),
+        sprint_weapon_position: Vec3::new(0.0, -1.0, -2.5),
 
         hip_weapon_rotation: Quat::from_rotation_y(std::f32::consts::PI), //Quat::IDENTITY,
         ads_weapon_rotation: Quat::from_rotation_y(std::f32::consts::PI), //Quat::IDENTITY,
         sprint_weapon_rotation: Quat::from_euler(
             EulerRot::XYZ,
-            -0.15,                       // X
-            -std::f32::consts::PI / 1.4, // Y
-            0.00,                        // Z
+            -std::f32::consts::PI/6.0,                       // X
+           std::f32::consts::PI  + std::f32::consts::PI / 6.00 , // Y
+            -std::f32::consts::PI/ 3.0,                        // Z
         ),
 
         magazine_size: 17,

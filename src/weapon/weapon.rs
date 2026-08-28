@@ -17,7 +17,7 @@ impl Plugin for WeaponPlugin {
         app.add_systems(
             Update,
             (
-		check_sprint,
+                check_sprint,
                 weapon_pose,
                 fire_weapon,
                 reload_weapon,
@@ -103,7 +103,7 @@ impl WeaponState {
             reload_timer: Timer::from_seconds(0.0, TimerMode::Once),
             fire_timer,
             sprint_progress: 0.0,
-	    is_sprinting: false,
+            is_sprinting: false,
         }
     }
 }
@@ -198,19 +198,12 @@ fn bullet_fire(
     None
 }
 
-pub fn check_sprint(
-    keys: Res<ButtonInput<KeyCode>>,
-    mut weapon_query: Query<&mut WeaponState>,
-) {
-    let sprinting =
-        (keys.pressed(KeyCode::ShiftLeft)
-            || keys.pressed(KeyCode::ShiftRight))
-        && (
-            keys.pressed(KeyCode::KeyW)
-                || keys.pressed(KeyCode::KeyA)
-                || keys.pressed(KeyCode::KeyS)
-                || keys.pressed(KeyCode::KeyD)
-        );
+pub fn check_sprint(keys: Res<ButtonInput<KeyCode>>, mut weapon_query: Query<&mut WeaponState>) {
+    let sprinting = (keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight))
+        && (keys.pressed(KeyCode::KeyW)
+            || keys.pressed(KeyCode::KeyA)
+            || keys.pressed(KeyCode::KeyS)
+            || keys.pressed(KeyCode::KeyD));
 
     for mut state in &mut weapon_query {
         state.is_sprinting = sprinting;
@@ -701,6 +694,7 @@ pub fn weapon_pose(
         ),
         Without<WeaponMuzzle>,
     >,
+    mut muzzle_query: Query<(&mut Transform, &mut WeaponMuzzle), With<WeaponMuzzle>>,
 ) {
     let dt = time.delta_secs();
 
@@ -716,17 +710,9 @@ pub fn weapon_pose(
             state.is_sprinting = false;
         }
 
-        let ads_target = if wants_ads {
-            1.0
-        } else {
-            0.0
-        };
+        let ads_target = if wants_ads { 1.0 } else { 0.0 };
 
-        ads.progress = move_toward(
-            ads.progress,
-            ads_target,
-            8.0 * dt,
-        );
+        ads.progress = move_toward(ads.progress, ads_target, 8.0 * dt);
 
         let ads_t = ads.progress;
         let ads_t = ads_t * ads_t * (3.0 - 2.0 * ads_t);
@@ -735,21 +721,12 @@ pub fn weapon_pose(
         // Sprint
         // -------------------------
 
-        let sprint_target = if state.is_sprinting {
-            1.0
-        } else {
-            0.0
-        };
+        let sprint_target = if state.is_sprinting { 1.0 } else { 0.0 };
 
-        state.sprint_progress = move_toward(
-            state.sprint_progress,
-            sprint_target,
-            8.0 * dt,
-        );
+        state.sprint_progress = move_toward(state.sprint_progress, sprint_target, 8.0 * dt);
 
         let sprint_t = state.sprint_progress;
-        let sprint_t =
-            sprint_t * sprint_t * (3.0 - 2.0 * sprint_t);
+        let sprint_t = sprint_t * sprint_t * (3.0 - 2.0 * sprint_t);
 
         // -------------------------
         // HIP -> ADS
@@ -758,32 +735,43 @@ pub fn weapon_pose(
         let normal_translation = weapon
             .definition
             .hip_weapon_position
-            .lerp(
-                weapon.definition.ads_weapon_position,
-                ads_t,
-            );
+            .lerp(weapon.definition.ads_weapon_position, ads_t);
 
         let normal_rotation = weapon
             .definition
             .hip_weapon_rotation
-            .slerp(
-                weapon.definition.ads_weapon_rotation,
-                ads_t,
-            );
+            .slerp(weapon.definition.ads_weapon_rotation, ads_t);
 
         // -------------------------
         // HIP/ADS -> SPRINT
         // -------------------------
 
-        sway.base_translation = normal_translation.lerp(
-            weapon.definition.sprint_weapon_position,
-            sprint_t,
-        );
+        sway.base_translation =
+            normal_translation.lerp(weapon.definition.sprint_weapon_position, sprint_t);
 
-        sway.base_rotation = normal_rotation.slerp(
-            weapon.definition.sprint_weapon_rotation,
-            sprint_t,
-        );
+        sway.base_rotation =
+            normal_rotation.slerp(weapon.definition.sprint_weapon_rotation, sprint_t);
+    }
+
+    let target = if buttons.pressed(MouseButton::Right) {
+        1.0
+    } else {
+        0.0
+    };
+
+    let ads_speed = 2.0;
+
+    // -------------------------
+    // Muzzle
+    // -------------------------
+
+    for (mut transform, mut muzzle) in &mut muzzle_query {
+        muzzle.progress = move_toward(muzzle.progress, target, ads_speed * time.delta_secs());
+
+        let t = muzzle.progress;
+        let t = t * t * (3.0 - 2.0 * t);
+
+        transform.translation = muzzle.hip_position.lerp(muzzle.ads_position, t);
     }
 }
 
