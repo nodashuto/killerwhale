@@ -26,7 +26,7 @@ impl Plugin for PlayerPlugin {
         app.add_systems(Startup, player_plugin_loaded);
         app.add_systems(Startup, spawn_player);
         app.add_systems(Update, (update_grounded, player_look, player_movement));
-        app.add_systems(Update, weapon_walk_sway.after(player_movement));
+        app.add_systems(Update, weapon_walk_sway);
     }
 }
 
@@ -641,7 +641,7 @@ const AIR_ACCEL: f32 = 2.0;
 const JUMP_HEIGHT: f32 = 1.8;
 
 // Add jump penalty
-const JUMP_PENALTY_DURATION: f32 = 0.6;
+const JUMP_PENALTY_DURATION: f32 = 0.8;
 const JUMP_SLOWDOWN_SPEED: f32 = 0.5;
 const JUMP_LAND_SLOWDOWN_TIME: f32 = 1.7;
 const JUMP_REJUMP_FACTOR: f32 = 2.5;
@@ -1146,110 +1146,416 @@ impl Default for WeaponWalkSway {
 //     }
 // }
 
+// pub fn weapon_walk_sway(
+//     time: Res<Time>,
+//     mut weapon_query: Query<
+//         (&mut Transform, &mut WeaponWalkSway, &WeaponState),
+//         With<EquippedWeapon>,
+//     >,
+//     player_query: Query<&GlobalTransform, With<Player>>,
+// ) {
+//     let dt = time.delta_secs();
+
+//     let Ok(player_transform) = player_query.single() else {
+//         return;
+//     };
+
+//     let player_pos = player_transform.translation();
+
+//     for (mut transform, mut sway, weapon_state) in weapon_query.iter_mut() {
+//         if !sway.initialized {
+//             sway.previous_position = player_pos;
+//             sway.initialized = true;
+//             continue;
+//         }
+
+//         let delta = player_pos - sway.previous_position;
+//         sway.previous_position = player_pos;
+
+//         let horizontal = Vec2::new(delta.x, delta.z);
+//         let speed = horizontal.length() / dt.max(0.0001);
+
+//         // ------------------------------------------------------------
+//         // Walk sway
+//         // ------------------------------------------------------------
+
+//         let target_weight = (speed / 6.0).clamp(0.0, 1.0);
+
+//         sway.current_weight += (target_weight - sway.current_weight) * (1.0 - (-12.0 * dt).exp());
+
+//         // Sprint progress is already smoothly animated elsewhere.
+//         let sprint = weapon_state.sprint_progress.clamp(0.0, 1.0);
+
+//         // Faster oscillation while sprinting.
+//         let walk_frequency = 0.5;
+//         let sprint_frequency = 0.85;
+
+//         let frequency = walk_frequency + (sprint_frequency - walk_frequency) * sprint;
+
+//         sway.phase += speed * frequency * dt;
+
+//         let bob = (sway.phase * 0.8).sin();
+//         let bob2 = (sway.phase * 2.0).sin();
+//         let bob3 = (sway.phase * 0.3).sin();
+
+//         // ------------------------------------------------------------
+//         // ADS
+//         // ------------------------------------------------------------
+
+//         let ads_sway_factor = (1.0 - sway.ads_progress).powi(3);
+
+//         // ------------------------------------------------------------
+//         // Walk sway
+//         // ------------------------------------------------------------
+
+//         let walk_weight = sway.current_weight * ads_sway_factor * (1.0 - sprint);
+
+//         let walk_x = bob * 0.001 * walk_weight;
+//         let walk_y = bob2 * 0.002 * walk_weight;
+
+//         let walk_roll = bob * 0.002 * walk_weight;
+//         let walk_pitch = bob2 * 0.000 * walk_weight;
+//         let walk_yaw = bob * 0.015 * walk_weight;
+
+//         // ------------------------------------------------------------
+//         // Sprint sway
+//         // ------------------------------------------------------------
+
+//         // Don't depend entirely on speed here. sprint_progress is
+//         // what makes the animation feel responsive.
+//         let sprint_weight = sprint * sway.current_weight;
+
+//         let sprint_x = bob3 * 0.0001 * sprint_weight;
+//         let sprint_y = bob3 * 0.012 * sprint_weight;
+
+//         let sprint_roll = bob3 * 0.10 * sprint_weight;
+//         let sprint_pitch = bob3 * 0.100 * sprint_weight;
+//         let sprint_yaw = bob3 * 0.01 * sprint_weight;
+
+//         // Sprint pushes the weapon slightly down and forward.
+//         let sprint_offset = Vec3::new(0.1 * bob3 * sprint , -0.025 * sprint, -0.035 * sprint);
+
+//         // ------------------------------------------------------------
+//         // Combine
+//         // ------------------------------------------------------------
+
+//         let translation = Vec3::new(walk_x + sprint_x, walk_y + sprint_y, 0.0) + sprint_offset;
+
+//         let rotation = Quat::from_euler(
+//             EulerRot::XYZ,
+//             walk_pitch + sprint_pitch,
+//             walk_yaw + sprint_yaw,
+//             walk_roll + sprint_roll,
+//         );
+
+//         transform.translation = sway.base_translation + translation;
+
+//         transform.rotation = sway.base_rotation * rotation;
+//     }
+// }
+
+// pub fn weapon_walk_sway(
+//     time: Res<Time>,
+//     mut weapon_query: Query<
+//         (&mut Transform, &mut WeaponWalkSway, &WeaponState),
+//         With<EquippedWeapon>,
+//     >,
+//     player_query: Query<&GlobalTransform, With<Player>>,
+// ) {
+//     let dt = time.delta_secs();
+
+//     let Ok(player_transform) = player_query.single() else {
+//         return;
+//     };
+
+//     let player_pos = player_transform.translation();
+
+//     for (mut transform, mut sway, weapon_state) in weapon_query.iter_mut() {
+//         if !sway.initialized {
+//             sway.previous_position = player_pos;
+//             sway.initialized = true;
+//             continue;
+//         }
+
+//         // Calculate player movement.
+//         let delta = player_pos - sway.previous_position;
+//         sway.previous_position = player_pos;
+
+//         let horizontal = Vec2::new(delta.x, delta.z);
+//         let speed = horizontal.length() / dt.max(0.0001);
+
+//         // Normalize movement direction.
+//         let movement = if horizontal.length_squared() > 0.000001 {
+//             horizontal.normalize()
+//         } else {
+//             Vec2::ZERO
+//         };
+
+//         // ------------------------------------------------------------
+//         // ADS
+//         // ------------------------------------------------------------
+
+//         let ads_sway_factor = (1.0 - sway.ads_progress).powi(3);
+
+//         // ------------------------------------------------------------
+//         // Walk sway
+//         // ------------------------------------------------------------
+
+//         let walk_weight =
+//             (speed / 10.0).clamp(0.0, 1.0)
+//             * ads_sway_factor;
+
+// 	//let walk_weight = 0.0;
+
+//         // Movement direction controls the sway.
+//         //
+//         // X = strafe
+//         // Y = forward/backward
+
+//         let target_yaw = movement.x * 0.02 * walk_weight;
+//         let target_pitch = -movement.y * 0.02 * walk_weight;
+//         let target_roll = -movement.x * 0.00 * walk_weight;
+
+//         let walk_rotation = Quat::from_euler(
+//             EulerRot::XYZ,
+//             target_pitch,
+//             target_yaw,
+//             target_roll,
+//         );
+
+//         // ------------------------------------------------------------
+//         // Sprint
+//         // ------------------------------------------------------------
+
+//         let sprint = weapon_state.sprint_progress.clamp(0.0, 1.0);
+
+//         let sprint_pitch = -0.12 * sprint;
+//         let sprint_yaw = 0.02 * sprint;
+//         let sprint_roll = -0.10 * sprint;
+
+//         let sprint_rotation = Quat::from_euler(
+//             EulerRot::XYZ,
+//             sprint_pitch,
+//             sprint_yaw,
+//             sprint_roll,
+//         );
+
+//         // ------------------------------------------------------------
+//         // Combine
+//         // ------------------------------------------------------------
+
+//         let target_rotation = walk_rotation * sprint_rotation;
+
+//         // Smoothly approach target rotation.
+//         // Equivalent to Unity's Quaternion.Slerp.
+//         let smooth = 24.0;
+//         let smoothing = 1.0 - (-smooth * dt).exp();
+
+//         transform.rotation = transform.rotation.slerp(
+//             sway.base_rotation * target_rotation,
+//             smoothing,
+//         );
+
+//         // ------------------------------------------------------------
+//         // Sprint position
+//         // ------------------------------------------------------------
+
+//         let sprint_offset = Vec3::new(
+//             0.10 * movement.x * sprint,
+//             -0.025 * sprint,
+//             -0.035 * sprint,
+//         );
+
+//         transform.translation =
+//             sway.base_translation + sprint_offset;
+//     }
+// }
+
+// pub fn weapon_walk_sway(
+//     time: Res<Time>,
+//     mut mouse_motion: Res<AccumulatedMouseMotion>,
+//     mut weapon_query: Query<
+//         (&mut Transform, &mut WeaponWalkSway, &WeaponState),
+//         With<EquippedWeapon>,
+//     >,
+// ) {
+//     let dt = time.delta_secs();
+
+//     // ------------------------------------------------------------
+//     // Mouse input
+//     // ------------------------------------------------------------
+
+//     let mut mouse_x = 0.0;
+//     let mut mouse_y = 0.0;
+
+//     for event in mouse_motion.read() {
+//         mouse_x += event.delta.x;
+//         mouse_y += event.delta.y;
+//     }
+
+//     for (mut transform, mut sway, weapon_state) in weapon_query.iter_mut() {
+
+//         // ------------------------------------------------------------
+//         // ADS
+//         // ------------------------------------------------------------
+
+//         let ads_sway_factor = (1.0 - sway.ads_progress).powi(3);
+
+//         // ------------------------------------------------------------
+//         // Mouse sway
+//         // ------------------------------------------------------------
+
+//         let sway_multiplier = 0.002;
+
+//         // Mouse X = horizontal movement
+//         let target_yaw =
+//             mouse_x * sway_multiplier * ads_sway_factor;
+
+//         // Mouse Y = vertical movement
+//         let target_pitch =
+//             -mouse_y * sway_multiplier * ads_sway_factor;
+
+//         // Optional weapon tilt when moving mouse horizontally.
+//         // Set to 0.0 if you don't want roll.
+//         let target_roll =
+//             -mouse_x * 0.0005 * ads_sway_factor;
+
+//         let mouse_rotation = Quat::from_euler(
+//             EulerRot::XYZ,
+//             target_pitch,
+//             target_yaw,
+//             target_roll,
+//         );
+
+//         // ------------------------------------------------------------
+//         // Sprint
+//         // ------------------------------------------------------------
+
+//         let sprint = weapon_state
+//             .sprint_progress
+//             .clamp(0.0, 1.0);
+
+//         let sprint_pitch = -0.12 * sprint;
+//         let sprint_yaw = 0.02 * sprint;
+//         let sprint_roll = -0.10 * sprint;
+
+//         let sprint_rotation = Quat::from_euler(
+//             EulerRot::XYZ,
+//             sprint_pitch,
+//             sprint_yaw,
+//             sprint_roll,
+//         );
+
+//         // ------------------------------------------------------------
+//         // Combine
+//         // ------------------------------------------------------------
+
+//         let target_rotation =
+//             mouse_rotation * sprint_rotation;
+
+//         // Same idea as Unity:
+//         //
+//         // Quaternion.Slerp(
+//         //     currentRotation,
+//         //     targetRotation,
+//         //     smooth * Time.deltaTime
+//         // );
+
+//         let smooth = 24.0;
+
+//         let smoothing =
+//             1.0 - (-smooth * dt).exp();
+
+//         transform.rotation = transform
+//             .rotation
+//             .slerp(
+//                 sway.base_rotation * target_rotation,
+//                 smoothing,
+//             );
+
+//         // ------------------------------------------------------------
+//         // Sprint position
+//         // ------------------------------------------------------------
+
+//         let sprint_offset = Vec3::new(
+//             0.0,
+//             -0.025 * sprint,
+//             -0.035 * sprint,
+//         );
+
+//         transform.translation =
+//             sway.base_translation + sprint_offset;
+//     }
+// }
+
 pub fn weapon_walk_sway(
     time: Res<Time>,
+    accumulated_mouse_motion: Res<AccumulatedMouseMotion>,
     mut weapon_query: Query<
         (&mut Transform, &mut WeaponWalkSway, &WeaponState),
         With<EquippedWeapon>,
     >,
-    player_query: Query<&GlobalTransform, With<Player>>,
 ) {
     let dt = time.delta_secs();
+    let mouse_delta = accumulated_mouse_motion.delta;
 
-    let Ok(player_transform) = player_query.single() else {
-        return;
-    };
+    let mouse_x = mouse_delta.x;
+    let mouse_y = mouse_delta.y;
 
-    let player_pos = player_transform.translation();
-
-    for (mut transform, mut sway, weapon_state) in weapon_query.iter_mut() {
-        if !sway.initialized {
-            sway.previous_position = player_pos;
-            sway.initialized = true;
-            continue;
-        }
-
-        let delta = player_pos - sway.previous_position;
-        sway.previous_position = player_pos;
-
-        let horizontal = Vec2::new(delta.x, delta.z);
-        let speed = horizontal.length() / dt.max(0.0001);
-
-        // ------------------------------------------------------------
-        // Walk sway
-        // ------------------------------------------------------------
-
-        let target_weight = (speed / 6.0).clamp(0.0, 1.0);
-
-        sway.current_weight += (target_weight - sway.current_weight) * (1.0 - (-12.0 * dt).exp());
-
-        // Sprint progress is already smoothly animated elsewhere.
-        let sprint = weapon_state.sprint_progress.clamp(0.0, 1.0);
-
-        // Faster oscillation while sprinting.
-        let walk_frequency = 0.5;
-        let sprint_frequency = 0.85;
-
-        let frequency = walk_frequency + (sprint_frequency - walk_frequency) * sprint;
-
-        sway.phase += speed * frequency * dt;
-
-        let bob = (sway.phase * 0.8).sin();
-        let bob2 = (sway.phase * 2.0).sin();
-        let bob3 = (sway.phase * 0.3).sin();
-
-        // ------------------------------------------------------------
-        // ADS
-        // ------------------------------------------------------------
-
+    for (mut transform, sway, weapon_state) in weapon_query.iter_mut() {
         let ads_sway_factor = (1.0 - sway.ads_progress).powi(3);
 
-        // ------------------------------------------------------------
-        // Walk sway
-        // ------------------------------------------------------------
+        let sway_multiplier = 0.002;
 
-        let walk_weight = sway.current_weight * ads_sway_factor * (1.0 - sprint);
+        let target_yaw =
+            mouse_x * sway_multiplier * ads_sway_factor;
 
-        let walk_x = bob * 0.001 * walk_weight;
-        let walk_y = bob2 * 0.002 * walk_weight;
+        let target_pitch =
+            -mouse_y * sway_multiplier * ads_sway_factor;
 
-        let walk_roll = bob * 0.002 * walk_weight;
-        let walk_pitch = bob2 * 0.000 * walk_weight;
-        let walk_yaw = bob * 0.015 * walk_weight;
+        let target_roll =
+            -mouse_x * 0.0005 * ads_sway_factor;
 
-        // ------------------------------------------------------------
-        // Sprint sway
-        // ------------------------------------------------------------
-
-        // Don't depend entirely on speed here. sprint_progress is
-        // what makes the animation feel responsive.
-        let sprint_weight = sprint * sway.current_weight;
-
-        let sprint_x = bob3 * 0.0001 * sprint_weight;
-        let sprint_y = bob3 * 0.012 * sprint_weight;
-
-        let sprint_roll = bob3 * 0.10 * sprint_weight;
-        let sprint_pitch = bob3 * 0.100 * sprint_weight;
-        let sprint_yaw = bob3 * 0.01 * sprint_weight;
-
-        // Sprint pushes the weapon slightly down and forward.
-        let sprint_offset = Vec3::new(0.1 * bob3 * sprint , -0.025 * sprint, -0.035 * sprint);
-
-        // ------------------------------------------------------------
-        // Combine
-        // ------------------------------------------------------------
-
-        let translation = Vec3::new(walk_x + sprint_x, walk_y + sprint_y, 0.0) + sprint_offset;
-
-        let rotation = Quat::from_euler(
+        let mouse_rotation = Quat::from_euler(
             EulerRot::XYZ,
-            walk_pitch + sprint_pitch,
-            walk_yaw + sprint_yaw,
-            walk_roll + sprint_roll,
+            target_pitch,
+            target_yaw,
+            target_roll,
         );
 
-        transform.translation = sway.base_translation + translation;
+        let sprint = weapon_state
+            .sprint_progress
+            .clamp(0.0, 1.0);
 
-        transform.rotation = sway.base_rotation * rotation;
+        let sprint_rotation = Quat::from_euler(
+            EulerRot::XYZ,
+            -0.12 * sprint,
+            0.02 * sprint,
+            -0.10 * sprint,
+        );
+
+        let target_rotation =
+            mouse_rotation * sprint_rotation;
+
+        let smooth = 24.0;
+
+        let smoothing =
+            1.0 - (-smooth * dt).exp();
+
+        transform.rotation = transform
+            .rotation
+            .slerp(
+                sway.base_rotation * target_rotation,
+                smoothing,
+            );
+
+        let sprint_offset = Vec3::new(
+            0.0,
+            -0.025 * sprint,
+            -0.035 * sprint,
+        );
+
+        transform.translation =
+            sway.base_translation + sprint_offset;
     }
 }
