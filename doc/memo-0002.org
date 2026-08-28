@@ -1,0 +1,11 @@
+#+TITLE: Blender Animation
+#+STARTUP: overview
+#+OPTIONS:   num:nil toc:2 \n:t
+#+AUTHOR: Noda Shuto
+#+EXPORT_FILE_NAME: ../doc/memo-0002.md
+
+Animation Tab
+
+Switch mode from "Dope Sheet"  to "Action Editor".
+
+
