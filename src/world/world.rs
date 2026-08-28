@@ -1,9 +1,29 @@
 use bevy::prelude::*;
 use bevy::{
-    camera::visibility::RenderLayers, color::palettes::tailwind, light::CascadeShadowConfigBuilder,
+    camera::visibility::RenderLayers,
+    color::palettes::tailwind,
+    light::CascadeShadowConfigBuilder,
     light::NotShadowCaster,
 };
 use bevy_rapier3d::prelude::*;
+
+// Used implicitly by all entities without a `RenderLayers` component.
+// Our world model camera and all objects other than the player are on this layer.
+// The light source belongs to both layers.
+// const DEFAULT_RENDER_LAYER: usize = 0;
+
+// Used by the view model camera and the player's arm.
+// The light source belongs to both layers.
+// const VIEW_MODEL_RENDER_LAYER: usize = 1;
+
+
+// world.rs
+
+use crate::render_layers::{
+    DEFAULT_RENDER_LAYER,
+    VIEW_MODEL_RENDER_LAYER,
+};
+
 
 use std::f32::consts::PI;
 // use std::f32::consts::TAU;
@@ -102,6 +122,8 @@ fn spawn_world_model(
         RigidBody::Fixed,
         Collider::cuboid(size, 0.1, size),
         Transform::from_xyz(0.0, -0.01, 0.0),
+	RenderLayers::layer(DEFAULT_RENDER_LAYER),
+	
     ));
 
     // commands.spawn((
@@ -350,7 +372,10 @@ fn spawn_map_collider(
     let transform = Transform::from_xyz(0.0, 0.0, 0.0);
 
     // Spawn the visual GLB scene
-    commands.spawn((WorldAssetRoot(map.scene.clone()), transform));
+    commands.spawn((
+	WorldAssetRoot(map.scene.clone()), //
+	RenderLayers::layer(DEFAULT_RENDER_LAYER), // render layer
+	transform));
 
     // Spawn the physics collider
     commands.spawn((
@@ -604,15 +629,6 @@ fn _spawn_wall(
 //     ));
 // }
 
-/// Used implicitly by all entities without a `RenderLayers` component.
-/// Our world model camera and all objects other than the player are on this layer.
-/// The light source belongs to both layers.
-const DEFAULT_RENDER_LAYER: usize = 0;
-
-/// Used by the view model camera and the player's arm.
-/// The light source belongs to both layers.
-const VIEW_MODEL_RENDER_LAYER: usize = 1;
-
 // fn spawn_lights(mut commands: Commands) {
 //     // Spawn Global Light
 //     // commands.spawn((
@@ -647,7 +663,7 @@ fn spawn_lights(mut commands: Commands) {
         DirectionalLight {
             illuminance: light_consts::lux::OVERCAST_DAY,
             //illuminance: 10.0,
-            shadow_maps_enabled: true,
+            shadow_maps_enabled: false,
             ..default()
         },
         Transform::from_rotation(Quat::from_euler(

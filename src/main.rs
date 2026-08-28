@@ -33,6 +33,7 @@ mod player;
 mod world;
 mod weapon;
 mod hud;
+mod render_layers;
 
 use player::PlayerPlugin;
 use world::WorldPlugin;
