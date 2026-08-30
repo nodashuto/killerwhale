@@ -264,10 +264,10 @@ fn spawn_player(
         damage: 30.0,
         range: 100.0,
 
-        hip_weapon_position: Vec3::new(0.9, -0.8, -2.0),
-        ads_weapon_position: Vec3::new(0.0, -0.525, -1.2),
+        hip_weapon_position: Vec3::new(0.6, -0.8, -2.0),
+        ads_weapon_position: Vec3::new(0.0, -0.525, -2.2),
 
-        hip_muzzle_position: Vec3::new(0.62, -0.28, -3.0),
+        hip_muzzle_position: Vec3::new(0.6, -0.28, -3.0),
         ads_muzzle_position: Vec3::new(0.0, -0.03, -2.5),
 
         sprint_weapon_position: Vec3::new(0.0, -1.0, -2.5),

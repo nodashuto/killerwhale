@@ -1,6 +1,12 @@
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
 
+use bevy::light::ClusteredDecal;
+use bevy::pbr::decal;
+
+const BULLET_HOLE_TEXTURE: &str = "textures/decals/bullet_hole.png";
+use std::collections::VecDeque;
+
 // use crate::player::player::Player;
 // use crate::player::player::PlayerCamera;
 
@@ -27,6 +33,8 @@ impl Plugin for WeaponPlugin {
                 update_weapon_fire_timer,
             ),
         );
+        app.init_resource::<BulletDecalManager>()
+            .add_systems(Update, update_bullet_decals);
     }
 }
 
@@ -216,6 +224,8 @@ fn fire_weapon(
     rapier_context: ReadRapierContext,
     player_query: Query<Entity, With<Player>>,
 
+    mut decal_manager: ResMut<BulletDecalManager>,
+
     mut weapon_query: Query<(&mut Weapon, &mut WeaponState)>,
 
     muzzle_query: Query<&GlobalTransform, With<WeaponMuzzle>>,
@@ -289,6 +299,15 @@ fn fire_weapon(
         println!(
             "{} hit {:?} for {} damage",
             weapon.definition.name, hit.entity, weapon.definition.damage
+        );
+
+        // spawn decal
+        spawn_bullet_hole_test(
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+            &mut decal_manager,
+            hit.position + hit.normal * 0.05,
         );
 
         hit.position
@@ -772,6 +791,104 @@ pub fn weapon_pose(
         let t = t * t * (3.0 - 2.0 * t);
 
         transform.translation = muzzle.hip_position.lerp(muzzle.ads_position, t);
+    }
+}
+
+#[derive(Component)]
+pub struct BulletHoleDecal {
+    pub lifetime: Timer,
+}
+
+#[derive(Resource, Default)]
+pub struct BulletDecalManager {
+    pub decals: VecDeque<Entity>,
+}
+
+const MAX_BULLET_DECALS: usize = 200;
+const BULLET_DECAL_LIFETIME: f32 = 10.0;
+
+// fn spawn_bullet_hole_decal(
+//     commands: &mut Commands,
+//     asset_server: &AssetServer,
+//     position: Vec3,
+//     normal: Vec3,
+// ) {
+//     let position = position + normal * 0.005;
+
+//     let rotation = Quat::from_rotation_arc(Vec3::Z, -normal);
+
+//     let temp = 4.0;
+
+//     commands.spawn((
+//         ClusteredDecal {
+//             base_color_texture: Some(asset_server.load(BULLET_HOLE_TEXTURE)),
+//             ..default()
+//         },
+//         Transform {
+//             translation: position,
+//             rotation,
+//             scale: Vec3::new(temp, temp, temp),
+//         },
+//         BulletHoleDecal,
+//     ));
+// }
+
+fn spawn_bullet_hole_test(
+    commands: &mut Commands,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<StandardMaterial>,
+    manager: &mut BulletDecalManager,
+    position: Vec3,
+) {
+    // Remove the oldest decal if we reached the limit.
+    if manager.decals.len() >= MAX_BULLET_DECALS {
+        if let Some(oldest) = manager.decals.pop_front() {
+            commands.entity(oldest).despawn();
+        }
+    }
+
+    let entity = commands
+        .spawn((
+            Mesh3d(meshes.add(Sphere::new(0.05))),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color: Color::srgb(1.0, 0.0, 0.0),
+                emissive: LinearRgba::new(1.0, 0.0, 0.0, 1.0),
+                ..default()
+            })),
+            Transform::from_translation(position),
+            BulletHoleDecal {
+                lifetime: Timer::from_seconds(BULLET_DECAL_LIFETIME, TimerMode::Once),
+            },
+        ))
+        .id();
+
+    manager.decals.push_back(entity);
+}
+
+fn update_bullet_decals(
+    time: Res<Time>,
+    mut commands: Commands,
+    mut manager: ResMut<BulletDecalManager>,
+    mut decals: Query<&mut BulletHoleDecal>,
+) {
+    let mut expired = Vec::new();
+
+    for &entity in &manager.decals {
+        let Ok(mut decal) = decals.get_mut(entity) else {
+            expired.push(entity);
+            continue;
+        };
+
+        decal.lifetime.tick(time.delta());
+
+        if decal.lifetime.is_finished() {
+            expired.push(entity);
+        }
+    }
+
+    for entity in expired {
+        manager.decals.retain(|&e| e != entity);
+        commands.entity(entity).despawn();
     }
 }
 
