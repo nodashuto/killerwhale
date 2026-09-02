@@ -27,7 +27,7 @@ struct ReloadHintText;
 
 fn setup_hud(mut commands: Commands) {
     commands.spawn((
-        Text::new("Weapon\n 0 / 0"),
+        Text::new(" 0 / 0"),
         WeaponHudText,
         Node {
             position_type: PositionType::Absolute,
@@ -39,7 +39,7 @@ fn setup_hud(mut commands: Commands) {
             ..default()
         },
         TextFont {
-            font_size: FontSize::Px(15.0),
+            font_size: FontSize::Px(30.0),
             ..default()
         },
         //BackgroundColor(Color::BLACK),
@@ -147,6 +147,7 @@ fn setup_hud(mut commands: Commands) {
     });
     
 }
+
 fn update_weapon_hud(
     weapon_query: Query<&Weapon, With<EquippedWeapon>>,
 
@@ -166,8 +167,8 @@ fn update_weapon_hud(
 
     if let Ok(mut text) = queries.p0().single_mut() {
         text.0 = format!(
-            "{}\n {} / {}",
-            weapon.definition.name, weapon.ammo_in_magazine, weapon.reserve_ammo,
+            " {} / {}",
+             weapon.ammo_in_magazine, weapon.reserve_ammo,
         );
     }
 

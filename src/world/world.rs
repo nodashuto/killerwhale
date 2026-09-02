@@ -1,8 +1,6 @@
 use bevy::prelude::*;
 use bevy::{
-    camera::visibility::RenderLayers,
-    color::palettes::tailwind,
-    light::CascadeShadowConfigBuilder,
+    camera::visibility::RenderLayers, color::palettes::tailwind, light::CascadeShadowConfigBuilder,
     light::NotShadowCaster,
 };
 use bevy_rapier3d::prelude::*;
@@ -16,14 +14,9 @@ use bevy_rapier3d::prelude::*;
 // The light source belongs to both layers.
 // const VIEW_MODEL_RENDER_LAYER: usize = 1;
 
-
 // world.rs
 
-use crate::render_layers::{
-    DEFAULT_RENDER_LAYER,
-    VIEW_MODEL_RENDER_LAYER,
-};
-
+use crate::render_layers::{DEFAULT_RENDER_LAYER, VIEW_MODEL_RENDER_LAYER};
 
 use std::f32::consts::PI;
 // use std::f32::consts::TAU;
@@ -44,18 +37,19 @@ use std::f32::consts::PI;
 //     217.0 / 255.0,
 // );
 
-const WORLD_CLEAR_COLOR: Color = Color::srgb(0.0 / 255.0, 60.0 / 255.0, 92.0 / 255.0);
+// const WORLD_CLEAR_COLOR: Color = Color::srgb(0.0 / 255.0, 60.0 / 255.0, 92.0 / 255.0);
+const WORLD_CLEAR_COLOR: Color = Color::BLACK;
 
 pub struct WorldPlugin;
 
 impl Plugin for WorldPlugin {
     fn build(&self, app: &mut App) {
-        //app.add_plugins(RapierDebugRenderPlugin::default()); //activate gismo
-        //app.add_plugins(ShootingTargetPlugin);
+        app.add_plugins(RapierDebugRenderPlugin::default());
+        // app.add_plugins(ShootingTargetPlugin);
         app.insert_resource(ClearColor(WORLD_CLEAR_COLOR));
-        app.add_systems(Startup, spawn_world_model);
+        app.add_systems(Startup, (spawn_world_model, spawn_wood_crate));
         app.add_systems(Startup, spawn_lights);
-        //app.add_systems(Startup, spawn_stairs);
+        // app.add_systems(Startup, spawn_stairs);
         // app.add_systems(Startup, spawn_cube);
 
         //app.add_systems(Update, draw_grid);
@@ -63,6 +57,7 @@ impl Plugin for WorldPlugin {
         // app.add_systems(Startup, load_lamp).add_systems(Update, spawn_lamp_collider);
         app.add_systems(Startup, load_map)
             .add_systems(Update, spawn_map_collider);
+
         //app.add_systems(Startup, spawn_mesh);
         //app.add_systems(Startup, spawn_wall);
     }
@@ -79,6 +74,29 @@ impl Plugin for WorldPlugin {
 //         )
 //         .outer_edges();
 // }
+
+// Damping lets you slow down a rigid-body automatically. This can be used to achieve a wide variety of effects like fake air friction.
+// see:  https://rapier.rs/docs/user_guides/bevy_plugin/rigid_body_damping/
+
+fn spawn_wood_crate(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.spawn((
+        WorldAssetRoot(
+            asset_server.load(GltfAssetLabel::Scene(0).from_asset("models/woodcrate.glb")),
+        ),
+        RigidBody::Dynamic,
+        Collider::cuboid(1.0, 1.0, 1.0),
+        Friction {
+            coefficient: 1.5,
+            combine_rule: CoefficientCombineRule::Max,
+        },
+        Damping {
+            linear_damping: 1.0,
+            angular_damping: 1.0,
+        },
+        Transform::from_xyz(-12.0, 30.0, 20.0),
+    )
+    ).insert(GravityScale(10.0));
+}
 
 fn spawn_world_model(
     mut commands: Commands,
@@ -122,8 +140,7 @@ fn spawn_world_model(
         RigidBody::Fixed,
         Collider::cuboid(size, 0.1, size),
         Transform::from_xyz(0.0, -0.01, 0.0),
-	RenderLayers::layer(DEFAULT_RENDER_LAYER),
-	
+        RenderLayers::layer(DEFAULT_RENDER_LAYER),
     ));
 
     // commands.spawn((
@@ -373,9 +390,10 @@ fn spawn_map_collider(
 
     // Spawn the visual GLB scene
     commands.spawn((
-	WorldAssetRoot(map.scene.clone()), //
-	RenderLayers::layer(DEFAULT_RENDER_LAYER), // render layer
-	transform));
+        WorldAssetRoot(map.scene.clone()),         //
+        RenderLayers::layer(DEFAULT_RENDER_LAYER), // render layer
+        transform,
+    ));
 
     // Spawn the physics collider
     commands.spawn((

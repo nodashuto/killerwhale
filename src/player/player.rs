@@ -290,7 +290,7 @@ fn spawn_player(
     let weapon = Weapon {
         definition: pistol.clone(),
         ammo_in_magazine: pistol.magazine_size,
-        reserve_ammo: 102,
+        reserve_ammo: 306,
     };
 
     let weapon_state = WeaponState::new(weapon.definition.fire_rate);
@@ -344,7 +344,7 @@ fn spawn_player(
         Transform::from_xyz(0.0, 30.0, 0.0),
         Visibility::default(),
         RigidBody::KinematicPositionBased,
-        Collider::capsule_y(0.51, 0.40),
+        Collider::capsule_y(0.51, 0.4),
         LockedAxes::ROTATION_LOCKED,
         GravityScale(1.0),
         KinematicCharacterController {
@@ -1677,7 +1677,7 @@ pub fn weapon_walk_sway(
     for (mut transform, sway, weapon_state) in weapon_query.iter_mut() {
         let ads_sway_factor = (1.0 - sway.ads_progress).powi(3);
 
-        let sway_multiplier = 0.0015;
+        let sway_multiplier = 0.001;
 
         let target_yaw = mouse_x * sway_multiplier * ads_sway_factor;
 
