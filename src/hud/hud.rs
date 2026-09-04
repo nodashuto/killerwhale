@@ -39,7 +39,7 @@ fn setup_hud(mut commands: Commands) {
             ..default()
         },
         TextFont {
-            font_size: FontSize::Px(30.0),
+            font_size: FontSize::Px(45.0),
             ..default()
         },
         //BackgroundColor(Color::BLACK),

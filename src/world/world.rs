@@ -40,11 +40,14 @@ use std::f32::consts::PI;
 // const WORLD_CLEAR_COLOR: Color = Color::srgb(0.0 / 255.0, 60.0 / 255.0, 92.0 / 255.0);
 const WORLD_CLEAR_COLOR: Color = Color::BLACK;
 
+// Import the skybox system 
+use crate::world::skybox::spawn_skybox;
+
 pub struct WorldPlugin;
 
 impl Plugin for WorldPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(RapierDebugRenderPlugin::default());
+        //app.add_plugins(RapierDebugRenderPlugin::default());
         // app.add_plugins(ShootingTargetPlugin);
         app.insert_resource(ClearColor(WORLD_CLEAR_COLOR));
         app.add_systems(Startup, (spawn_world_model, spawn_wood_crate));
@@ -347,10 +350,12 @@ struct MapAsset {
 }
 
 fn load_map(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let mesh = asset_server.load::<Mesh>("maps/mp-0004.glb#Mesh0/Primitive0");
+    // mesh for collider
+    let mesh = asset_server.load::<Mesh>("maps/mp-0005-v03.glb#Mesh0/Primitive0");
 
+    // scene for visual
     let scene =
-        asset_server.load::<WorldAsset>(GltfAssetLabel::Scene(0).from_asset("maps/mp-0004.glb"));
+        asset_server.load::<WorldAsset>(GltfAssetLabel::Scene(0).from_asset("maps/mp-0005-v04.glb"));
 
     commands.insert_resource(MapAsset {
         mesh,

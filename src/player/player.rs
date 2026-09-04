@@ -1,3 +1,6 @@
+const SKYBOX_PATH: &str =
+    "kloppenheim_06_puresky_4k_diffuse/kloppenheim_06_puresky_4k_specular.ktx2";
+
 use std::f32::consts::FRAC_PI_2;
 
 use bevy::{
@@ -9,6 +12,8 @@ use bevy_rapier3d::prelude::*;
 
 use bevy::animation::AnimationPlayer;
 use bevy::scene::*;
+
+use bevy::core_pipeline::Skybox;
 
 // use bevy::post_process::bloom::{Bloom, BloomCompositeMode};
 // use bevy::core_pipeline::tonemapping::Tonemapping;
@@ -25,7 +30,7 @@ impl Plugin for PlayerPlugin {
         // Player systems
         app.add_systems(Startup, player_plugin_loaded);
         app.add_systems(Startup, spawn_player);
-	app.add_systems(Update, weapon_render_layers);
+        app.add_systems(Update, weapon_render_layers);
         app.add_systems(Update, (update_grounded, player_look, player_movement));
         app.add_systems(Update, weapon_walk_sway);
     }
@@ -129,12 +134,7 @@ fn weapon_render_layers(
         };
 
         for child in children.iter() {
-            apply_view_model_layer(
-                &mut commands,
-                child,
-                &children_query,
-                &mesh_query,
-            );
+            apply_view_model_layer(&mut commands, child, &children_query, &mesh_query);
         }
     }
 }
@@ -153,12 +153,7 @@ fn apply_view_model_layer(
 
     if let Ok(children) = children_query.get(entity) {
         for child in children.iter() {
-            apply_view_model_layer(
-                commands,
-                child,
-                children_query,
-                mesh_query,
-            );
+            apply_view_model_layer(commands, child, children_query, mesh_query);
         }
     }
 }
@@ -187,7 +182,6 @@ fn setup_weapon_animation(
                 fire: animations.fire,
                 //reload: animations.reload,
             },
-	    
         ));
 
         player.play(animations.idle).repeat();
@@ -270,7 +264,7 @@ fn spawn_player(
         hip_muzzle_position: Vec3::new(0.6, -0.28, -3.0),
         ads_muzzle_position: Vec3::new(0.0, -0.03, -2.5),
 
-        sprint_weapon_position: Vec3::new(0.0, -1.0, -2.5),
+        sprint_weapon_position: Vec3::new(0.0, -1.0, -1.5),
 
         hip_weapon_rotation: Quat::from_rotation_y(std::f32::consts::PI), //Quat::IDENTITY,
         ads_weapon_rotation: Quat::from_rotation_y(std::f32::consts::PI), //Quat::IDENTITY,
@@ -334,153 +328,152 @@ fn spawn_player(
 
     let graph_handle = animation_graphs.add(graph);
 
-    //animation
     commands
-    .spawn((
-        Player,
-        PlayerPhysicsController {
-            ..PlayerPhysicsController::default()
-        },
-        Transform::from_xyz(0.0, 30.0, 0.0),
-        Visibility::default(),
-        RigidBody::KinematicPositionBased,
-        Collider::capsule_y(0.51, 0.4),
-        LockedAxes::ROTATION_LOCKED,
-        GravityScale(1.0),
-        KinematicCharacterController {
-            offset: CharacterLength::Absolute(0.01),
-            autostep: Some(CharacterAutostep {
-                max_height: CharacterLength::Absolute(0.1),
-                min_width: CharacterLength::Absolute(0.5),
-                include_dynamic_bodies: true,
-            }),
-            ..default()
-        },
-        Damping {
-            linear_damping: 2.0,
-            angular_damping: 100.0,
-        },
-    ))
-    .with_children(|player| {
-        player
-            .spawn((
-                Head::default(),
-                Transform::from_xyz(0.0, 1.35, 0.1),
-                Visibility::default(),
-                InheritedVisibility::default(),
-            ))
-            .with_children(|head| {
-                // World camera
-                head.spawn((
-                    PlayerCamera,
-                    Camera3d::default(),
-                    Projection::from(PerspectiveProjection {
-                        fov: 65.0_f32.to_radians(),
-                        ..default()
-                    }),
-                    Camera {
-                        order: 0,
-                        ..default()
-                    },
-                    RenderLayers::layer(DEFAULT_RENDER_LAYER),
-                    Transform::default(),
+        .spawn((
+            Player,
+            PlayerPhysicsController {
+                ..PlayerPhysicsController::default()
+            },
+            Transform::from_xyz(0.0, 30.0, 0.0),
+            Visibility::default(),
+            RigidBody::KinematicPositionBased,
+            Collider::capsule_y(0.51, 0.4),
+            LockedAxes::ROTATION_LOCKED,
+            GravityScale(1.0),
+            KinematicCharacterController {
+                offset: CharacterLength::Absolute(0.01),
+                autostep: Some(CharacterAutostep {
+                    max_height: CharacterLength::Absolute(0.1),
+                    min_width: CharacterLength::Absolute(0.5),
+                    include_dynamic_bodies: true,
+                }),
+                ..default()
+            },
+            Damping {
+                linear_damping: 2.0,
+                angular_damping: 100.0,
+            },
+        ))
+        .with_children(|player| {
+            player
+                .spawn((
+                    Head::default(),
+                    Transform::from_xyz(0.0, 1.8, 0.1),
+                    Visibility::default(),
                     InheritedVisibility::default(),
-                ));
-
-		
-
-                // View-model camera
-                head.spawn((
-                    Camera3d::default(),
-                    Camera {
-                        order: 1,
-			 clear_color: ClearColorConfig::None,
-                        ..default()
-                    },
-                    Projection::from(PerspectiveProjection {
-                        fov: 65.0_f32.to_radians(),
-                        ..default()
-                    }),
-                    RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
-                    Transform::default(),
-                    InheritedVisibility::default(),
-                    NotShadowCaster,
                 ))
+                .with_children(|head| {
+                    // World camera
+                    head.spawn((
+                        PlayerCamera,
+                        Camera3d::default(),
+                        Projection::from(PerspectiveProjection {
+                            fov: 100.0_f32.to_radians(),
+                            ..default()
+                        }),
+                        Camera {
+                            order: 0,
+                            ..default()
+                        },
+                        RenderLayers::layer(DEFAULT_RENDER_LAYER),
+                        Transform::default(),
+                        InheritedVisibility::default(),
+                        // Skybox
+                        Skybox {
+                            brightness: 500.0,
+                            image: Some(asset_server.load(SKYBOX_PATH)),
+                            rotation: Quat::IDENTITY,
+                        },
+                    ));
+
+                    // View-model camera
+                    head.spawn((
+                        Camera3d::default(),
+                        Camera {
+                            order: 1,
+                            clear_color: ClearColorConfig::None,
+                            ..default()
+                        },
+                        Projection::from(PerspectiveProjection {
+                            fov: 65.0_f32.to_radians(),
+                            ..default()
+                        }),
+                        RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
+                        Transform::default(),
+                        InheritedVisibility::default(),
+                        NotShadowCaster,
+                    ))
                     .with_children(|view_camera| {
-
-			
-                    view_camera
-                        .spawn((
-                            weapon,
-                            weapon_state,
-                            EquippedWeapon,
-                            WeaponAnimations {
-                                graph: graph_handle,
-                                idle,
-                                fire,
-                            },
-                            WeaponAds::default(),
-                            WorldAssetRoot(
-                                asset_server
-                                    .load(GltfAssetLabel::Scene(0).from_asset(model_path)),
-                            ),
-                            RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
-                            Transform {
-                                translation: Vec3::ZERO,
-                                rotation: Quat::from_rotation_y(std::f32::consts::PI),
-                                scale: Vec3::splat(0.3),
-                            },
-                            WeaponWalkSway {
-                                base_translation: hip_weapon_pos,
-                                base_rotation: Quat::from_rotation_y(
-                                    std::f32::consts::PI,
+                        view_camera
+                            .spawn((
+                                weapon,
+                                weapon_state,
+                                EquippedWeapon,
+                                WeaponAnimations {
+                                    graph: graph_handle,
+                                    idle,
+                                    fire,
+                                },
+                                WeaponAds::default(),
+                                WorldAssetRoot(
+                                    asset_server
+                                        .load(GltfAssetLabel::Scene(0).from_asset(model_path)),
                                 ),
-                                ..default()
-                            },
-                        ))
-                        .observe(setup_weapon_animation);
+                                RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
+                                Transform {
+                                    translation: Vec3::ZERO,
+                                    rotation: Quat::from_rotation_y(std::f32::consts::PI),
+                                    scale: Vec3::splat(0.3),
+                                },
+                                WeaponWalkSway {
+                                    base_translation: hip_weapon_pos,
+                                    base_rotation: Quat::from_rotation_y(std::f32::consts::PI),
+                                    ..default()
+                                },
+                            ))
+                            .observe(setup_weapon_animation);
 
-                    // Muzzle position
-                    view_camera
-                        .spawn((
-                            WeaponMuzzle {
-                                hip_position: hip_muzzle_position,
-                                ads_position: ads_muzzle_position,
-                                progress: 0.0,
-                            },
-                            Transform::from_xyz(0.0, 0.0, -0.8),
-                            GlobalTransform::default(),
-                            Visibility::default(),
-                            InheritedVisibility::default(),
-                            RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
-                        ))
-                        .with_children(|muzzle| {
-                            muzzle.spawn((
-                                MuzzleFlashLight,
-                                PointLight {
-                                    intensity: 8000.0,
-                                    range: 100.0,
-                                    color: Color::srgb(1.0, 0.4, 0.05),
-                                    shadow_maps_enabled: true,
-                                    ..default()
+                        // Muzzle position
+                        view_camera
+                            .spawn((
+                                WeaponMuzzle {
+                                    hip_position: hip_muzzle_position,
+                                    ads_position: ads_muzzle_position,
+                                    progress: 0.0,
                                 },
-                                MuzzleFlash {
-                                    timer: Timer::from_seconds(0.01, TimerMode::Once),
-                                },
-                                Mesh3d(meshes.add(Sphere::new(0.001))),
-                                MeshMaterial3d(materials.add(StandardMaterial {
-                                    base_color: Color::srgba(1.0, 0.5, 0.0, 0.01),
-                                    emissive: LinearRgba::new(1.0, 0.5, 0.0, 100.0),
-                                    unlit: true,
-                                    ..default()
-                                })),
-                                Transform::default(),
-                                Visibility::Hidden,
-                            ));
-                        });
+                                Transform::from_xyz(0.0, 0.0, -0.8),
+                                GlobalTransform::default(),
+                                Visibility::default(),
+                                InheritedVisibility::default(),
+                                RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
+                            ))
+                            .with_children(|muzzle| {
+                                muzzle.spawn((
+                                    MuzzleFlashLight,
+                                    PointLight {
+                                        intensity: 8000.0,
+                                        range: 100.0,
+                                        color: Color::srgb(1.0, 0.4, 0.05),
+                                        shadow_maps_enabled: true,
+                                        ..default()
+                                    },
+                                    MuzzleFlash {
+                                        timer: Timer::from_seconds(0.01, TimerMode::Once),
+                                    },
+                                    Mesh3d(meshes.add(Sphere::new(0.001))),
+                                    MeshMaterial3d(materials.add(StandardMaterial {
+                                        base_color: Color::srgba(1.0, 0.5, 0.0, 0.01),
+                                        emissive: LinearRgba::new(1.0, 0.5, 0.0, 100.0),
+                                        unlit: true,
+                                        ..default()
+                                    })),
+                                    Transform::default(),
+                                    Visibility::Hidden,
+                                ));
+                            });
+                    });
                 });
-            });
-    });
+        });
 
     // this is old structure
     // commands
