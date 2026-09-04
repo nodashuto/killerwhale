@@ -7,15 +7,11 @@ use bevy::pbr::decal;
 const BULLET_HOLE_TEXTURE: &str = "textures/decals/bullet_hole.png";
 use std::collections::VecDeque;
 
-use bevy::camera::visibility::RenderLayers; 
 use crate::render_layers::{DEFAULT_RENDER_LAYER, VIEW_MODEL_RENDER_LAYER};
+use bevy::camera::visibility::RenderLayers;
 
 use bevy::core_pipeline::prepass::DepthPrepass;
-use bevy::pbr::decal::{
-    ForwardDecal,
-    ForwardDecalMaterial,
-    ForwardDecalMaterialExt,
-};
+use bevy::pbr::decal::{ForwardDecal, ForwardDecalMaterial, ForwardDecalMaterialExt};
 
 // use crate::player::player::Player;
 // use crate::player::player::PlayerCamera;
@@ -26,8 +22,6 @@ use bevy::animation::AnimationPlayer;
 use bevy::animation::RepeatAnimation;
 
 pub struct WeaponPlugin;
-
-
 
 impl Plugin for WeaponPlugin {
     fn build(&self, app: &mut App) {
@@ -46,6 +40,10 @@ impl Plugin for WeaponPlugin {
             ),
         );
         app.init_resource::<BulletDecalManager>()
+            .insert_resource(BulletDecalManager {
+                decals: VecDeque::new(),
+                enabled: true,
+            })
             .add_systems(Update, update_bullet_decals);
     }
 }
@@ -182,12 +180,61 @@ impl BulletTracer {
     }
 }
 
-/// Reusable hitscan/bullet hitbox system.
-///
-/// Performs a raycast from `origin` in `direction` and returns
-/// information about the first hit.
-///
-/// `exclude` is typically the entity that fired the weapon.
+// /// Reusable hitscan/bullet hitbox system.
+// ///
+// /// Performs a raycast from `origin` in `direction` and returns
+// /// information about the first hit.
+// ///
+// /// `exclude` is typically the entity that fired the weapon.
+// fn bullet_fire(
+//     rapier_context: &RapierContext,
+//     origin: Vec3,
+//     direction: Vec3,
+//     max_distance: f32,
+//     exclude: Entity,
+// ) -> Option<BulletHit> {
+//     let direction = direction.normalize();
+
+//     let filter = QueryFilter::default().exclude_rigid_body(exclude);
+
+//     // if let Some((entity, toi)) =
+//     //     rapier_context.cast_ray(origin, direction, max_distance, true, filter)
+//     // {
+//     //     let hit_position = origin + direction * toi;
+
+//     //     // If you want the hit normal, query the collider shape here
+//     //     // or use cast_ray_and_get_normal if your Rapier version provides it.
+
+//     //     return Some(BulletHit {
+//     //         entity,
+//     //         distance: toi,
+//     //         position: hit_position,
+//     //         normal: Vec3::ZERO,
+//     //     });
+//     // }
+
+//     if let Some((entity, toi, normal)) =
+//     rapier_context.cast_ray_and_get_normal(
+//         origin,
+//         direction,
+//         max_distance,
+//         true,
+//         filter,
+//     )
+// {
+//     let hit_position = origin + direction * toi;
+
+//     return Some(BulletHit {
+//         entity,
+//         distance: toi,
+//         position: hit_position,
+//         normal,
+//     });
+// }
+
+//     None
+// }
+
 fn bullet_fire(
     rapier_context: &RapierContext,
     origin: Vec3,
@@ -199,23 +246,22 @@ fn bullet_fire(
 
     let filter = QueryFilter::default().exclude_rigid_body(exclude);
 
-    if let Some((entity, toi)) =
-        rapier_context.cast_ray(origin, direction, max_distance, true, filter)
+    if let Some((entity, intersection)) =
+        rapier_context.cast_ray_and_get_normal(origin, direction, max_distance, true, filter)
     {
-        let hit_position = origin + direction * toi;
+        let hit_point = origin + direction * intersection.time_of_impact;
 
-        // If you want the hit normal, query the collider shape here
-        // or use cast_ray_and_get_normal if your Rapier version provides it.
+        let hit_normal = intersection.normal;
 
-        return Some(BulletHit {
+        Some(BulletHit {
             entity,
-            distance: toi,
-            position: hit_position,
-            normal: Vec3::ZERO,
-        });
+            distance: intersection.time_of_impact,
+            position: hit_point,
+            normal: hit_normal,
+        })
+    } else {
+        None
     }
-
-    None
 }
 
 pub fn check_sprint(keys: Res<ButtonInput<KeyCode>>, mut weapon_query: Query<&mut WeaponState>) {
@@ -238,9 +284,7 @@ fn fire_weapon(
 
     mut decal_manager: ResMut<BulletDecalManager>,
     asset_server: Res<AssetServer>,
-    mut decal_materials: ResMut<
-    Assets<ForwardDecalMaterial<StandardMaterial>>
->,
+    mut decal_materials: ResMut<Assets<ForwardDecalMaterial<StandardMaterial>>>,
 
     mut weapon_query: Query<(&mut Weapon, &mut WeaponState)>,
 
@@ -325,14 +369,14 @@ fn fire_weapon(
         //     &asset_server,
         // );
 
-	spawn_bullet_hole_test(
-    &mut commands,
-    &mut decal_manager,
-    hit.position,
-    hit.normal,
-    &asset_server,
-    &mut decal_materials,
-);
+        spawn_bullet_hole_decal(
+            &mut commands,
+            &mut decal_manager,
+            hit.position,
+            hit.normal,
+            &asset_server,
+            &mut decal_materials,
+        );
 
         hit.position
     } else {
@@ -826,10 +870,12 @@ pub struct BulletHoleDecal {
 #[derive(Resource, Default)]
 pub struct BulletDecalManager {
     pub decals: VecDeque<Entity>,
+    // Toggle bullet-hole decals for performance.
+    pub enabled: bool,
 }
 
 const MAX_BULLET_DECALS: usize = 200;
-const BULLET_DECAL_LIFETIME: f32 = 10.0;
+const BULLET_DECAL_LIFETIME: f32 = 12.0;
 
 // fn spawn_bullet_hole_decal(
 //     commands: &mut Commands,
@@ -866,79 +912,120 @@ const BULLET_DECAL_LIFETIME: f32 = 10.0;
 //     asset_server: &AssetServer,
 // ) {
 
-fn spawn_bullet_hole_test(
+fn spawn_bullet_hole_decal(
     commands: &mut Commands,
     manager: &mut BulletDecalManager,
     position: Vec3,
     normal: Vec3,
     asset_server: &AssetServer,
-    decal_materials: &mut Assets<
-        ForwardDecalMaterial<StandardMaterial>,
-    >,
+    decal_materials: &mut Assets<ForwardDecalMaterial<StandardMaterial>>,
 ) {
+    // Performance toggle:
+    // Do not create bullet-hole decals when disabled.
+    if !manager.enabled {
+        return;
+    }
+
     // Remove the oldest bullet hole.
     if manager.decals.len() >= MAX_BULLET_DECALS {
         if let Some(oldest) = manager.decals.pop_front() {
             commands.entity(oldest).despawn();
         }
     }
+    let decal_size = 0.4;
 
-    let decal_depth = 0.2;
-    
     // Move the decal slightly away from the surface.
-    let decal_position = position + normal * (decal_depth * 0.5);
+    let decal_position = position + normal * (decal_size * 0.001);
 
-    // ForwardDecal projects in the local -Z direction.
-    // Therefore, orient it toward the impact surface.
-let transform = Transform::from_translation(decal_position)
-    .looking_to(-normal, Vec3::Y)
-    .with_scale(Vec3::new(0.2, 0.2, decal_depth));
+    // Make absolutely sure the normal is normalized.
+    let normal = normal.normalize();
 
-    let material = decal_materials.add(
-        ForwardDecalMaterial {
-            base: StandardMaterial {
-                base_color_texture: Some(
-                    asset_server.load(BULLET_HOLE_TEXTURE),
-                ),
+    //     let rotation = Quat::from_rotation_arc(
+    //         //Vec3::NEG_Z,
+    // Vec3::NEG_Z,
+    // 	-normal,
 
-                // Useful for a dark bullet-hole texture.
-                perceptual_roughness: 1.0,
+    //     );
 
-                ..default()
-            },
-
-            extension: ForwardDecalMaterialExt {
-                depth_fade_factor: 1.0,
-            },
-        },
+    // Align the decal's projection direction to the surface normal.
+    let base_rotation = Quat::from_rotation_arc(
+        //Vec3::NEG_Z,
+        Vec3::NEG_Y,
+        -normal,
     );
+
+    // Correct the decal orientation by 90 degrees.
+    let correction = Quat::from_rotation_y(90.0_f32.to_radians());
+
+    let rotation = base_rotation * correction;
+
+    let transform = Transform {
+        translation: decal_position,
+        rotation,
+        scale: Vec3::splat(decal_size),
+    };
+
+    let material = decal_materials.add(ForwardDecalMaterial {
+        base: StandardMaterial {
+            base_color_texture: Some(asset_server.load(BULLET_HOLE_TEXTURE)),
+            // Important: use the PNG texture's alpha channel.
+            alpha_mode: AlphaMode::Blend,
+
+            // Useful for a dark bullet-hole texture.
+            perceptual_roughness: 1.0,
+
+            ..default()
+        },
+
+        extension: ForwardDecalMaterialExt {
+            depth_fade_factor: 1.0,
+        },
+    });
 
     let entity = commands
         .spawn((
             Name::new("Bullet Hole Decal"),
-
             // This marks the entity as a forward decal.
             ForwardDecal,
-
-            // The decal material.
+            // // The decal material.
             MeshMaterial3d(material),
-
             // Position and orientation.
             transform,
-
             BulletHoleDecal {
-                lifetime: Timer::from_seconds(
-                    BULLET_DECAL_LIFETIME,
-                    TimerMode::Once,
-                ),
+                lifetime: Timer::from_seconds(BULLET_DECAL_LIFETIME, TimerMode::Once),
             },
         ))
         .id();
 
-    println!(
-        "Bullet hole ForwardDecal spawned: {:?}",
-        entity
-    );
+    //  let texture: Handle<Image> =
+    //     asset_server.load(BULLET_HOLE_TEXTURE);
+
+    // let entity = commands
+    //     .spawn((
+    //         Name::new("Bullet Hole Clustered Decal"),
+
+    //         ClusteredDecal {
+    //             base_color_texture: Some(texture),
+
+    //             // Default tag.
+    //             tag: 0,
+
+    //             ..default()
+    //         },
+
+    //         transform,
+
+    //         BulletHoleDecal {
+    //             lifetime: Timer::from_seconds(
+    //                 BULLET_DECAL_LIFETIME,
+    //                 TimerMode::Once,
+    //             ),
+    //         },
+    // 	    RenderLayers::layer(DEFAULT_RENDER_LAYER),
+    //     ))
+    //     .id();
+
+    println!("Bullet hole ForwardDecal spawned: {:?}", entity);
 
     manager.decals.push_back(entity);
 }

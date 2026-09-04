@@ -16,6 +16,8 @@ use bevy_rapier3d::prelude::*;
 
 // world.rs
 
+use bevy::light::ClusteredDecal;
+
 use crate::render_layers::{DEFAULT_RENDER_LAYER, VIEW_MODEL_RENDER_LAYER};
 
 use std::f32::consts::PI;
