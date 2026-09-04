@@ -1,5 +1,5 @@
 const SKYBOX_PATH: &str =
-    "kloppenheim_06_puresky_4k_diffuse/kloppenheim_06_puresky_4k_specular.ktx2";
+    "kloppenheim_06_puresky_4k_diffuse/kloppenheim_06_puresky_4k_specular.ktx2"; // https://polyhaven.com/a/kloppenheim_06_puresky
 
 use std::f32::consts::FRAC_PI_2;
 
@@ -14,6 +14,7 @@ use bevy::animation::AnimationPlayer;
 use bevy::scene::*;
 
 use bevy::core_pipeline::Skybox;
+use bevy::core_pipeline::prepass::DepthPrepass;
 
 // use bevy::post_process::bloom::{Bloom, BloomCompositeMode};
 // use bevy::core_pipeline::tonemapping::Tonemapping;
@@ -343,10 +344,14 @@ fn spawn_player(
             KinematicCharacterController {
                 offset: CharacterLength::Absolute(0.01),
                 autostep: Some(CharacterAutostep {
-                    max_height: CharacterLength::Absolute(0.1),
-                    min_width: CharacterLength::Absolute(0.5),
-                    include_dynamic_bodies: true,
+                    max_height: CharacterLength::Absolute(0.25),
+                    min_width: CharacterLength::Absolute(0.25),
+                    include_dynamic_bodies: false,
                 }),
+                // Don’t allow climbing slopes larger than 45 degrees.
+                max_slope_climb_angle: 45_f32.to_radians(),
+                // Automatically slide down on slopes smaller than 30 degrees.
+                min_slope_slide_angle: 30_f32.to_radians(),
                 ..default()
             },
             Damping {
@@ -368,7 +373,7 @@ fn spawn_player(
                         PlayerCamera,
                         Camera3d::default(),
                         Projection::from(PerspectiveProjection {
-                            fov: 100.0_f32.to_radians(),
+                            fov: 80.0_f32.to_radians(),
                             ..default()
                         }),
                         Camera {
@@ -380,10 +385,13 @@ fn spawn_player(
                         InheritedVisibility::default(),
                         // Skybox
                         Skybox {
-                            brightness: 500.0,
+                            brightness: 600.0,
                             image: Some(asset_server.load(SKYBOX_PATH)),
                             rotation: Quat::IDENTITY,
+                            // rotation: Quat::from_rotation_y(std::f32::consts::PI),
                         },
+                        // Must enable the depth prepass to render forward decals
+                        DepthPrepass,
                     ));
 
                     // View-model camera
@@ -451,10 +459,10 @@ fn spawn_player(
                                 muzzle.spawn((
                                     MuzzleFlashLight,
                                     PointLight {
-                                        intensity: 8000.0,
+                                        intensity: 10000.0,
                                         range: 100.0,
                                         color: Color::srgb(1.0, 0.4, 0.05),
-                                        shadow_maps_enabled: true,
+                                        shadow_maps_enabled: false,
                                         ..default()
                                     },
                                     MuzzleFlash {
@@ -1700,3 +1708,15 @@ pub fn weapon_walk_sway(
         transform.translation = sway.base_translation + sprint_offset;
     }
 }
+
+/* Configure snap-to-ground inside of a system. */
+// fn modify_character_controller_slopes(
+//     mut character_controllers: Query<&mut KinematicCharacterController>,
+// ) {
+//     for mut character_controller in character_controllers.iter_mut() {
+//         // Don’t allow climbing slopes larger than 45 degrees.
+//         character_controller.max_slope_climb_angle = 45_f32.to_radians();
+//         // Automatically slide down on slopes smaller than 30 degrees.
+//         character_controller.min_slope_slide_angle = 30_f32.to_radians();
+//     }
+// }

@@ -7,6 +7,16 @@ use bevy::pbr::decal;
 const BULLET_HOLE_TEXTURE: &str = "textures/decals/bullet_hole.png";
 use std::collections::VecDeque;
 
+use bevy::camera::visibility::RenderLayers; 
+use crate::render_layers::{DEFAULT_RENDER_LAYER, VIEW_MODEL_RENDER_LAYER};
+
+use bevy::core_pipeline::prepass::DepthPrepass;
+use bevy::pbr::decal::{
+    ForwardDecal,
+    ForwardDecalMaterial,
+    ForwardDecalMaterialExt,
+};
+
 // use crate::player::player::Player;
 // use crate::player::player::PlayerCamera;
 
@@ -16,6 +26,8 @@ use bevy::animation::AnimationPlayer;
 use bevy::animation::RepeatAnimation;
 
 pub struct WeaponPlugin;
+
+
 
 impl Plugin for WeaponPlugin {
     fn build(&self, app: &mut App) {
@@ -225,6 +237,10 @@ fn fire_weapon(
     player_query: Query<Entity, With<Player>>,
 
     mut decal_manager: ResMut<BulletDecalManager>,
+    asset_server: Res<AssetServer>,
+    mut decal_materials: ResMut<
+    Assets<ForwardDecalMaterial<StandardMaterial>>
+>,
 
     mut weapon_query: Query<(&mut Weapon, &mut WeaponState)>,
 
@@ -302,13 +318,21 @@ fn fire_weapon(
         );
 
         // spawn decal
-        spawn_bullet_hole_test(
-            &mut commands,
-            &mut meshes,
-            &mut materials,
-            &mut decal_manager,
-            hit.position + hit.normal * 0.05,
-        );
+        // spawn_bullet_hole_test(
+        //     &mut commands,
+        //     &mut decal_manager,
+        //     hit.position + hit.normal * 0.05,
+        //     &asset_server,
+        // );
+
+	spawn_bullet_hole_test(
+    &mut commands,
+    &mut decal_manager,
+    hit.position,
+    hit.normal,
+    &asset_server,
+    &mut decal_materials,
+);
 
         hit.position
     } else {
@@ -361,18 +385,18 @@ fn fire_weapon(
     // --------------------------------------------------------
 
     let direction = (end_position - muzzle_position).normalize();
-    let tracer_length = 2.75;
+    let tracer_length = 3.00;
     let tracer_position = muzzle_position + direction * (tracer_length * 0.5);
 
     commands.spawn((
-        Mesh3d(meshes.add(Cuboid::from_size(Vec3::new(0.008, 0.008, tracer_length)))),
+        Mesh3d(meshes.add(Cuboid::from_size(Vec3::new(0.01, 0.01, tracer_length)))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: Color::srgb(1.0, 0.75, 0.3),
             emissive: LinearRgba::new(1.0, 0.60, 0.0, 1.0),
             ..default()
         })),
         Transform::from_translation(tracer_position).looking_to(direction, Vec3::Y),
-        BulletTracer::new(muzzle_position, end_position, 600.0),
+        BulletTracer::new(muzzle_position, end_position, 120.0),
     ));
 }
 
@@ -833,37 +857,147 @@ const BULLET_DECAL_LIFETIME: f32 = 10.0;
 //     ));
 // }
 
+// fn spawn_bullet_hole_test(
+//     commands: &mut Commands,
+//     // meshes: &mut Assets<Mesh>,
+//     // materials: &mut Assets<StandardMaterial>,
+//     manager: &mut BulletDecalManager,
+//     position: Vec3,
+//     asset_server: &AssetServer,
+// ) {
+
 fn spawn_bullet_hole_test(
     commands: &mut Commands,
-    meshes: &mut Assets<Mesh>,
-    materials: &mut Assets<StandardMaterial>,
     manager: &mut BulletDecalManager,
     position: Vec3,
+    normal: Vec3,
+    asset_server: &AssetServer,
+    decal_materials: &mut Assets<
+        ForwardDecalMaterial<StandardMaterial>,
+    >,
 ) {
-    // Remove the oldest decal if we reached the limit.
+    // Remove the oldest bullet hole.
     if manager.decals.len() >= MAX_BULLET_DECALS {
         if let Some(oldest) = manager.decals.pop_front() {
             commands.entity(oldest).despawn();
         }
     }
 
+    let decal_depth = 0.2;
+    
+    // Move the decal slightly away from the surface.
+    let decal_position = position + normal * (decal_depth * 0.5);
+
+    // ForwardDecal projects in the local -Z direction.
+    // Therefore, orient it toward the impact surface.
+let transform = Transform::from_translation(decal_position)
+    .looking_to(-normal, Vec3::Y)
+    .with_scale(Vec3::new(0.2, 0.2, decal_depth));
+
+    let material = decal_materials.add(
+        ForwardDecalMaterial {
+            base: StandardMaterial {
+                base_color_texture: Some(
+                    asset_server.load(BULLET_HOLE_TEXTURE),
+                ),
+
+                // Useful for a dark bullet-hole texture.
+                perceptual_roughness: 1.0,
+
+                ..default()
+            },
+
+            extension: ForwardDecalMaterialExt {
+                depth_fade_factor: 1.0,
+            },
+        },
+    );
+
     let entity = commands
         .spawn((
-            Mesh3d(meshes.add(Sphere::new(0.05))),
-            MeshMaterial3d(materials.add(StandardMaterial {
-                base_color: Color::srgb(1.0, 0.0, 0.0),
-                emissive: LinearRgba::new(1.0, 0.0, 0.0, 1.0),
-                ..default()
-            })),
-            Transform::from_translation(position),
+            Name::new("Bullet Hole Decal"),
+
+            // This marks the entity as a forward decal.
+            ForwardDecal,
+
+            // The decal material.
+            MeshMaterial3d(material),
+
+            // Position and orientation.
+            transform,
+
             BulletHoleDecal {
-                lifetime: Timer::from_seconds(BULLET_DECAL_LIFETIME, TimerMode::Once),
+                lifetime: Timer::from_seconds(
+                    BULLET_DECAL_LIFETIME,
+                    TimerMode::Once,
+                ),
             },
         ))
         .id();
 
+    println!(
+        "Bullet hole ForwardDecal spawned: {:?}",
+        entity
+    );
+
     manager.decals.push_back(entity);
 }
+
+// fn spawn_bullet_hole_test(
+//     commands: &mut Commands,
+//     manager: &mut BulletDecalManager,
+//     position: Vec3,
+//     normal: Vec3,
+//     asset_server: &AssetServer,
+// ) {
+//     // Remove the oldest decal if we reached the limit.
+//     if manager.decals.len() >= MAX_BULLET_DECALS {
+//         if let Some(oldest) = manager.decals.pop_front() {
+//             commands.entity(oldest).despawn();
+//         }
+//     }
+
+//     let rotation = Quat::from_rotation_arc(Vec3::Z, normal);
+
+//     let entity = commands
+//         .spawn((
+//             ClusteredDecal {
+//                 base_color_texture: Some(asset_server.load(BULLET_HOLE_TEXTURE)),
+//                 ..default()
+//             },
+//             Transform {
+//                 translation: position,
+//                 rotation,
+//                scale: Vec3::new(0.5, 0.5, 2.0),
+//             },
+//             BulletHoleDecal {
+//                 lifetime: Timer::from_seconds(BULLET_DECAL_LIFETIME, TimerMode::Once),
+//             },
+// 	    RenderLayers::layer(DEFAULT_RENDER_LAYER),
+//         ))
+//         .id();
+
+//     // let entity = commands
+//     //     .spawn((
+//     //         // Mesh3d(meshes.add(Sphere::new(0.05))),
+//     //         // MeshMaterial3d(materials.add(StandardMaterial {
+//     //         //     base_color: Color::srgb(1.0, 0.0, 0.0),
+//     //         //     emissive: LinearRgba::new(1.0, 0.0, 0.0, 1.0),
+//     //         //     ..default()
+//     //         // })),
+//     //         ClusteredDecal {
+//     //             base_color_texture: Some(asset_server.load(BULLET_HOLE_TEXTURE)),
+//     //             ..default()
+//     //         },
+//     //         Transform::from_translation(position),
+//     //         BulletHoleDecal {
+//     //             lifetime: Timer::from_seconds(BULLET_DECAL_LIFETIME, TimerMode::Once),
+//     //         },
+//     //     ))
+//     //     .id();
+
+//     manager.decals.push_back(entity);
+// }
 
 fn update_bullet_decals(
     time: Res<Time>,
