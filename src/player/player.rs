@@ -1,6 +1,9 @@
 const SKYBOX_PATH: &str =
     "kloppenheim_06_puresky_4k_diffuse/kloppenheim_06_puresky_4k_specular.ktx2"; // https://polyhaven.com/a/kloppenheim_06_puresky
 
+pub const ALLOW_NOCLIP: bool = false;
+
+
 use std::f32::consts::FRAC_PI_2;
 
 use bevy::{
@@ -1749,6 +1752,11 @@ fn toggle_noclip(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut player_query: Query<(&mut PlayerMovementMode, &mut GravityScale), With<Player>>,
 ) {
+    // Noclip is completely disabled.
+    if !ALLOW_NOCLIP {
+        return;
+    }
+
     if !keyboard.just_pressed(KeyCode::KeyN) {
         return;
     }
