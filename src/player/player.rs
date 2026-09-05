@@ -13,8 +13,8 @@ use bevy_rapier3d::prelude::*;
 use bevy::animation::AnimationPlayer;
 use bevy::scene::*;
 
-use bevy::core_pipeline::Skybox;
 use bevy::core_pipeline::prepass::DepthPrepass;
+use bevy::core_pipeline::Skybox;
 
 // use bevy::post_process::bloom::{Bloom, BloomCompositeMode};
 // use bevy::core_pipeline::tonemapping::Tonemapping;
@@ -34,6 +34,13 @@ impl Plugin for PlayerPlugin {
         app.add_systems(Update, weapon_render_layers);
         app.add_systems(Update, (update_grounded, player_look, player_movement));
         app.add_systems(Update, weapon_walk_sway);
+	app.add_systems(
+    Update,
+    (
+        toggle_noclip,
+        noclip_movement,
+    ),
+);
     }
 }
 
@@ -43,6 +50,14 @@ fn player_plugin_loaded() {
 
 #[derive(Component)]
 pub struct Player;
+
+#[derive(Component, Default, PartialEq, Eq)]
+pub enum PlayerMovementMode {
+    #[default]
+    Normal,
+
+    NoClip,
+}
 
 #[derive(Component)]
 pub struct EquippedWeapon; // marker for equiped weap
@@ -260,7 +275,7 @@ fn spawn_player(
         range: 100.0,
 
         hip_weapon_position: Vec3::new(0.6, -0.8, -2.0),
-        ads_weapon_position: Vec3::new(0.0, -0.525, -2.2),
+        ads_weapon_position: Vec3::new(0.0, -0.525, -1.0),
 
         hip_muzzle_position: Vec3::new(0.6, -0.28, -3.0),
         ads_muzzle_position: Vec3::new(0.0, -0.03, -2.5),
@@ -332,6 +347,7 @@ fn spawn_player(
     commands
         .spawn((
             Player,
+            PlayerMovementMode::Normal,
             PlayerPhysicsController {
                 ..PlayerPhysicsController::default()
             },
@@ -962,12 +978,20 @@ fn player_movement(
         &Transform,
         &mut KinematicCharacterController,
         &mut PlayerPhysicsController,
+        &PlayerMovementMode,
     )>,
 ) {
     let dt = time.delta_secs();
     let current_time = time.elapsed_secs();
 
-    for (transform, mut controller, mut player) in query.iter_mut() {
+    for (transform, mut controller, mut player, movement_mode) in query.iter_mut() {
+        // Check noclip
+        if *movement_mode == PlayerMovementMode::NoClip {
+            controller.translation = None;
+            player.velocity = Vec3::ZERO;
+            continue;
+        }
+
         let mut input = Vec3::ZERO;
         if keyboard.pressed(KeyCode::KeyW) {
             input.z -= 1.0;
@@ -1720,3 +1744,136 @@ pub fn weapon_walk_sway(
 //         character_controller.min_slope_slide_angle = 30_f32.to_radians();
 //     }
 // }
+
+fn toggle_noclip(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    mut player_query: Query<(&mut PlayerMovementMode, &mut GravityScale), With<Player>>,
+) {
+    if !keyboard.just_pressed(KeyCode::KeyN) {
+        return;
+    }
+
+    for (mut movement_mode, mut gravity_scale) in &mut player_query {
+        match *movement_mode {
+            PlayerMovementMode::Normal => {
+                *movement_mode = PlayerMovementMode::NoClip;
+
+                // Disable gravity
+                gravity_scale.0 = 0.0;
+
+                println!("NoClip: ENABLED");
+            }
+
+            PlayerMovementMode::NoClip => {
+                *movement_mode = PlayerMovementMode::Normal;
+
+                // Restore gravity
+                gravity_scale.0 = 1.0;
+
+                println!("NoClip: DISABLED");
+            }
+        }
+    }
+}
+
+pub const NOCLIP_SPEED: f32 = 20.0;
+fn noclip_movement(
+    time: Res<Time>,
+    keyboard: Res<ButtonInput<KeyCode>>,
+
+    mut player_query: Query<
+        (
+            &mut Transform,
+            &PlayerMovementMode,
+            &Children,
+        ),
+        With<Player>,
+    >,
+
+    head_query: Query<
+        &Transform,
+        (
+            With<Head>,
+            Without<Player>,
+        ),
+    >,
+) {
+    for (mut player_transform, movement_mode, children) in &mut player_query {
+        if *movement_mode != PlayerMovementMode::NoClip {
+            continue;
+        }
+
+        let mut movement = Vec3::ZERO;
+
+        let mut head_rotation = Quat::IDENTITY;
+
+        for child in children.iter() {
+            if let Ok(head_transform) = head_query.get(child) {
+                head_rotation = head_transform.rotation;
+                break;
+            }
+        }
+
+        let camera_rotation =
+            player_transform.rotation * head_rotation;
+
+        let forward = camera_rotation * -Vec3::Z;
+        let right = camera_rotation * Vec3::X;
+
+        // Keep WASD movement horizontal.
+        let forward = Vec3::new(
+            forward.x,
+            0.0,
+            forward.z,
+        )
+        .normalize_or_zero();
+
+        let right = Vec3::new(
+            right.x,
+            0.0,
+            right.z,
+        )
+        .normalize_or_zero();
+
+        // W
+        if keyboard.pressed(KeyCode::KeyW) {
+            movement += forward;
+        }
+
+        // S
+        if keyboard.pressed(KeyCode::KeyS) {
+            movement -= forward;
+        }
+
+        // A
+        if keyboard.pressed(KeyCode::KeyA) {
+            movement -= right;
+        }
+
+        // D
+        if keyboard.pressed(KeyCode::KeyD) {
+            movement += right;
+        }
+
+        // Space = up
+        if keyboard.pressed(KeyCode::Space) {
+            movement += Vec3::Y;
+        }
+
+        // Shift = down
+        if keyboard.pressed(KeyCode::ShiftLeft)
+            || keyboard.pressed(KeyCode::ShiftRight)
+        {
+            movement -= Vec3::Y;
+        }
+
+        if movement.length_squared() > 0.0 {
+            movement = movement.normalize();
+        }
+
+        player_transform.translation +=
+            movement
+                * NOCLIP_SPEED
+                * time.delta_secs();
+    }
+}
