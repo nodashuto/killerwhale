@@ -5,7 +5,12 @@ use bevy::window::PrimaryWindow;
 use super::crosshair::{spawn_crosshair, toggle_and_animate_crosshair};
 
 use crate::player::player::EquippedWeapon;
+
 use crate::weapon::weapon::Weapon;
+use crate::weapon::weapon::{
+    ENABLE_WEAPON_POSITION_TESTER,
+    WeaponPositionTester,
+};
 
 pub struct HudPlugin;
 
@@ -25,6 +30,9 @@ struct NoAmmoText;
 #[derive(Component)]
 struct ReloadHintText;
 
+#[derive(Component)]
+struct WeaponPositionTesterHud;
+
 fn setup_hud(mut commands: Commands) {
     commands.spawn((
         Text::new(" 0 / 0"),
@@ -43,7 +51,7 @@ fn setup_hud(mut commands: Commands) {
             ..default()
         },
         //BackgroundColor(Color::BLACK),
-	//BackgroundColor(Color::srgba(0.1, 0.1, 0.1, 0.4)),
+        //BackgroundColor(Color::srgba(0.1, 0.1, 0.1, 0.4)),
     ));
 
     commands.spawn((
@@ -59,11 +67,9 @@ fn setup_hud(mut commands: Commands) {
             font_size: FontSize::Px(24.0),
             ..default()
         },
-	TextColor(Color::srgb(1.0, 1.0, 0.0)),
+        TextColor(Color::srgb(1.0, 1.0, 0.0)),
         Visibility::Hidden,
     ));
-
-    
 
     // commands
     //     .spawn((
@@ -106,46 +112,81 @@ fn setup_hud(mut commands: Commands) {
     //     });
 
     commands
-    .spawn((
-        Text::new(""),
-        ReloadHintText,
-        Node {
-            position_type: PositionType::Absolute,
-            right: Val::Percent(40.0),
-            bottom: Val::Percent(35.0),
-            ..default()
-        },
-        Visibility::Hidden,
-    ))
-    .with_children(|parent| {
-        parent.spawn((
-            TextSpan::new("Press "),
-            TextColor(Color::WHITE),
-            TextFont {
-                font_size: FontSize::Px(24.0),
+        .spawn((
+            Text::new(""),
+            ReloadHintText,
+            Node {
+                position_type: PositionType::Absolute,
+                right: Val::Percent(40.0),
+                bottom: Val::Percent(35.0),
                 ..default()
             },
-        ));
+            Visibility::Hidden,
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                TextSpan::new("Press "),
+                TextColor(Color::WHITE),
+                TextFont {
+                    font_size: FontSize::Px(24.0),
+                    ..default()
+                },
+            ));
 
-        parent.spawn((
-            TextSpan::new("R"),
-            TextColor(Color::srgb(1.0, 1.0, 0.0)),
-            TextFont {
-                font_size: FontSize::Px(24.0),
-                ..default()
-            },
-        ));
+            parent.spawn((
+                TextSpan::new("R"),
+                TextColor(Color::srgb(1.0, 1.0, 0.0)),
+                TextFont {
+                    font_size: FontSize::Px(24.0),
+                    ..default()
+                },
+            ));
 
-        parent.spawn((
-            TextSpan::new(" to reload"),
-            TextColor(Color::WHITE),
-            TextFont {
-                font_size: FontSize::Px(24.0),
+            parent.spawn((
+                TextSpan::new(" to reload"),
+                TextColor(Color::WHITE),
+                TextFont {
+                    font_size: FontSize::Px(24.0),
+                    ..default()
+                },
+            ));
+        });
+
+    if ENABLE_WEAPON_POSITION_TESTER {
+        commands.spawn((
+            WeaponPositionTesterHud,
+Text::new(
+    "WEAPON POSITION TEST\n\
+     \n\
+     I : Increase Y\n\
+     J : Decrease X\n\
+     K : Decrease Y\n\
+     L : Increase X\n\
+     O : Increase Z\n\
+     U : Decrease Z\n\
+     \n\
+     , : Amount / 10\n\
+     . : Amount * 10"
+),
+            Node {
+                position_type: PositionType::Absolute,
+
+                // Top-left corner.
+                top: Val::Px(20.0),
+                right: Val::Px(20.0),
+
+                padding: UiRect::all(Val::Px(10.0)),
+
                 ..default()
             },
+            TextFont {
+                font_size: FontSize::Px(20.0),
+                ..default()
+            },
+            TextColor(Color::WHITE),
+            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.6)),
         ));
-    });
-    
+    }
 }
 
 fn update_weapon_hud(
@@ -166,10 +207,7 @@ fn update_weapon_hud(
     // -----------------------------------------
 
     if let Ok(mut text) = queries.p0().single_mut() {
-        text.0 = format!(
-            " {} / {}",
-             weapon.ammo_in_magazine, weapon.reserve_ammo,
-        );
+        text.0 = format!(" {} / {}", weapon.ammo_in_magazine, weapon.reserve_ammo,);
     }
 
     // -----------------------------------------

@@ -18,6 +18,8 @@ use bevy::pbr::decal::{ForwardDecal, ForwardDecalMaterial, ForwardDecalMaterialE
 
 use crate::player::player::{Player, PlayerCamera, WeaponAnimationPlayer, WeaponWalkSway};
 
+pub const ENABLE_WEAPON_POSITION_TESTER: bool = false;
+
 use bevy::animation::AnimationPlayer;
 use bevy::animation::RepeatAnimation;
 
@@ -45,6 +47,11 @@ impl Plugin for WeaponPlugin {
                 enabled: true,
             })
             .add_systems(Update, update_bullet_decals);
+
+	// [debug] weapon tester
+        app.add_systems(Startup, spawn_weapon_position_tester);
+        app.insert_resource(WeaponPositionTestSettings { amount: 0.01 })
+            .add_systems(Update, test_weapon_position);
     }
 }
 
@@ -1297,3 +1304,114 @@ fn update_bullet_decals(
 // fn fireweapon () {
 
 // }
+
+#[derive(Component)]
+pub struct WeaponPositionTester;
+
+fn spawn_weapon_position_tester(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let test_position = Vec3::new(0.6, -0.8, -2.0);
+
+    commands.spawn((
+        WeaponPositionTester,
+        WorldAssetRoot(
+            asset_server.load(
+                GltfAssetLabel::Scene(0)
+                    .from_asset("models/20260821-gun-viewmodel-0002-with-simpleanim.glb"),
+            ),
+        ),
+        Transform::from_translation(test_position),
+        Visibility::Visible,
+        RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
+    ));
+}
+
+// #[derive(Component)]
+// pub struct WeaponPositionTest {
+//     pub enabled: bool,
+//     pub position: Vec3,
+// }
+
+#[derive(Resource)]
+pub struct WeaponPositionTestSettings {
+    pub amount: f32,
+}
+
+///weapon position test system
+fn test_weapon_position(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    mut settings: ResMut<WeaponPositionTestSettings>,
+    mut query: Query<&mut Transform, With<WeaponPositionTester>>,
+) {
+    if !ENABLE_WEAPON_POSITION_TESTER {
+        return;
+    }
+
+    if keyboard.just_pressed(KeyCode::Period) {
+        settings.amount = (settings.amount * 10.0).min(10.0);
+
+        println!("Weapon position amount increased: {}", settings.amount);
+    }
+
+    if keyboard.just_pressed(KeyCode::Comma) {
+        settings.amount = (settings.amount / 10.0).max(0.001);
+
+        println!("Weapon position amount decreased: {}", settings.amount);
+    }
+
+    // if keyboard.just_pressed(KeyCode::BracketLeft) {
+    //     settings.amount = (settings.amount / 10.0).max(0.001);
+
+    //     println!(
+    //         "Weapon position amount decreased: {}",
+    //         settings.amount
+    //     );
+    // }
+
+    let amount = settings.amount;
+
+    // ==========================================
+    // MOVE TEST WEAPON
+    // ==========================================
+
+    for mut transform in &mut query {
+        let old_position = transform.translation;
+
+        // X axis: J / L
+        if keyboard.just_pressed(KeyCode::KeyJ) {
+            transform.translation.x -= amount;
+        }
+
+        if keyboard.just_pressed(KeyCode::KeyL) {
+            transform.translation.x += amount;
+        }
+
+        // Y axis: K / I
+        if keyboard.just_pressed(KeyCode::KeyK) {
+            transform.translation.y -= amount;
+        }
+
+        if keyboard.just_pressed(KeyCode::KeyI) {
+            transform.translation.y += amount;
+        }
+
+        // Z axis: U / O
+        if keyboard.just_pressed(KeyCode::KeyU) {
+            transform.translation.z -= amount;
+        }
+
+        if keyboard.just_pressed(KeyCode::KeyO) {
+            transform.translation.z += amount;
+        }
+
+        // ==========================================
+        // PRINT ONLY WHEN POSITION CHANGES
+        // ==========================================
+
+        if transform.translation != old_position {
+            println!(
+                "[debug] weapon_position: Vec3::new({:.4}, {:.4}, {:.4}),",
+                transform.translation.x, transform.translation.y, transform.translation.z,
+            );
+        }
+    }
+}

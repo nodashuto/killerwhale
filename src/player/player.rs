@@ -26,6 +26,12 @@ use crate::weapon::weapon::{
     WeaponState,
 };
 
+use crate::weapon::weapon::{
+    ENABLE_WEAPON_POSITION_TESTER,
+    WeaponPositionTester,
+};
+
+
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
@@ -38,7 +44,6 @@ impl Plugin for PlayerPlugin {
         app.add_systems(Update, weapon_walk_sway);
         // debug system
         app.add_systems(Update, (toggle_noclip, noclip_movement));
-        app.add_systems(Update, test_weapon_position);
     }
 }
 
@@ -452,13 +457,39 @@ fn spawn_player(
                                     base_rotation: Quat::from_rotation_y(std::f32::consts::PI),
                                     ..default()
                                 },
-                                // Development position editor
-                                // WeaponPositionTest {
-                                //     enabled: true,
-                                //     position: pistol.hip_weapon_position,
-                                // },
+                                // Hide real gun when testing.
+                                if ENABLE_WEAPON_POSITION_TESTER {
+                                    Visibility::Hidden
+                                } else {
+                                    Visibility::Visible
+                                },
                             ))
                             .observe(setup_weapon_animation);
+
+                        // debug
+                        let test_position = Vec3::new(0.6, -0.8, -2.0);
+                        view_camera.spawn((
+                            WeaponPositionTester,
+                            WorldAssetRoot(asset_server.load(GltfAssetLabel::Scene(0).from_asset(
+                                "models/20260821-gun-viewmodel-0002-with-simpleanim.glb",
+                            ))),
+                            Transform {
+                                translation: test_position,
+
+                                // Use the same rotation as your real weapon.
+                                rotation: Quat::from_rotation_y(std::f32::consts::PI),
+
+                                // Use the same scale as your real weapon.
+                                scale: Vec3::splat(0.3),
+                            },
+                            RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
+                            // Show test gun only in test mode.
+                            if ENABLE_WEAPON_POSITION_TESTER {
+                                Visibility::Visible
+                            } else {
+                                Visibility::Hidden
+                            },
+                        ));
 
                         // Muzzle position
                         view_camera
@@ -1632,67 +1663,122 @@ fn noclip_movement(
     }
 }
 
-#[derive(Component)]
-pub struct WeaponPositionTest {
-    pub enabled: bool,
-    pub position: Vec3,
-}
+// #[derive(Component)]
+// pub struct WeaponPositionTester;
 
-///weapon position test system
-pub fn test_weapon_position(
-    keyboard: Res<ButtonInput<KeyCode>>,
-    time: Res<Time>,
-    mut weapon_query: Query<(
-        &mut Transform,
-        &mut WeaponPositionTest,
-    )>,
-) {
-    for (mut transform, mut test) in &mut weapon_query {
-        if !test.enabled {
-            continue;
-        }
+// fn spawn_weapon_position_tester(mut commands: Commands, asset_server: Res<AssetServer>) {
+//     let test_position = Vec3::new(0.6, -0.8, -2.0);
 
-        let amount = 1.0 * time.delta_secs();
+//     commands.spawn((
+//         WeaponPositionTester,
+//         WorldAssetRoot(
+//             asset_server.load(
+//                 GltfAssetLabel::Scene(0)
+//                     .from_asset("models/20260821-gun-viewmodel-0002-with-simpleanim.glb"),
+//             ),
+//         ),
+//         Transform::from_translation(test_position),
+//         Visibility::Visible,
+//         RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
+//     ));
+// }
 
-        let old_position = test.position;
+// // #[derive(Component)]
+// // pub struct WeaponPositionTest {
+// //     pub enabled: bool,
+// //     pub position: Vec3,
+// // }
 
-        // X axis
-        if keyboard.pressed(KeyCode::KeyJ) {
-            test.position.x -= amount;
-        }
+// #[derive(Resource)]
+// pub struct WeaponPositionTestSettings {
+//     pub amount: f32,
+// }
 
-        if keyboard.pressed(KeyCode::KeyL) {
-            test.position.x += amount;
-        }
+// ///weapon position test system
+// fn test_weapon_position(
+//     keyboard: Res<ButtonInput<KeyCode>>,
+//     mut settings: ResMut<WeaponPositionTestSettings>,
+//     mut query: Query<&mut Transform, With<WeaponPositionTester>>,
+// ) {
+//     if !ENABLE_WEAPON_POSITION_TESTER {
+//         return;
+//     }
 
-        // Y axis
-        if keyboard.pressed(KeyCode::KeyU) {
-            test.position.y -= amount;
-        }
+//     if keyboard.just_pressed(KeyCode::Period) {
+//        settings.amount = (settings.amount * 10.0).min(10.0);
 
-        if keyboard.pressed(KeyCode::KeyO) {
-            test.position.y += amount;
-        }
+//         println!(
+//             "Weapon position amount increased: {}",
+//             settings.amount
+//         );
+//     }
 
-        // Z axis
-        if keyboard.pressed(KeyCode::KeyK) {
-            test.position.z -= amount;
-        }
+//     if keyboard.just_pressed(KeyCode::Comma) {
 
-        if keyboard.pressed(KeyCode::KeyI) {
-            test.position.z += amount;
-        }
+//     settings.amount = (settings.amount / 10.0).max(0.001);
 
-        // Only update and print if the position changed.
-        if test.position != old_position {
-            transform.translation = test.position;
+//     println!(
+//         "Weapon position amount decreased: {}",
+//         settings.amount
+//     );
+// }
 
-            println!(
-                "weapon_position: Vec3::new({:.4}, {:.4}, {:.4})",
-                test.position.x,
-                test.position.y,
-                test.position.z,
-            );
-        }
-    }
-}
+//     // if keyboard.just_pressed(KeyCode::BracketLeft) {
+//     //     settings.amount = (settings.amount / 10.0).max(0.001);
+
+//     //     println!(
+//     //         "Weapon position amount decreased: {}",
+//     //         settings.amount
+//     //     );
+//     // }
+
+//     let amount = settings.amount;
+
+//     // ==========================================
+//     // MOVE TEST WEAPON
+//     // ==========================================
+
+//     for mut transform in &mut query {
+//         let old_position = transform.translation;
+
+//         // X axis: J / L
+//         if keyboard.just_pressed(KeyCode::KeyJ) {
+//             transform.translation.x -= amount;
+//         }
+
+//         if keyboard.just_pressed(KeyCode::KeyL) {
+//             transform.translation.x += amount;
+//         }
+
+//         // Y axis: K / I
+//         if keyboard.just_pressed(KeyCode::KeyK) {
+//             transform.translation.y -= amount;
+//         }
+
+//         if keyboard.just_pressed(KeyCode::KeyI) {
+//             transform.translation.y += amount;
+//         }
+
+//         // Z axis: U / O
+//         if keyboard.just_pressed(KeyCode::KeyU) {
+//             transform.translation.z -= amount;
+//         }
+
+//         if keyboard.just_pressed(KeyCode::KeyO) {
+//             transform.translation.z += amount;
+//         }
+
+//         // ==========================================
+//         // PRINT ONLY WHEN POSITION CHANGES
+//         // ==========================================
+
+//         if transform.translation != old_position {
+//             println!(
+//                 "hip_weapon_position: Vec3::new({:.4}, {:.4}, {:.4}),",
+//                 transform.translation.x,
+//                 transform.translation.y,
+//                 transform.translation.z,
+//             );
+//         }
+//     }
+// }
