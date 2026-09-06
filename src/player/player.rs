@@ -3,7 +3,6 @@ const SKYBOX_PATH: &str =
 
 pub const ALLOW_NOCLIP: bool = false;
 
-
 use std::f32::consts::FRAC_PI_2;
 
 use bevy::{
@@ -37,13 +36,9 @@ impl Plugin for PlayerPlugin {
         app.add_systems(Update, weapon_render_layers);
         app.add_systems(Update, (update_grounded, player_look, player_movement));
         app.add_systems(Update, weapon_walk_sway);
-	app.add_systems(
-    Update,
-    (
-        toggle_noclip,
-        noclip_movement,
-    ),
-);
+        // debug system
+        app.add_systems(Update, (toggle_noclip, noclip_movement));
+        app.add_systems(Update, test_weapon_position);
     }
 }
 
@@ -457,6 +452,11 @@ fn spawn_player(
                                     base_rotation: Quat::from_rotation_y(std::f32::consts::PI),
                                     ..default()
                                 },
+                                // Development position editor
+                                // WeaponPositionTest {
+                                //     enabled: true,
+                                //     position: pistol.hip_weapon_position,
+                                // },
                             ))
                             .observe(setup_weapon_animation);
 
@@ -501,231 +501,6 @@ fn spawn_player(
                     });
                 });
         });
-
-    // this is old structure
-    // commands
-    //     .spawn((
-    //         Player,
-    //         PlayerPhysicsController {
-    //             ..PlayerPhysicsController::default()
-    //         },
-    //         Transform::from_xyz(0.0, 30.0, 0.0),
-    //         Visibility::default(),
-    //         RigidBody::KinematicPositionBased,
-    //         Collider::capsule_y(0.51, 0.40), // half height + radius = 0.91
-    //         LockedAxes::ROTATION_LOCKED,
-    //         GravityScale(1.0),
-    //         KinematicCharacterController {
-    //             offset: CharacterLength::Absolute(0.01),
-    //             autostep: Some(CharacterAutostep {
-    //                 // Autostep if the step height is smaller than 0.1, and its width larger than 0.2.
-    //                 max_height: CharacterLength::Absolute(0.1),
-    //                 min_width: CharacterLength::Absolute(0.5),
-    //                 include_dynamic_bodies: true,
-    //             }),
-    //             ..default()
-    //         },
-    //         Damping {
-    //             linear_damping: 2.0,
-    //             angular_damping: 100.0,
-    //         },
-    //     ))
-    //     .with_children(|player| {
-    //         player
-    //             .spawn((
-    //                 Head::default(),
-    //                 Transform::from_xyz(0.0, 1.35, 0.1),
-    //                 Visibility::default(),
-    //                 InheritedVisibility::default(),
-    //             ))
-    //             .with_children(|head| {
-    //                 head.spawn((
-    //                     PlayerCamera,
-    //                     Camera3d::default(),
-    //                     Projection::from(PerspectiveProjection {
-    //                         fov: 65.0_f32.to_radians(),
-    //                         ..default()
-    //                     }),
-    //                     Camera {
-    //                         order: 0,
-    //                         //clear_color: ClearColorConfig::None,
-    //                         ..default()
-    //                     },
-    //                     RenderLayers::layer(DEFAULT_RENDER_LAYER),
-    //                     Transform::default(),
-    //                     InheritedVisibility::default(),
-    //                     //Tonemapping::TonyMcMapface, // 1. Using a tonemapper that desaturates to white is recommended
-    //                     //Bloom::NATURAL, // 2. Enable bloom for the camera
-    //                 ))
-    //                 .with_children(|camera| {
-    //                     // View-model camera
-    //                     camera
-    //                         .spawn((
-    //                             Camera3d::default(),
-    //                             Camera {
-    //                                 order: 1,
-    //                                 //clear_color: ClearColorConfig::None,
-    //                                 ..default()
-    //                             },
-    //                             // Camera {
-    //                             //     order: 1,
-
-    //                             //     ..default()
-    //                             // },
-    //                             Projection::from(PerspectiveProjection {
-    //                                 fov: 65.0_f32.to_radians(),
-    //                                 ..default()
-    //                             }),
-    //                             RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
-    //                             Transform::default(),
-    //                             InheritedVisibility::default(),
-    //                             // The arm is free-floating, so shadows would look weird.
-    //                             NotShadowCaster,
-    //                         ))
-    //                         .with_children(|view_camera| {
-    //                             view_camera
-    //                                 .spawn((
-    //                                     weapon,
-    //                                     weapon_state,
-    //                                     EquippedWeapon,
-    //                                     WeaponAnimations {
-    //                                         graph: graph_handle,
-    //                                         idle,
-    //                                         fire,
-    //                                         //reload,
-    //                                     },
-    //                                     WeaponAds::default(),
-    //                                     //WeaponViewModel,
-    //                                     //SceneRoot(pistol_scene.clone()),
-    //                                     //Transform::from_xyz(0.3, -0.2, -0.5),
-
-    //                                     //Mesh3d(gun_mesh),
-    //                                     //MeshMaterial3d(gun_material),
-    //                                     WorldAssetRoot(
-    //                                         asset_server.load(
-    //                                             GltfAssetLabel::Scene(0).from_asset(model_path),
-    //                                         ),
-    //                                     ),
-    //                                     RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
-    //                                     //transform::from_xyz(0.2, -0.1, -0.25),
-    //                                     Transform {
-    //                                         //translation: Vec3::new(0.5, 0.3, -1.5),
-    //                                         translation: Vec3::new(0.0, 0.0, 0.0),
-    //                                         rotation: Quat::from_rotation_y(std::f32::consts::PI),
-    //                                         //scale: Vec3::new(0.1, 0.1, 0.1),
-    //                                         scale: Vec3::new(0.3, 0.3, 0.3),
-    //                                     },
-    //                                     WeaponWalkSway {
-    //                                         base_translation: hip_weapon_pos,
-    //                                         base_rotation: Quat::from_rotation_y(
-    //                                             std::f32::consts::PI,
-    //                                         ),
-    //                                         ..default()
-    //                                     },
-    //                                 ))
-    //                                 .observe(setup_weapon_animation);
-
-    //                             // Muzzle position
-    //                             view_camera
-    //                                 .spawn((
-    //                                     WeaponMuzzle {
-    //                                         hip_position: hip_muzzle_position,
-    //                                         ads_position: ads_muzzle_position,
-    //                                         progress: 0.0,
-    //                                     },
-    //                                     Transform::from_xyz(0.0, 0.0, -0.8),
-    //                                     GlobalTransform::default(),
-    //                                     Visibility::default(),
-    //                                     InheritedVisibility::default(),
-    //                                 ))
-    //                                 .with_children(|muzzle| {
-    //                                     muzzle.spawn((
-    //                                         MuzzleFlashLight,
-    //                                         PointLight {
-    //                                             intensity: 8000.0,
-    //                                             range: 100.0,
-    //                                             //radius: 1000.0,
-    //                                             color: Color::srgb(1.0, 0.4, 0.05),
-    //                                             shadow_maps_enabled: true,
-    //                                             ..default()
-    //                                         },
-    //                                         MuzzleFlash {
-    //                                             timer: Timer::from_seconds(0.01, TimerMode::Once),
-    //                                         },
-    //                                         Mesh3d(meshes.add(Sphere::new(0.001))),
-    //                                         MeshMaterial3d(materials.add(StandardMaterial {
-    //                                             base_color: Color::srgba(1.0, 0.5, 0.0, 0.01),
-    //                                             emissive: LinearRgba::new(1.0, 0.5, 0.0, 100.0),
-    //                                             unlit: true,
-    //                                             ..default()
-    //                                         })),
-    //                                         Transform::default(),
-    //                                         Visibility::Hidden,
-    //                                     ));
-    //                                 });
-    //                         });
-    //                 });
-    //                 // head.spawn((
-    //                 //     Camera3d::default(),
-    //                 //     RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
-    //                 // ));
-    //             });
-    //     });
-
-    // commands.spawn((
-    //     Player,
-    //     // PlayerLook::default(),
-
-    //     // Player position and horizontal rotation.
-    //     Transform::from_xyz(0.0, 0.0, 10.0),
-    //     Visibility::default(),
-    //     children![
-    //         (
-    //             PlayerCamera,
-    //             Camera3d::default(),
-    //             CameraSensitivity::default(),
-    //             Transform::from_xyz(0.0, 2.0, 0.0),
-    //         ),
-    // // World camera
-    // (
-    //     WorldModelCamera,
-    //     Camera3d::default(),
-    //     Projection::from(PerspectiveProjection {
-    //         fov: 90.0_f32.to_radians(),
-    //         ..default()
-    //     }),
-    // ),
-
-    // View-model camera
-    // (
-    //     Camera3d::default(),
-    //     Camera {
-    //         order: 1,
-    //         ..default()
-    //     },
-    //     Projection::from(PerspectiveProjection {
-    //         fov: 70.0_f32.to_radians(),
-    //         ..default()
-    //     }),
-    //     RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
-    // ),
-
-    // // Player's arm
-    // (
-    //     Mesh3d(arm),
-    //     MeshMaterial3d(arm_material),
-    //     Transform::from_xyz(0.2, -0.1, -0.25),
-    //     RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
-    //     NotShadowCaster,
-    // ),
-
-    // // Optional player body mesh
-    // (
-    //     Mesh3d(player_mesh),
-    //     MeshMaterial3d(player_material),
-    // ),
-    //     ],
-    // ));
 }
 
 #[derive(Debug, Component)]
@@ -1789,22 +1564,9 @@ fn noclip_movement(
     time: Res<Time>,
     keyboard: Res<ButtonInput<KeyCode>>,
 
-    mut player_query: Query<
-        (
-            &mut Transform,
-            &PlayerMovementMode,
-            &Children,
-        ),
-        With<Player>,
-    >,
+    mut player_query: Query<(&mut Transform, &PlayerMovementMode, &Children), With<Player>>,
 
-    head_query: Query<
-        &Transform,
-        (
-            With<Head>,
-            Without<Player>,
-        ),
-    >,
+    head_query: Query<&Transform, (With<Head>, Without<Player>)>,
 ) {
     for (mut player_transform, movement_mode, children) in &mut player_query {
         if *movement_mode != PlayerMovementMode::NoClip {
@@ -1822,26 +1584,15 @@ fn noclip_movement(
             }
         }
 
-        let camera_rotation =
-            player_transform.rotation * head_rotation;
+        let camera_rotation = player_transform.rotation * head_rotation;
 
         let forward = camera_rotation * -Vec3::Z;
         let right = camera_rotation * Vec3::X;
 
         // Keep WASD movement horizontal.
-        let forward = Vec3::new(
-            forward.x,
-            0.0,
-            forward.z,
-        )
-        .normalize_or_zero();
+        let forward = Vec3::new(forward.x, 0.0, forward.z).normalize_or_zero();
 
-        let right = Vec3::new(
-            right.x,
-            0.0,
-            right.z,
-        )
-        .normalize_or_zero();
+        let right = Vec3::new(right.x, 0.0, right.z).normalize_or_zero();
 
         // W
         if keyboard.pressed(KeyCode::KeyW) {
@@ -1869,9 +1620,7 @@ fn noclip_movement(
         }
 
         // Shift = down
-        if keyboard.pressed(KeyCode::ShiftLeft)
-            || keyboard.pressed(KeyCode::ShiftRight)
-        {
+        if keyboard.pressed(KeyCode::ShiftLeft) || keyboard.pressed(KeyCode::ShiftRight) {
             movement -= Vec3::Y;
         }
 
@@ -1879,9 +1628,71 @@ fn noclip_movement(
             movement = movement.normalize();
         }
 
-        player_transform.translation +=
-            movement
-                * NOCLIP_SPEED
-                * time.delta_secs();
+        player_transform.translation += movement * NOCLIP_SPEED * time.delta_secs();
+    }
+}
+
+#[derive(Component)]
+pub struct WeaponPositionTest {
+    pub enabled: bool,
+    pub position: Vec3,
+}
+
+///weapon position test system
+pub fn test_weapon_position(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    time: Res<Time>,
+    mut weapon_query: Query<(
+        &mut Transform,
+        &mut WeaponPositionTest,
+    )>,
+) {
+    for (mut transform, mut test) in &mut weapon_query {
+        if !test.enabled {
+            continue;
+        }
+
+        let amount = 1.0 * time.delta_secs();
+
+        let old_position = test.position;
+
+        // X axis
+        if keyboard.pressed(KeyCode::KeyJ) {
+            test.position.x -= amount;
+        }
+
+        if keyboard.pressed(KeyCode::KeyL) {
+            test.position.x += amount;
+        }
+
+        // Y axis
+        if keyboard.pressed(KeyCode::KeyU) {
+            test.position.y -= amount;
+        }
+
+        if keyboard.pressed(KeyCode::KeyO) {
+            test.position.y += amount;
+        }
+
+        // Z axis
+        if keyboard.pressed(KeyCode::KeyK) {
+            test.position.z -= amount;
+        }
+
+        if keyboard.pressed(KeyCode::KeyI) {
+            test.position.z += amount;
+        }
+
+        // Only update and print if the position changed.
+        if test.position != old_position {
+            transform.translation = test.position;
+
+            println!(
+                "weapon_position: Vec3::new({:.4}, {:.4}, {:.4})",
+                test.position.x,
+                test.position.y,
+                test.position.z,
+            );
+        }
     }
 }
