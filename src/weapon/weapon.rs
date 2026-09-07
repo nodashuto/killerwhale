@@ -1,16 +1,18 @@
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
 
-use bevy::light::ClusteredDecal;
-use bevy::pbr::decal;
+// use bevy::light::ClusteredDecal;
+// use bevy::pbr::decal;
 
 const BULLET_HOLE_TEXTURE: &str = "textures/decals/bullet_hole.png";
 use std::collections::VecDeque;
 
+#[allow(unused_imports)]
 use crate::render_layers::{DEFAULT_RENDER_LAYER, VIEW_MODEL_RENDER_LAYER};
+
 use bevy::camera::visibility::RenderLayers;
 
-use bevy::core_pipeline::prepass::DepthPrepass;
+// use bevy::core_pipeline::prepass::DepthPrepass;
 use bevy::pbr::decal::{ForwardDecal, ForwardDecalMaterial, ForwardDecalMaterialExt};
 
 // use crate::player::player::Player;
@@ -65,6 +67,7 @@ pub enum FireMode {
     SemiAuto,
     FullAuto,
     Burst,
+    //single-shot
 }
 
 #[derive(Component)]

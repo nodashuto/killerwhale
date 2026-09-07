@@ -6,14 +6,16 @@ pub const ALLOW_NOCLIP: bool = false;
 use std::f32::consts::FRAC_PI_2;
 
 use bevy::{
-    camera::visibility::RenderLayers, color::palettes::tailwind,
-    input::mouse::AccumulatedMouseMotion, light::NotShadowCaster, prelude::*,
+    camera::visibility::RenderLayers,
+    //color::palettes::tailwind,
+    input::mouse::AccumulatedMouseMotion,
+    light::NotShadowCaster, prelude::*,
     world_serialization::WorldInstanceReady,
 };
 use bevy_rapier3d::prelude::*;
 
 use bevy::animation::AnimationPlayer;
-use bevy::scene::*;
+
 
 use bevy::core_pipeline::prepass::DepthPrepass;
 use bevy::core_pipeline::Skybox;
@@ -30,6 +32,9 @@ use crate::weapon::weapon::{
     ENABLE_WEAPON_POSITION_TESTER,
     WeaponPositionTester,
 };
+
+
+use crate::render_layers::{DEFAULT_RENDER_LAYER, VIEW_MODEL_RENDER_LAYER};
 
 
 pub struct PlayerPlugin;
@@ -92,18 +97,10 @@ pub enum PlayerState {
     WallRunning,
 }
 
-#[derive(Debug, Component)]
-struct WorldModelCamera;
+// #[derive(Debug, Component)]
+// struct WorldModelCamera;
 
-/// Used implicitly by all entities without a `RenderLayers` component.
-/// Our world model camera and all objects other than the player are on this layer.
-/// The light source belongs to both layers.
-//const DEFAULT_RENDER_LAYER: usize = 0;
 
-/// Used by the view model camera and the player's arm.
-/// The light source belongs to both layers.
-//const VIEW_MODEL_RENDER_LAYER: usize = 1;
-use crate::render_layers::{DEFAULT_RENDER_LAYER, VIEW_MODEL_RENDER_LAYER};
 
 #[derive(Component)]
 struct Head {
@@ -147,7 +144,7 @@ fn weapon_render_layers(
     children_query: Query<&Children>,
     mesh_query: Query<(), With<Mesh3d>>,
 ) {
-    for (weapon, children) in &weapon_query {
+    for (_weapon, children) in &weapon_query {
         let Some(children) = children else {
             continue;
         };

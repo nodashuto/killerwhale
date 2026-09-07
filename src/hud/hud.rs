@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use bevy::window::PrimaryWindow;
+// use bevy::window::PrimaryWindow;
 
 use super::crosshair::{spawn_crosshair, toggle_and_animate_crosshair};
 
@@ -9,7 +9,7 @@ use crate::player::player::EquippedWeapon;
 use crate::weapon::weapon::Weapon;
 use crate::weapon::weapon::{
     ENABLE_WEAPON_POSITION_TESTER,
-    WeaponPositionTester,
+    // WeaponPositionTester,
 };
 
 pub struct HudPlugin;

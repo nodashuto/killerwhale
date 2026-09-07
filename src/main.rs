@@ -10,7 +10,7 @@ use bevy::{
     text::FontSmoothing,
 };
 
-use bevy::window::{WindowMode, WindowResolution}; // for window size
+//use bevy::window::{WindowMode, WindowResolution}; // for window size
 
 
 // use bevy::input::mouse::MouseMotion;

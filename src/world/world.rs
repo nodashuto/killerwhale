@@ -1,26 +1,19 @@
 use bevy::prelude::*;
 use bevy::{
-    camera::visibility::RenderLayers, color::palettes::tailwind, light::CascadeShadowConfigBuilder,
-    light::NotShadowCaster,
+    camera::visibility::RenderLayers,
+    light::CascadeShadowConfigBuilder,
 };
+
 use bevy_rapier3d::prelude::*;
 
-// Used implicitly by all entities without a `RenderLayers` component.
-// Our world model camera and all objects other than the player are on this layer.
-// The light source belongs to both layers.
-// const DEFAULT_RENDER_LAYER: usize = 0;
-
-// Used by the view model camera and the player's arm.
-// The light source belongs to both layers.
-// const VIEW_MODEL_RENDER_LAYER: usize = 1;
 
 // world.rs
 
-use bevy::light::ClusteredDecal;
+//use bevy::light::ClusteredDecal;
 
 use crate::render_layers::{DEFAULT_RENDER_LAYER, VIEW_MODEL_RENDER_LAYER};
 
-use std::f32::consts::PI;
+// use std::f32::consts::PI;
 // use std::f32::consts::TAU;
 
 // use crate::shootingtarget::{
@@ -42,9 +35,8 @@ use std::f32::consts::PI;
 // const WORLD_CLEAR_COLOR: Color = Color::srgb(0.0 / 255.0, 60.0 / 255.0, 92.0 / 255.0);
 const WORLD_CLEAR_COLOR: Color = Color::BLACK;
 
-
-// Import the skybox system 
-use crate::world::skybox::spawn_skybox;
+// Import the skybox system
+// use crate::world::skybox::spawn_skybox;
 
 pub struct WorldPlugin;
 
@@ -85,23 +77,24 @@ impl Plugin for WorldPlugin {
 // see:  https://rapier.rs/docs/user_guides/bevy_plugin/rigid_body_damping/
 
 fn spawn_wood_crate(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn((
-        WorldAssetRoot(
-            asset_server.load(GltfAssetLabel::Scene(0).from_asset("models/woodcrate.glb")),
-        ),
-        RigidBody::Dynamic,
-        Collider::cuboid(1.0, 1.0, 1.0),
-        Friction {
-            coefficient: 1.5,
-            combine_rule: CoefficientCombineRule::Max,
-        },
-        Damping {
-            linear_damping: 1.0,
-            angular_damping: 1.0,
-        },
-        Transform::from_xyz(-12.0, 30.0, 20.0),
-    )
-    ).insert(GravityScale(10.0));
+    commands
+        .spawn((
+            WorldAssetRoot(
+                asset_server.load(GltfAssetLabel::Scene(0).from_asset("models/woodcrate.glb")),
+            ),
+            RigidBody::Dynamic,
+            Collider::cuboid(1.0, 1.0, 1.0),
+            Friction {
+                coefficient: 1.5,
+                combine_rule: CoefficientCombineRule::Max,
+            },
+            Damping {
+                linear_damping: 1.0,
+                angular_damping: 1.0,
+            },
+            Transform::from_xyz(-12.0, 30.0, 20.0),
+        ))
+        .insert(GravityScale(10.0));
 }
 
 fn spawn_world_model(
@@ -357,8 +350,8 @@ fn load_map(mut commands: Commands, asset_server: Res<AssetServer>) {
     let mesh = asset_server.load::<Mesh>("maps/mp-0005-v03.glb#Mesh0/Primitive0");
 
     // scene for visual
-    let scene =
-        asset_server.load::<WorldAsset>(GltfAssetLabel::Scene(0).from_asset("maps/mp-0005-v04.glb"));
+    let scene = asset_server
+        .load::<WorldAsset>(GltfAssetLabel::Scene(0).from_asset("maps/mp-0005-v04.glb"));
 
     commands.insert_resource(MapAsset {
         mesh,
