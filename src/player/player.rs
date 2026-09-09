@@ -42,7 +42,8 @@ pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         // Player systems
-        app.add_systems(Startup, player_plugin_loaded);
+	app.add_systems(Startup, on_startup);
+        
         app.add_systems(Startup, spawn_player);
         app.add_systems(Update, weapon_render_layers);
         app.add_systems(Update, (update_grounded, player_look, player_movement));
@@ -52,8 +53,8 @@ impl Plugin for PlayerPlugin {
     }
 }
 
-fn player_plugin_loaded() {
-    println!("player plugin is loaded");
+fn on_startup() {
+    info!("Player plugin loaded");
 }
 
 #[derive(Component)]
