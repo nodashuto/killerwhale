@@ -2,7 +2,7 @@
 
 # Killerwhale Engine
 
-My 3d game engine in Rust, Bevy.
+FPS Game Engine made in Rust, Bevy ECS System. 
 
 
 ## Requirements
