@@ -9,16 +9,18 @@ use bevy::{
     camera::visibility::RenderLayers,
     //color::palettes::tailwind,
     input::mouse::AccumulatedMouseMotion,
-    light::NotShadowCaster, prelude::*,
+    light::NotShadowCaster,
+    prelude::*,
     world_serialization::WorldInstanceReady,
 };
 use bevy_rapier3d::prelude::*;
 
 use bevy::animation::AnimationPlayer;
 
-
 use bevy::core_pipeline::prepass::DepthPrepass;
 use bevy::core_pipeline::Skybox;
+
+use bevy::camera::{Exposure, PhysicalCameraParameters};
 
 // use bevy::post_process::bloom::{Bloom, BloomCompositeMode};
 // use bevy::core_pipeline::tonemapping::Tonemapping;
@@ -28,22 +30,17 @@ use crate::weapon::weapon::{
     WeaponState,
 };
 
-use crate::weapon::weapon::{
-    ENABLE_WEAPON_POSITION_TESTER,
-    WeaponPositionTester,
-};
-
+use crate::weapon::weapon::{WeaponPositionTester, ENABLE_WEAPON_POSITION_TESTER};
 
 use crate::render_layers::{DEFAULT_RENDER_LAYER, VIEW_MODEL_RENDER_LAYER};
-
 
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         // Player systems
-	app.add_systems(Startup, on_startup);
-        
+        app.add_systems(Startup, on_startup);
+
         app.add_systems(Startup, spawn_player);
         app.add_systems(Update, weapon_render_layers);
         app.add_systems(Update, (update_grounded, player_look, player_movement));
@@ -100,8 +97,6 @@ pub enum PlayerState {
 
 // #[derive(Debug, Component)]
 // struct WorldModelCamera;
-
-
 
 #[derive(Component)]
 struct Head {

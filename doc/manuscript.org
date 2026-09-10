@@ -1,6 +1,7 @@
 #+TITLE: README
 #+AUTHOR: Noda Shuto
 #+EXPORT_FILE_NAME: ../README.md
+#+OPTIONS: toc:nil
 
 * Killerwhale Engine
 
