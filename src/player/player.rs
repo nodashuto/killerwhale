@@ -1,7 +1,7 @@
 const SKYBOX_PATH: &str =
     "kloppenheim_06_puresky_4k_diffuse/kloppenheim_06_puresky_4k_specular.ktx2"; // https://polyhaven.com/a/kloppenheim_06_puresky
 
-pub const ALLOW_NOCLIP: bool = false;
+pub const ALLOW_NOCLIP: bool = true;
 
 use std::f32::consts::FRAC_PI_2;
 
@@ -20,8 +20,6 @@ use bevy::animation::AnimationPlayer;
 use bevy::core_pipeline::prepass::DepthPrepass;
 use bevy::core_pipeline::Skybox;
 
-use bevy::camera::{Exposure, PhysicalCameraParameters};
-
 // use bevy::post_process::bloom::{Bloom, BloomCompositeMode};
 // use bevy::core_pipeline::tonemapping::Tonemapping;
 
@@ -34,16 +32,24 @@ use crate::weapon::weapon::{WeaponPositionTester, ENABLE_WEAPON_POSITION_TESTER}
 
 use crate::render_layers::{DEFAULT_RENDER_LAYER, VIEW_MODEL_RENDER_LAYER};
 
+use crate::player::player_controller::{
+    PlayerControllerPlugin,
+    PlayerPhysicsController,
+}; // import player_controller
+
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
+        // Player movement/controller.
+        app.add_plugins(PlayerControllerPlugin);
         // Player systems
         app.add_systems(Startup, on_startup);
 
         app.add_systems(Startup, spawn_player);
         app.add_systems(Update, weapon_render_layers);
-        app.add_systems(Update, (update_grounded, player_look, player_movement));
+	// app.add_systems(Update, (update_grounded, player_look, player_movement));
+        app.add_systems(Update, player_look);
         app.add_systems(Update, weapon_walk_sway);
         // debug system
         app.add_systems(Update, (toggle_noclip, noclip_movement));
@@ -251,11 +257,12 @@ fn spawn_player(
     // let player_material = materials.add(Color::srgb(0.2, 0.7, 1.0));
 
     //let gun_mesh = asset_server.load("models/20260812-glock17-viewmodel.glb#Mesh0/Primitive0");
-    let gun_material = materials.add(StandardMaterial {
-        base_color: Color::BLACK,
-        metallic: 0.1,
-        ..default()
-    });
+
+    // let gun_material = materials.add(StandardMaterial {
+    //     base_color: Color::BLACK,
+    //     metallic: 0.1,
+    //     ..default()
+    // });
 
     let pistol = WeaponDefinition {
         id: "SMG",
@@ -360,15 +367,19 @@ fn spawn_player(
                     min_width: CharacterLength::Absolute(0.25),
                     include_dynamic_bodies: false,
                 }),
-                // Don’t allow climbing slopes larger than 45 degrees.
-                max_slope_climb_angle: 45_f32.to_radians(),
-                // Automatically slide down on slopes smaller than 30 degrees.
-                min_slope_slide_angle: 30_f32.to_radians(),
+                // Don’t allow climbing slopes larger than 55 degrees.
+                max_slope_climb_angle: 55_f32.to_radians(),
+                // Automatically slide down on slopes smaller than 45 degrees.
+                min_slope_slide_angle: 89_f32.to_radians(),
                 ..default()
             },
             Damping {
-                linear_damping: 2.0,
+                linear_damping: 10.0,
                 angular_damping: 100.0,
+            },
+            Friction {
+                coefficient: 1.0,
+                combine_rule: CoefficientCombineRule::Min,
             },
         ))
         .with_children(|player| {
@@ -555,54 +566,206 @@ fn player_look(
     head_transform.rotation = Quat::from_rotation_x(head.pitch);
 }
 
-#[derive(Component)]
-pub struct PlayerPhysicsController {
-    pub velocity: Vec3,
-    pub isgrounded: bool,
-    // Time remaining in the jump/landing penalty.
-    jump_penalty_time: f32,
+// #[derive(Component)]
+// pub struct PlayerPhysicsController {
+//     pub velocity: Vec3,
+//     pub isgrounded: bool,
+//     // Time remaining in the jump/landing penalty.
+//     jump_penalty_time: f32,
 
-    // Sprint state
-    // Sprint
-    pub sprint_remaining: f32,
-    pub sprint_recharge_delay: f32,
-    pub is_sprinting: bool,
-    // ADS
-    pub is_ads: bool,
-}
+//     // Sprint state
+//     // Sprint
+//     pub sprint_remaining: f32,
+//     pub sprint_recharge_delay: f32,
+//     pub is_sprinting: bool,
+//     // ADS
+//     pub is_ads: bool,
+// }
 
-impl Default for PlayerPhysicsController {
-    fn default() -> Self {
-        Self {
-            velocity: Vec3::ZERO,
-            //vertical_velocity: 0.0,
-            isgrounded: false,
-            // Time remaining in the jump/landing penalty.
-            jump_penalty_time: 0.0,
-            // sprint
-            sprint_remaining: MAX_SPRINT_TIME,
-            sprint_recharge_delay: 0.0,
-            is_sprinting: false,
+// impl Default for PlayerPhysicsController {
+//     fn default() -> Self {
+//         Self {
+//             velocity: Vec3::ZERO,
+//             //vertical_velocity: 0.0,
+//             isgrounded: false,
+//             // Time remaining in the jump/landing penalty.
+//             jump_penalty_time: 0.0,
+//             // sprint
+//             sprint_remaining: MAX_SPRINT_TIME,
+//             sprint_recharge_delay: 0.0,
+//             is_sprinting: false,
 
-            is_ads: false,
-        }
-    }
-}
+//             is_ads: false,
+//         }
+//     }
+// }
+
+
+// /// update_grounded is needed in system to check if player is grounded.
+// fn update_grounded(
+//     mut query: Query<(
+//         &mut PlayerPhysicsController,
+//         &KinematicCharacterControllerOutput,
+//     )>,
+// ) {
+//     for (mut player, output) in query.iter_mut() {
+//         player.isgrounded = output.grounded;
+//     }
+// }
+
+// // player speed
+// const PLAYER_SPEED: f32 = 14.826; // 14.826
+// const PLAYER_GRAVITY: f32 = 40.32; // 40.32
+// const PLAYER_SPRINTING_SPEED: f32 = 17.239; // 17.239
+
+// // sprint stamina
+// const MAX_SPRINT_TIME: f32 = 2.0;
+// const SPRINT_RECHARGE_PAUSE: f32 = 0.3;
+
+// const ADS_SPEED_MULTIPLIER: f32 = 0.6;
+
+// // Ground acceleration.
+// // Higher = reaches max speed faster.
+// const GROUND_ACCEL: f32 = 50.0;
+
+// // Air acceleration.
+// // Lower than ground acceleration gives you reduced air control.
+// const AIR_ACCEL: f32 = 2.0;
+
+// // Jump height in world units.
+// const JUMP_HEIGHT: f32 = 1.8;
+
+// // Add jump penalty
+// const JUMP_PENALTY_DURATION: f32 = 0.8;
+// const JUMP_SLOWDOWN_SPEED: f32 = 0.5;
+// const JUMP_LAND_SLOWDOWN_TIME: f32 = 1.7;
+// const JUMP_REJUMP_FACTOR: f32 = 2.5;
+
+// fn accelerate(velocity: &mut Vec3, wish_dir: Vec3, wish_speed: f32, acceleration: f32, dt: f32) {
+//     if wish_dir == Vec3::ZERO || wish_speed <= 0.0 {
+//         return;
+//     }
+//     // Velocity in the direction the player wants to move.
+//     let current_speed = velocity.dot(wish_dir);
+//     // How much more speed we need.
+//     let add_speed = wish_speed - current_speed;
+//     if add_speed <= 0.0 {
+//         return;
+//     }
+//     // Amount of acceleration this frame.
+//     let accel_speed = acceleration * dt * wish_speed;
+//     let accel_speed = accel_speed.min(add_speed);
+//     *velocity += wish_dir * accel_speed;
+// }
+
+// fn friction(velocity: &mut Vec3, friction: f32, stop_speed: f32, dt: f32) {
+//     let speed = Vec2::new(velocity.x, velocity.z).length();
+
+//     if speed < 0.001 {
+//         velocity.x = 0.0;
+//         velocity.z = 0.0;
+//         return;
+//     }
+
+//     let control = speed.max(stop_speed);
+//     let drop = control * friction * dt;
+
+//     let new_speed = (speed - drop).max(0.0);
+//     let scale = new_speed / speed;
+
+//     velocity.x *= scale;
+//     velocity.z *= scale;
+// }
+
+// fn walk_move(velocity: &mut Vec3, wish_dir: Vec3, wish_speed: f32, dt: f32) {
+//     friction(velocity, 24.0, 16.0, dt);
+//     // Ground movement accelerates quickly toward the desired speed.
+//     accelerate(velocity, wish_dir, wish_speed, GROUND_ACCEL, dt);
+//     // Ground movement should not accumulate vertical velocity.
+//     //
+//     // We only remove downward velocity here. This prevents a small
+//     // downward velocity from making the player fall through the floor.
+//     if velocity.y < 0.0 {
+//         velocity.y = 0.0;
+//     }
+// }
+
+// fn air_move(velocity: &mut Vec3, wish_dir: Vec3, wish_speed: f32, dt: f32) {
+//     // Air acceleration is deliberately weaker than ground acceleration.
+//     accelerate(velocity, wish_dir, wish_speed, AIR_ACCEL, dt);
+// }
+
+// fn get_jump_land_factor(jump_penalty_time: f32) -> f32 {
+//     if jump_penalty_time <= 0.0 {
+//         return 1.0;
+//     }
+
+//     let elapsed = JUMP_PENALTY_DURATION - jump_penalty_time;
+
+//     if elapsed >= JUMP_LAND_SLOWDOWN_TIME {
+//         JUMP_REJUMP_FACTOR
+//     } else {
+//         elapsed * 1.5 / JUMP_LAND_SLOWDOWN_TIME + 1.0
+//     }
+// }
+
+// fn check_jump(player: &mut PlayerPhysicsController, keyboard: &ButtonInput<KeyCode>) {
+//     if !player.isgrounded {
+//         return;
+//     }
+
+//     if !keyboard.just_pressed(KeyCode::Space) {
+//         return;
+//     }
+
+//     let normal_velocity = (2.0 * PLAYER_GRAVITY * JUMP_HEIGHT).sqrt();
+
+//     let land_factor = get_jump_land_factor(player.jump_penalty_time);
+
+//     player.velocity.y = normal_velocity / land_factor.sqrt();
+
+//     player.isgrounded = false;
+//     player.jump_penalty_time = JUMP_PENALTY_DURATION;
+// }
+
+// // // simple sprint (do nothing)
+// // fn get_move_speed(keyboard: &ButtonInput<KeyCode>) -> f32 {
+// //     // if keyboard.pressed(MouseButton::Left) {
+// //     // 	PLAYER_SPEED
+// //     // }
+
+// //     if keyboard.pressed(KeyCode::KeyW)
+// //         && (keyboard.pressed(KeyCode::ShiftLeft) || keyboard.pressed(KeyCode::ShiftRight))
+// //     {
+// //         //PLAYER_SPRINTING_SPEED
+// //         PLAYER_SPEED
+// //     } else {
+// //         PLAYER_SPEED
+// //     }
+// // }
 
 // fn player_movement(
 //     keyboard: Res<ButtonInput<KeyCode>>,
+//     mouse: Res<ButtonInput<MouseButton>>,
 //     time: Res<Time>,
-//     mut query: Query<
-//         (
-//             &Transform,
-//             &mut KinematicCharacterController,
-//             &mut PlayerPhysicsController,
-//         ),
-//         With<Player>,
-//     >,
+//     mut query: Query<(
+//         &Transform,
+//         &mut KinematicCharacterController,
+//         &mut PlayerPhysicsController,
+//         &PlayerMovementMode,
+//     )>,
 // ) {
 //     let dt = time.delta_secs();
-//     for (transform, mut controller, mut player) in query.iter_mut() {
+//     let current_time = time.elapsed_secs();
+
+//     for (transform, mut controller, mut player, movement_mode) in query.iter_mut() {
+//         // Check noclip
+//         if *movement_mode == PlayerMovementMode::NoClip {
+//             controller.translation = None;
+//             player.velocity = Vec3::ZERO;
+//             continue;
+//         }
+
 //         let mut input = Vec3::ZERO;
 //         if keyboard.pressed(KeyCode::KeyW) {
 //             input.z -= 1.0;
@@ -624,372 +787,143 @@ impl Default for PlayerPhysicsController {
 //         if wish_dir.length_squared() > 0.0 {
 //             wish_dir = wish_dir.normalize();
 //         }
+
+//         // -------------------------
+//         // ADS
+//         // -------------------------
+//         player.is_ads = mouse.pressed(MouseButton::Right);
+
+//         let is_ads = player.is_ads;
+
+//         // -------------------------
+//         // Sprint
+//         // -------------------------
+
+//         let wants_sprint = wants_to_sprint(&keyboard, input);
+
+//         //let is_ads = player.is_ads;
+
+//         //update_sprint(&mut player, wants_sprint, dt);
+//         update_sprint(&mut player, wants_sprint, is_ads, dt);
+
+//         let base_speed = if player.is_sprinting {
+//             PLAYER_SPRINTING_SPEED
+//         } else {
+//             PLAYER_SPEED
+//         };
+
+//         // Handle Player Jump
+//         check_jump(&mut player, &keyboard);
+
+//         player.jump_penalty_time = (player.jump_penalty_time - dt).max(0.0);
+
+//         // Calculate jump penalty
+//         let penalty_scale = if player.jump_penalty_time > 0.0 {
+//             JUMP_SLOWDOWN_SPEED
+//         } else {
+//             1.0
+//         };
+
+//         // // old Movement speed
+//         // let wish_speed = if wish_dir != Vec3::ZERO {
+//         //     get_move_speed(&keyboard) * penalty_scale
+//         // } else {
+//         //     0.0
+//         // };
+
+//         // -------------------------
+//         // Movement speed
+//         // -------------------------
+
+//         let ads_multiplier = if mouse.pressed(MouseButton::Right) {
+//             ADS_SPEED_MULTIPLIER
+//         } else {
+//             1.0
+//         };
+
+//         // Forward = 100%
+//         // Sideways = 80%
+//         // Backward = 70%
+//         let movement_multiplier = if keyboard.pressed(KeyCode::KeyS) {
+//             0.7
+//         } else if keyboard.pressed(KeyCode::KeyA) || keyboard.pressed(KeyCode::KeyD) {
+//             0.8
+//         } else {
+//             1.0
+//         };
+
+//         let wish_speed = if wish_dir != Vec3::ZERO {
+//             base_speed * penalty_scale * ads_multiplier * movement_multiplier
+//         } else {
+//             0.0
+//         };
+
+//         if player.isgrounded {
+//             walk_move(&mut player.velocity, wish_dir, wish_speed, dt);
+//         } else {
+//             air_move(&mut player.velocity, wish_dir, wish_speed, dt);
+//             player.velocity.y -= PLAYER_GRAVITY * dt;
+//         }
 //         controller.translation = Some(player.velocity * dt);
 //     }
-
-// }
-
-/// update_grounded is needed in system to check if player is grounded.
-fn update_grounded(
-    mut query: Query<(
-        &mut PlayerPhysicsController,
-        &KinematicCharacterControllerOutput,
-    )>,
-) {
-    for (mut player, output) in query.iter_mut() {
-        player.isgrounded = output.grounded;
-    }
-}
-
-// player speed
-const PLAYER_SPEED: f32 = 14.826; // 14.826
-const PLAYER_GRAVITY: f32 = 40.32;
-const PLAYER_SPRINTING_SPEED: f32 = 17.239; // 17.239
-
-// sprint stamina
-const MAX_SPRINT_TIME: f32 = 2.0;
-const SPRINT_RECHARGE_PAUSE: f32 = 0.3;
-
-const ADS_SPEED_MULTIPLIER: f32 = 0.6;
-
-// Ground acceleration.
-// Higher = reaches max speed faster.
-const GROUND_ACCEL: f32 = 50.0;
-
-// Air acceleration.
-// Lower than ground acceleration gives you reduced air control.
-const AIR_ACCEL: f32 = 2.0;
-
-// Jump height in world units.
-const JUMP_HEIGHT: f32 = 1.8;
-
-// Add jump penalty
-const JUMP_PENALTY_DURATION: f32 = 0.8;
-const JUMP_SLOWDOWN_SPEED: f32 = 0.5;
-const JUMP_LAND_SLOWDOWN_TIME: f32 = 1.7;
-const JUMP_REJUMP_FACTOR: f32 = 2.5;
-
-fn accelerate(velocity: &mut Vec3, wish_dir: Vec3, wish_speed: f32, acceleration: f32, dt: f32) {
-    if wish_dir == Vec3::ZERO || wish_speed <= 0.0 {
-        return;
-    }
-    // Velocity in the direction the player wants to move.
-    let current_speed = velocity.dot(wish_dir);
-    // How much more speed we need.
-    let add_speed = wish_speed - current_speed;
-    if add_speed <= 0.0 {
-        return;
-    }
-    // Amount of acceleration this frame.
-    let accel_speed = acceleration * dt * wish_speed;
-    let accel_speed = accel_speed.min(add_speed);
-    *velocity += wish_dir * accel_speed;
-}
-
-fn friction(velocity: &mut Vec3, friction: f32, stop_speed: f32, dt: f32) {
-    let speed = Vec2::new(velocity.x, velocity.z).length();
-
-    if speed < 0.001 {
-        velocity.x = 0.0;
-        velocity.z = 0.0;
-        return;
-    }
-
-    let control = speed.max(stop_speed);
-    let drop = control * friction * dt;
-
-    let new_speed = (speed - drop).max(0.0);
-    let scale = new_speed / speed;
-
-    velocity.x *= scale;
-    velocity.z *= scale;
-}
-
-fn walk_move(velocity: &mut Vec3, wish_dir: Vec3, wish_speed: f32, dt: f32) {
-    friction(velocity, 10.0, 10.0, dt);
-    // Ground movement accelerates quickly toward the desired speed.
-    accelerate(velocity, wish_dir, wish_speed, GROUND_ACCEL, dt);
-    // Ground movement should not accumulate vertical velocity.
-    //
-    // We only remove downward velocity here. This prevents a small
-    // downward velocity from making the player fall through the floor.
-    if velocity.y < 0.0 {
-        velocity.y = 0.0;
-    }
-}
-
-fn air_move(velocity: &mut Vec3, wish_dir: Vec3, wish_speed: f32, dt: f32) {
-    // Air acceleration is deliberately weaker than ground acceleration.
-    accelerate(velocity, wish_dir, wish_speed, AIR_ACCEL, dt);
-}
-
-fn get_jump_land_factor(jump_penalty_time: f32) -> f32 {
-    if jump_penalty_time <= 0.0 {
-        return 1.0;
-    }
-
-    let elapsed = JUMP_PENALTY_DURATION - jump_penalty_time;
-
-    if elapsed >= JUMP_LAND_SLOWDOWN_TIME {
-        JUMP_REJUMP_FACTOR
-    } else {
-        elapsed * 1.5 / JUMP_LAND_SLOWDOWN_TIME + 1.0
-    }
-}
-
-fn check_jump(player: &mut PlayerPhysicsController, keyboard: &ButtonInput<KeyCode>) {
-    if !player.isgrounded {
-        return;
-    }
-
-    if !keyboard.just_pressed(KeyCode::Space) {
-        return;
-    }
-
-    let normal_velocity = (2.0 * PLAYER_GRAVITY * JUMP_HEIGHT).sqrt();
-
-    let land_factor = get_jump_land_factor(player.jump_penalty_time);
-
-    player.velocity.y = normal_velocity / land_factor.sqrt();
-
-    player.isgrounded = false;
-    player.jump_penalty_time = JUMP_PENALTY_DURATION;
-}
-
-// simple sprint (do nothing)
-fn get_move_speed(keyboard: &ButtonInput<KeyCode>) -> f32 {
-    // if keyboard.pressed(MouseButton::Left) {
-    // 	PLAYER_SPEED
-    // }
-
-    if keyboard.pressed(KeyCode::KeyW)
-        && (keyboard.pressed(KeyCode::ShiftLeft) || keyboard.pressed(KeyCode::ShiftRight))
-    {
-        //PLAYER_SPRINTING_SPEED
-        PLAYER_SPEED
-    } else {
-        PLAYER_SPEED
-    }
-}
-
-fn player_movement(
-    keyboard: Res<ButtonInput<KeyCode>>,
-    mouse: Res<ButtonInput<MouseButton>>,
-    time: Res<Time>,
-    mut query: Query<(
-        &Transform,
-        &mut KinematicCharacterController,
-        &mut PlayerPhysicsController,
-        &PlayerMovementMode,
-    )>,
-) {
-    let dt = time.delta_secs();
-    let current_time = time.elapsed_secs();
-
-    for (transform, mut controller, mut player, movement_mode) in query.iter_mut() {
-        // Check noclip
-        if *movement_mode == PlayerMovementMode::NoClip {
-            controller.translation = None;
-            player.velocity = Vec3::ZERO;
-            continue;
-        }
-
-        let mut input = Vec3::ZERO;
-        if keyboard.pressed(KeyCode::KeyW) {
-            input.z -= 1.0;
-        }
-        if keyboard.pressed(KeyCode::KeyS) {
-            input.z += 1.0;
-        }
-        if keyboard.pressed(KeyCode::KeyA) {
-            input.x -= 1.0;
-        }
-        if keyboard.pressed(KeyCode::KeyD) {
-            input.x += 1.0;
-        }
-        if input.length_squared() > 0.0 {
-            input = input.normalize();
-        }
-        let mut wish_dir = transform.rotation * input;
-        wish_dir.y = 0.0;
-        if wish_dir.length_squared() > 0.0 {
-            wish_dir = wish_dir.normalize();
-        }
-
-        // -------------------------
-        // ADS
-        // -------------------------
-        player.is_ads = mouse.pressed(MouseButton::Right);
-
-        let is_ads = player.is_ads;
-
-        // -------------------------
-        // Sprint
-        // -------------------------
-
-        let wants_sprint = wants_to_sprint(&keyboard, input);
-
-        //let is_ads = player.is_ads;
-
-        //update_sprint(&mut player, wants_sprint, dt);
-        update_sprint(&mut player, wants_sprint, is_ads, dt);
-
-        let base_speed = if player.is_sprinting {
-            PLAYER_SPRINTING_SPEED
-        } else {
-            PLAYER_SPEED
-        };
-
-        // Handle Player Jump
-        check_jump(&mut player, &keyboard);
-
-        player.jump_penalty_time = (player.jump_penalty_time - dt).max(0.0);
-
-        // Calculate jump penalty
-        let penalty_scale = if player.jump_penalty_time > 0.0 {
-            JUMP_SLOWDOWN_SPEED
-        } else {
-            1.0
-        };
-
-        // // old Movement speed
-        // let wish_speed = if wish_dir != Vec3::ZERO {
-        //     get_move_speed(&keyboard) * penalty_scale
-        // } else {
-        //     0.0
-        // };
-
-        // -------------------------
-        // Movement speed
-        // -------------------------
-
-        let ads_multiplier = if mouse.pressed(MouseButton::Right) {
-            ADS_SPEED_MULTIPLIER
-        } else {
-            1.0
-        };
-
-        // Forward = 100%
-        // Sideways = 80%
-        // Backward = 70%
-        let movement_multiplier = if keyboard.pressed(KeyCode::KeyS) {
-            0.5
-        } else if keyboard.pressed(KeyCode::KeyA) || keyboard.pressed(KeyCode::KeyD) {
-            0.7
-        } else {
-            1.0
-        };
-
-        let wish_speed = if wish_dir != Vec3::ZERO {
-            base_speed * penalty_scale * ads_multiplier * movement_multiplier
-        } else {
-            0.0
-        };
-
-        if player.isgrounded {
-            walk_move(&mut player.velocity, wish_dir, wish_speed, dt);
-        } else {
-            air_move(&mut player.velocity, wish_dir, wish_speed, dt);
-            player.velocity.y -= PLAYER_GRAVITY * dt;
-        }
-        controller.translation = Some(player.velocity * dt);
-    }
-}
-
-// /// Check whether the player is sprinting
-// fn is_sprinting(player: &PlayerPhysicsController) -> bool {
-//     player.sprint_start_time.is_some() && player.sprint_end_time.is_none()
-// }
-
-// /// Calculate sprint remaining
-// fn get_sprint_left(player: &PlayerPhysicsController, current_time: f32) -> f32 {
-//     let max_sprint_time = MAX_SPRINT_TIME;
-
-//     let Some(start) = player.sprint_start_time else {
-//         return max_sprint_time;
-//     };
-
-//     // Currently sprinting.
-//     if player.sprint_end_time.is_none() {
-//         let elapsed = current_time - start;
-
-//         return (player.sprint_start_max_length - elapsed).clamp(0.0, max_sprint_time);
-//     }
-
-//     // Last sprint has ended.
-//     let end = player.sprint_end_time.unwrap();
-
-//     let sprint_duration = end - start;
-
-//     let mut sprint_left = player.sprint_start_max_length - sprint_duration;
-
-//     let recharge_elapsed = current_time - end;
-
-//     if player.sprint_delay {
-//         sprint_left += (recharge_elapsed - SPRINT_RECHARGE_PAUSE).max(0.0);
-//     } else {
-//         sprint_left += recharge_elapsed;
-//     }
-
-//     sprint_left.clamp(0.0, max_sprint_time)
 // }
 
 fn update_aiming(player: &mut PlayerPhysicsController, mouse: &ButtonInput<MouseButton>) {
     player.is_ads = mouse.pressed(MouseButton::Right);
 }
 
-/// Start and stop sprinting
-fn update_sprint(player: &mut PlayerPhysicsController, wants_sprint: bool, is_ads: bool, dt: f32) {
-    // ADS always cancels sprint.
-    if is_ads {
-        if player.is_sprinting {
-            player.is_sprinting = false;
-            player.sprint_recharge_delay = SPRINT_RECHARGE_PAUSE;
-        }
+// /// Start and stop sprinting
+// fn update_sprint(player: &mut PlayerPhysicsController, wants_sprint: bool, is_ads: bool, dt: f32) {
+//     // ADS always cancels sprint.
+//     if is_ads {
+//         if player.is_sprinting {
+//             player.is_sprinting = false;
+//             player.sprint_recharge_delay = SPRINT_RECHARGE_PAUSE;
+//         }
 
-        return;
-    }
+//         return;
+//     }
 
-    // --------------------------------
-    // Currently sprinting
-    // --------------------------------
+//     // --------------------------------
+//     // Currently sprinting
+//     // --------------------------------
 
-    if player.is_sprinting {
-        if wants_sprint && player.sprint_remaining > 0.0 {
-            player.sprint_remaining = (player.sprint_remaining - dt).max(0.0);
+//     if player.is_sprinting {
+//         if wants_sprint && player.sprint_remaining > 0.0 {
+//             player.sprint_remaining = (player.sprint_remaining - dt).max(0.0);
 
-            if player.sprint_remaining <= 0.0 {
-                player.is_sprinting = false;
-                player.sprint_recharge_delay = SPRINT_RECHARGE_PAUSE;
-            }
-        } else {
-            player.is_sprinting = false;
-            player.sprint_recharge_delay = SPRINT_RECHARGE_PAUSE;
-        }
+//             if player.sprint_remaining <= 0.0 {
+//                 player.is_sprinting = false;
+//                 player.sprint_recharge_delay = SPRINT_RECHARGE_PAUSE;
+//             }
+//         } else {
+//             player.is_sprinting = false;
+//             player.sprint_recharge_delay = SPRINT_RECHARGE_PAUSE;
+//         }
 
-        return;
-    }
+//         return;
+//     }
 
-    // --------------------------------
-    // Not sprinting
-    // --------------------------------
+//     // --------------------------------
+//     // Not sprinting
+//     // --------------------------------
 
-    if !wants_sprint {
-        if player.sprint_recharge_delay > 0.0 {
-            player.sprint_recharge_delay = (player.sprint_recharge_delay - dt).max(0.0);
-        } else {
-            player.sprint_remaining = (player.sprint_remaining + dt).min(MAX_SPRINT_TIME);
-        }
-    }
+//     if !wants_sprint {
+//         if player.sprint_recharge_delay > 0.0 {
+//             player.sprint_recharge_delay = (player.sprint_recharge_delay - dt).max(0.0);
+//         } else {
+//             player.sprint_remaining = (player.sprint_remaining + dt).min(MAX_SPRINT_TIME);
+//         }
+//     }
 
-    // --------------------------------
-    // Start sprint
-    // --------------------------------
+//     // --------------------------------
+//     // Start sprint
+//     // --------------------------------
 
-    if wants_sprint && player.sprint_recharge_delay <= 0.0 && player.sprint_remaining > 0.0 {
-        player.is_sprinting = true;
-    }
-}
+//     if wants_sprint && player.sprint_recharge_delay <= 0.0 && player.sprint_remaining > 0.0 {
+//         player.is_sprinting = true;
+//     }
+// }
 
 /// wants_to_sprint
 fn shift_held(keyboard: &ButtonInput<KeyCode>) -> bool {
@@ -1031,461 +965,6 @@ impl Default for WeaponWalkSway {
         }
     }
 }
-
-// fn weapon_walk_sway(
-//     time: Res<Time>,
-//     mut weapon_query: Query<(&mut Transform, &mut WeaponWalkSway), With<EquippedWeapon>>,
-//     player_query: Query<&GlobalTransform, With<Player>>,
-// ) {
-//     let dt = time.delta_secs();
-
-//     let Ok(player_transform) = player_query.single() else {
-//         return;
-//     };
-
-//     let player_pos = player_transform.translation();
-
-//     for (mut transform, mut sway) in weapon_query.iter_mut() {
-//         // First frame initialization
-//         if !sway.initialized {
-//             sway.previous_position = player_pos;
-//             sway.initialized = true;
-//             continue;
-//         }
-
-//         // Horizontal movement only
-//         let delta = player_pos - sway.previous_position;
-//         sway.previous_position = player_pos;
-
-//         let horizontal = Vec2::new(delta.x, delta.z);
-
-//         let speed = horizontal.length() / dt.max(0.0001);
-
-//         // Normalize walking influence
-//         let target_weight = (speed / 6.0).clamp(0.0, 1.0);
-
-//         // Smoothly blend sway in/out
-//         sway.current_weight += (target_weight - sway.current_weight) * (1.0 - (-12.0 * dt).exp());
-
-//         // Advance walking cycle
-//         sway.phase += speed * 0.5 * dt;
-
-//         let bob = sway.phase.sin();
-//         let bob2 = (sway.phase * 2.0).sin();
-
-//         // Positional sway
-//         let x = bob * 0.015 * sway.current_weight;
-//         let y = bob2 * 0.025 * sway.current_weight;
-
-//         // Rotational sway
-//         let roll = bob * 0.003 * sway.current_weight;
-//         let pitch = bob2 * 0.002 * sway.current_weight;
-//         let yaw = bob * 0.015 * sway.current_weight;
-
-//         transform.translation = sway.base_translation + Vec3::new(x, y, 0.0);
-
-//         transform.rotation = sway.base_rotation * Quat::from_euler(EulerRot::XYZ, pitch, yaw, roll);
-//     }
-// }
-
-// pub fn weapon_walk_sway(
-//     time: Res<Time>,
-//     mut weapon_query: Query<(&mut Transform, &mut WeaponWalkSway), With<EquippedWeapon>>,
-//     player_query: Query<&GlobalTransform, With<Player>>,
-// ) {
-//     let dt = time.delta_secs();
-
-//     let Ok(player_transform) = player_query.single() else {
-//         return;
-//     };
-
-//     let player_pos = player_transform.translation();
-
-//     for (mut transform, mut sway) in weapon_query.iter_mut() {
-//         if !sway.initialized {
-//             sway.previous_position = player_pos;
-//             sway.initialized = true;
-//             continue;
-//         }
-
-//         let delta = player_pos - sway.previous_position;
-//         sway.previous_position = player_pos;
-
-//         let horizontal = Vec2::new(delta.x, delta.z);
-//         let speed = horizontal.length() / dt.max(0.0001);
-
-//         let target_weight = (speed / 6.0).clamp(0.0, 1.0);
-
-//         sway.current_weight += (target_weight - sway.current_weight) * (1.0 - (-12.0 * dt).exp());
-
-//         sway.phase += speed * 0.5 * dt;
-
-//         let bob = sway.phase.sin();
-//         let bob2 = (sway.phase * 2.0).sin();
-
-//         // Reduce walk sway while ADS, but leave 1% residual sway.
-//         let ads_sway_factor = 0.0 + 1.0 *  (1.0 - sway.ads_progress).powi(3);
-
-//         let weight = sway.current_weight * ads_sway_factor;
-
-//         let x = bob * 0.001 * weight;
-//         let y = bob2 * 0.005 * weight;
-
-//         let roll = bob * 0.003 * weight;
-//         let pitch = bob2 * 0.002 * weight;
-//         let yaw = bob * 0.015 * weight;
-
-//         let sway_translation = Vec3::new(x, y, 0.0);
-
-//         let sway_rotation = Quat::from_euler(EulerRot::XYZ, pitch, yaw, roll);
-
-//         transform.translation = sway.base_translation + sway_translation;
-
-//         transform.rotation = sway.base_rotation * sway_rotation;
-//     }
-// }
-
-// pub fn weapon_walk_sway(
-//     time: Res<Time>,
-//     mut weapon_query: Query<
-//         (&mut Transform, &mut WeaponWalkSway, &WeaponState),
-//         With<EquippedWeapon>,
-//     >,
-//     player_query: Query<&GlobalTransform, With<Player>>,
-// ) {
-//     let dt = time.delta_secs();
-
-//     let Ok(player_transform) = player_query.single() else {
-//         return;
-//     };
-
-//     let player_pos = player_transform.translation();
-
-//     for (mut transform, mut sway, weapon_state) in weapon_query.iter_mut() {
-//         if !sway.initialized {
-//             sway.previous_position = player_pos;
-//             sway.initialized = true;
-//             continue;
-//         }
-
-//         let delta = player_pos - sway.previous_position;
-//         sway.previous_position = player_pos;
-
-//         let horizontal = Vec2::new(delta.x, delta.z);
-//         let speed = horizontal.length() / dt.max(0.0001);
-
-//         // ------------------------------------------------------------
-//         // Walk sway
-//         // ------------------------------------------------------------
-
-//         let target_weight = (speed / 6.0).clamp(0.0, 1.0);
-
-//         sway.current_weight += (target_weight - sway.current_weight) * (1.0 - (-12.0 * dt).exp());
-
-//         // Sprint progress is already smoothly animated elsewhere.
-//         let sprint = weapon_state.sprint_progress.clamp(0.0, 1.0);
-
-//         // Faster oscillation while sprinting.
-//         let walk_frequency = 0.5;
-//         let sprint_frequency = 0.85;
-
-//         let frequency = walk_frequency + (sprint_frequency - walk_frequency) * sprint;
-
-//         sway.phase += speed * frequency * dt;
-
-//         let bob = (sway.phase * 0.8).sin();
-//         let bob2 = (sway.phase * 2.0).sin();
-//         let bob3 = (sway.phase * 0.3).sin();
-
-//         // ------------------------------------------------------------
-//         // ADS
-//         // ------------------------------------------------------------
-
-//         let ads_sway_factor = (1.0 - sway.ads_progress).powi(3);
-
-//         // ------------------------------------------------------------
-//         // Walk sway
-//         // ------------------------------------------------------------
-
-//         let walk_weight = sway.current_weight * ads_sway_factor * (1.0 - sprint);
-
-//         let walk_x = bob * 0.001 * walk_weight;
-//         let walk_y = bob2 * 0.002 * walk_weight;
-
-//         let walk_roll = bob * 0.002 * walk_weight;
-//         let walk_pitch = bob2 * 0.000 * walk_weight;
-//         let walk_yaw = bob * 0.015 * walk_weight;
-
-//         // ------------------------------------------------------------
-//         // Sprint sway
-//         // ------------------------------------------------------------
-
-//         // Don't depend entirely on speed here. sprint_progress is
-//         // what makes the animation feel responsive.
-//         let sprint_weight = sprint * sway.current_weight;
-
-//         let sprint_x = bob3 * 0.0001 * sprint_weight;
-//         let sprint_y = bob3 * 0.012 * sprint_weight;
-
-//         let sprint_roll = bob3 * 0.10 * sprint_weight;
-//         let sprint_pitch = bob3 * 0.100 * sprint_weight;
-//         let sprint_yaw = bob3 * 0.01 * sprint_weight;
-
-//         // Sprint pushes the weapon slightly down and forward.
-//         let sprint_offset = Vec3::new(0.1 * bob3 * sprint , -0.025 * sprint, -0.035 * sprint);
-
-//         // ------------------------------------------------------------
-//         // Combine
-//         // ------------------------------------------------------------
-
-//         let translation = Vec3::new(walk_x + sprint_x, walk_y + sprint_y, 0.0) + sprint_offset;
-
-//         let rotation = Quat::from_euler(
-//             EulerRot::XYZ,
-//             walk_pitch + sprint_pitch,
-//             walk_yaw + sprint_yaw,
-//             walk_roll + sprint_roll,
-//         );
-
-//         transform.translation = sway.base_translation + translation;
-
-//         transform.rotation = sway.base_rotation * rotation;
-//     }
-// }
-
-// pub fn weapon_walk_sway(
-//     time: Res<Time>,
-//     mut weapon_query: Query<
-//         (&mut Transform, &mut WeaponWalkSway, &WeaponState),
-//         With<EquippedWeapon>,
-//     >,
-//     player_query: Query<&GlobalTransform, With<Player>>,
-// ) {
-//     let dt = time.delta_secs();
-
-//     let Ok(player_transform) = player_query.single() else {
-//         return;
-//     };
-
-//     let player_pos = player_transform.translation();
-
-//     for (mut transform, mut sway, weapon_state) in weapon_query.iter_mut() {
-//         if !sway.initialized {
-//             sway.previous_position = player_pos;
-//             sway.initialized = true;
-//             continue;
-//         }
-
-//         // Calculate player movement.
-//         let delta = player_pos - sway.previous_position;
-//         sway.previous_position = player_pos;
-
-//         let horizontal = Vec2::new(delta.x, delta.z);
-//         let speed = horizontal.length() / dt.max(0.0001);
-
-//         // Normalize movement direction.
-//         let movement = if horizontal.length_squared() > 0.000001 {
-//             horizontal.normalize()
-//         } else {
-//             Vec2::ZERO
-//         };
-
-//         // ------------------------------------------------------------
-//         // ADS
-//         // ------------------------------------------------------------
-
-//         let ads_sway_factor = (1.0 - sway.ads_progress).powi(3);
-
-//         // ------------------------------------------------------------
-//         // Walk sway
-//         // ------------------------------------------------------------
-
-//         let walk_weight =
-//             (speed / 10.0).clamp(0.0, 1.0)
-//             * ads_sway_factor;
-
-// 	//let walk_weight = 0.0;
-
-//         // Movement direction controls the sway.
-//         //
-//         // X = strafe
-//         // Y = forward/backward
-
-//         let target_yaw = movement.x * 0.02 * walk_weight;
-//         let target_pitch = -movement.y * 0.02 * walk_weight;
-//         let target_roll = -movement.x * 0.00 * walk_weight;
-
-//         let walk_rotation = Quat::from_euler(
-//             EulerRot::XYZ,
-//             target_pitch,
-//             target_yaw,
-//             target_roll,
-//         );
-
-//         // ------------------------------------------------------------
-//         // Sprint
-//         // ------------------------------------------------------------
-
-//         let sprint = weapon_state.sprint_progress.clamp(0.0, 1.0);
-
-//         let sprint_pitch = -0.12 * sprint;
-//         let sprint_yaw = 0.02 * sprint;
-//         let sprint_roll = -0.10 * sprint;
-
-//         let sprint_rotation = Quat::from_euler(
-//             EulerRot::XYZ,
-//             sprint_pitch,
-//             sprint_yaw,
-//             sprint_roll,
-//         );
-
-//         // ------------------------------------------------------------
-//         // Combine
-//         // ------------------------------------------------------------
-
-//         let target_rotation = walk_rotation * sprint_rotation;
-
-//         // Smoothly approach target rotation.
-//         // Equivalent to Unity's Quaternion.Slerp.
-//         let smooth = 24.0;
-//         let smoothing = 1.0 - (-smooth * dt).exp();
-
-//         transform.rotation = transform.rotation.slerp(
-//             sway.base_rotation * target_rotation,
-//             smoothing,
-//         );
-
-//         // ------------------------------------------------------------
-//         // Sprint position
-//         // ------------------------------------------------------------
-
-//         let sprint_offset = Vec3::new(
-//             0.10 * movement.x * sprint,
-//             -0.025 * sprint,
-//             -0.035 * sprint,
-//         );
-
-//         transform.translation =
-//             sway.base_translation + sprint_offset;
-//     }
-// }
-
-// pub fn weapon_walk_sway(
-//     time: Res<Time>,
-//     mut mouse_motion: Res<AccumulatedMouseMotion>,
-//     mut weapon_query: Query<
-//         (&mut Transform, &mut WeaponWalkSway, &WeaponState),
-//         With<EquippedWeapon>,
-//     >,
-// ) {
-//     let dt = time.delta_secs();
-
-//     // ------------------------------------------------------------
-//     // Mouse input
-//     // ------------------------------------------------------------
-
-//     let mut mouse_x = 0.0;
-//     let mut mouse_y = 0.0;
-
-//     for event in mouse_motion.read() {
-//         mouse_x += event.delta.x;
-//         mouse_y += event.delta.y;
-//     }
-
-//     for (mut transform, mut sway, weapon_state) in weapon_query.iter_mut() {
-
-//         // ------------------------------------------------------------
-//         // ADS
-//         // ------------------------------------------------------------
-
-//         let ads_sway_factor = (1.0 - sway.ads_progress).powi(3);
-
-//         // ------------------------------------------------------------
-//         // Mouse sway
-//         // ------------------------------------------------------------
-
-//         let sway_multiplier = 0.002;
-
-//         // Mouse X = horizontal movement
-//         let target_yaw =
-//             mouse_x * sway_multiplier * ads_sway_factor;
-
-//         // Mouse Y = vertical movement
-//         let target_pitch =
-//             -mouse_y * sway_multiplier * ads_sway_factor;
-
-//         // Optional weapon tilt when moving mouse horizontally.
-//         // Set to 0.0 if you don't want roll.
-//         let target_roll =
-//             -mouse_x * 0.0005 * ads_sway_factor;
-
-//         let mouse_rotation = Quat::from_euler(
-//             EulerRot::XYZ,
-//             target_pitch,
-//             target_yaw,
-//             target_roll,
-//         );
-
-//         // ------------------------------------------------------------
-//         // Sprint
-//         // ------------------------------------------------------------
-
-//         let sprint = weapon_state
-//             .sprint_progress
-//             .clamp(0.0, 1.0);
-
-//         let sprint_pitch = -0.12 * sprint;
-//         let sprint_yaw = 0.02 * sprint;
-//         let sprint_roll = -0.10 * sprint;
-
-//         let sprint_rotation = Quat::from_euler(
-//             EulerRot::XYZ,
-//             sprint_pitch,
-//             sprint_yaw,
-//             sprint_roll,
-//         );
-
-//         // ------------------------------------------------------------
-//         // Combine
-//         // ------------------------------------------------------------
-
-//         let target_rotation =
-//             mouse_rotation * sprint_rotation;
-
-//         // Same idea as Unity:
-//         //
-//         // Quaternion.Slerp(
-//         //     currentRotation,
-//         //     targetRotation,
-//         //     smooth * Time.deltaTime
-//         // );
-
-//         let smooth = 24.0;
-
-//         let smoothing =
-//             1.0 - (-smooth * dt).exp();
-
-//         transform.rotation = transform
-//             .rotation
-//             .slerp(
-//                 sway.base_rotation * target_rotation,
-//                 smoothing,
-//             );
-
-//         // ------------------------------------------------------------
-//         // Sprint position
-//         // ------------------------------------------------------------
-
-//         let sprint_offset = Vec3::new(
-//             0.0,
-//             -0.025 * sprint,
-//             -0.035 * sprint,
-//         );
-
-//         transform.translation =
-//             sway.base_translation + sprint_offset;
-//     }
-// }
 
 pub fn weapon_walk_sway(
     time: Res<Time>,
@@ -1534,18 +1013,6 @@ pub fn weapon_walk_sway(
         transform.translation = sway.base_translation + sprint_offset;
     }
 }
-
-/* Configure snap-to-ground inside of a system. */
-// fn modify_character_controller_slopes(
-//     mut character_controllers: Query<&mut KinematicCharacterController>,
-// ) {
-//     for mut character_controller in character_controllers.iter_mut() {
-//         // Don’t allow climbing slopes larger than 45 degrees.
-//         character_controller.max_slope_climb_angle = 45_f32.to_radians();
-//         // Automatically slide down on slopes smaller than 30 degrees.
-//         character_controller.min_slope_slide_angle = 30_f32.to_radians();
-//     }
-// }
 
 fn toggle_noclip(
     keyboard: Res<ButtonInput<KeyCode>>,
@@ -1655,123 +1122,3 @@ fn noclip_movement(
         player_transform.translation += movement * NOCLIP_SPEED * time.delta_secs();
     }
 }
-
-// #[derive(Component)]
-// pub struct WeaponPositionTester;
-
-// fn spawn_weapon_position_tester(mut commands: Commands, asset_server: Res<AssetServer>) {
-//     let test_position = Vec3::new(0.6, -0.8, -2.0);
-
-//     commands.spawn((
-//         WeaponPositionTester,
-//         WorldAssetRoot(
-//             asset_server.load(
-//                 GltfAssetLabel::Scene(0)
-//                     .from_asset("models/20260821-gun-viewmodel-0002-with-simpleanim.glb"),
-//             ),
-//         ),
-//         Transform::from_translation(test_position),
-//         Visibility::Visible,
-//         RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
-//     ));
-// }
-
-// // #[derive(Component)]
-// // pub struct WeaponPositionTest {
-// //     pub enabled: bool,
-// //     pub position: Vec3,
-// // }
-
-// #[derive(Resource)]
-// pub struct WeaponPositionTestSettings {
-//     pub amount: f32,
-// }
-
-// ///weapon position test system
-// fn test_weapon_position(
-//     keyboard: Res<ButtonInput<KeyCode>>,
-//     mut settings: ResMut<WeaponPositionTestSettings>,
-//     mut query: Query<&mut Transform, With<WeaponPositionTester>>,
-// ) {
-//     if !ENABLE_WEAPON_POSITION_TESTER {
-//         return;
-//     }
-
-//     if keyboard.just_pressed(KeyCode::Period) {
-//        settings.amount = (settings.amount * 10.0).min(10.0);
-
-//         println!(
-//             "Weapon position amount increased: {}",
-//             settings.amount
-//         );
-//     }
-
-//     if keyboard.just_pressed(KeyCode::Comma) {
-
-//     settings.amount = (settings.amount / 10.0).max(0.001);
-
-//     println!(
-//         "Weapon position amount decreased: {}",
-//         settings.amount
-//     );
-// }
-
-//     // if keyboard.just_pressed(KeyCode::BracketLeft) {
-//     //     settings.amount = (settings.amount / 10.0).max(0.001);
-
-//     //     println!(
-//     //         "Weapon position amount decreased: {}",
-//     //         settings.amount
-//     //     );
-//     // }
-
-//     let amount = settings.amount;
-
-//     // ==========================================
-//     // MOVE TEST WEAPON
-//     // ==========================================
-
-//     for mut transform in &mut query {
-//         let old_position = transform.translation;
-
-//         // X axis: J / L
-//         if keyboard.just_pressed(KeyCode::KeyJ) {
-//             transform.translation.x -= amount;
-//         }
-
-//         if keyboard.just_pressed(KeyCode::KeyL) {
-//             transform.translation.x += amount;
-//         }
-
-//         // Y axis: K / I
-//         if keyboard.just_pressed(KeyCode::KeyK) {
-//             transform.translation.y -= amount;
-//         }
-
-//         if keyboard.just_pressed(KeyCode::KeyI) {
-//             transform.translation.y += amount;
-//         }
-
-//         // Z axis: U / O
-//         if keyboard.just_pressed(KeyCode::KeyU) {
-//             transform.translation.z -= amount;
-//         }
-
-//         if keyboard.just_pressed(KeyCode::KeyO) {
-//             transform.translation.z += amount;
-//         }
-
-//         // ==========================================
-//         // PRINT ONLY WHEN POSITION CHANGES
-//         // ==========================================
-
-//         if transform.translation != old_position {
-//             println!(
-//                 "hip_weapon_position: Vec3::new({:.4}, {:.4}, {:.4}),",
-//                 transform.translation.x,
-//                 transform.translation.y,
-//                 transform.translation.z,
-//             );
-//         }
-//     }
-// }
