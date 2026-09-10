@@ -1,13 +1,14 @@
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
 
-use super::player::PlayerMovementMode;
+//use super::player::PlayerMovementMode;
+use super::player::{Player, PlayerMovementMode};
 
 /// Maximum normal movement speed.
-pub const PLAYER_SPEED: f32 = 14.826;
+pub const PLAYER_SPEED: f32 = 15.0; //14.826
 
 /// Sprint movement speed.
-pub const PLAYER_SPRINTING_SPEED: f32 = 17.239;
+pub const PLAYER_SPRINTING_SPEED: f32 = 18.0; //17.239
 
 /// Gravity in your current world scale.
 pub const PLAYER_GRAVITY: f32 = 40.32;
@@ -67,6 +68,26 @@ pub const JUMP_SLOWDOWN_SPEED: f32 = 0.5;
 pub const JUMP_LAND_SLOWDOWN_TIME: f32 = 1.7;
 pub const JUMP_REJUMP_FACTOR: f32 = 2.5;
 
+// -----------------------------------------------------------------------------
+// Player state
+// -----------------------------------------------------------------------------
+
+/// High-level gameplay state of the player.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
+pub enum PlayerState {
+    Idle,
+    Walking,
+    Sprinting,
+    Jumping,
+    Falling,
+    ADS,
+}
+
+impl Default for PlayerState {
+    fn default() -> Self {
+        Self::Idle
+    }
+}
 // -----------------------------------------------------------------------------
 // Player controller
 // -----------------------------------------------------------------------------
@@ -137,7 +158,12 @@ pub struct PlayerControllerPlugin;
 
 impl Plugin for PlayerControllerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, (update_grounded, player_controller).chain());
+        // app.add_systems(Update, (update_grounded, player_controller).chain());
+        // app.add_systems(Update, (update_grounded, player_controller).chain());
+        app.add_systems(
+            Update,
+            (update_grounded, player_controller, debug_player_state).chain(),
+        );
     }
 }
 
@@ -171,11 +197,14 @@ fn player_controller(
         &mut KinematicCharacterController,
         &mut PlayerPhysicsController,
         &PlayerMovementMode,
+        &mut PlayerState,
     )>,
 ) {
     let dt = time.delta_secs();
 
-    for (transform, mut character_controller, mut player, movement_mode) in &mut query {
+    for (transform, mut character_controller, mut player, movement_mode, mut player_state) in
+        &mut query
+    {
         // -------------------------------------------------------------
         // NoClip
         // -------------------------------------------------------------
@@ -242,7 +271,9 @@ fn player_controller(
         // Jump
         // -------------------------------------------------------------
 
-        try_jump(&mut player);
+        //try_jump(&mut player);
+
+        let jumped = try_jump(&mut player);
 
         // -------------------------------------------------------------
         // Jump penalty
@@ -273,12 +304,12 @@ fn player_controller(
         };
 
         // Forward = 100%
-        // Sideways = 80%
-        // Backward = 70%
+        // Sideways = 90%
+        // Backward = 80%
         let movement_multiplier = if keyboard.pressed(KeyCode::KeyS) {
-            0.7
-        } else if keyboard.pressed(KeyCode::KeyA) || keyboard.pressed(KeyCode::KeyD) {
             0.8
+        } else if keyboard.pressed(KeyCode::KeyA) || keyboard.pressed(KeyCode::KeyD) {
+            0.91
         } else {
             1.0
         };
@@ -311,6 +342,11 @@ fn player_controller(
             // Limit fall speed.
             player.velocity.y = player.velocity.y.max(-MAX_FALL_SPEED);
         }
+
+        // -------------------------------------------------------------
+        // Update player state
+        // -------------------------------------------------------------
+        *player_state = determine_player_state(&player, wish_dir, jumped);
 
         // -------------------------------------------------------------
         // Send movement to Rapier
@@ -439,9 +475,11 @@ fn friction(velocity: &mut Vec3, friction: f32, stop_speed: f32, dt: f32) {
 // Jump
 // -----------------------------------------------------------------------------
 
-fn try_jump(player: &mut PlayerPhysicsController) {
+//fn try_jump(player: &mut PlayerPhysicsController)
+
+fn try_jump(player: &mut PlayerPhysicsController) -> bool {
     if player.jump_buffer_timer <= 0.0 {
-        return;
+        return false;
     }
 
     // The JS controller allows jumping either while grounded
@@ -449,7 +487,7 @@ fn try_jump(player: &mut PlayerPhysicsController) {
     let can_jump = player.isgrounded || player.coyote_timer > 0.0;
 
     if !can_jump {
-        return;
+        return false;
     }
 
     // v = sqrt(2gh)
@@ -469,6 +507,8 @@ fn try_jump(player: &mut PlayerPhysicsController) {
 
     // Consume coyote time.
     player.coyote_timer = 0.0;
+
+    true
 }
 
 // -----------------------------------------------------------------------------
@@ -557,4 +597,47 @@ fn wants_to_sprint(keyboard: &ButtonInput<KeyCode>, input: Vec3) -> bool {
     // Match your existing behavior:
     // Shift + W.
     shift_held(keyboard) && input.z < 0.0
+}
+
+fn determine_player_state(
+    player: &PlayerPhysicsController,
+    wish_dir: Vec3,
+    jumped: bool,
+) -> PlayerState {
+    // A jump that happened this frame immediately enters Jumping.
+    if jumped {
+        return PlayerState::Jumping;
+    }
+
+    // Airborne states have priority over ADS.
+    if !player.isgrounded {
+        if player.velocity.y > 0.0 {
+            return PlayerState::Jumping;
+        } else {
+            return PlayerState::Falling;
+        }
+    }
+
+    // ADS takes priority over normal ground movement.
+    if player.is_ads {
+        return PlayerState::ADS;
+    }
+
+    // Normal grounded states.
+    if player.is_sprinting {
+        return PlayerState::Sprinting;
+    }
+
+    if wish_dir != Vec3::ZERO {
+        return PlayerState::Walking;
+    }
+
+    PlayerState::Idle
+}
+
+/// debug system that prints the player's state whenever it changes
+fn debug_player_state(query: Query<&PlayerState, With<Player>>) {
+    // for state in &query {
+    //     println!("Player state: {:?}", state);
+    // }
 }

@@ -35,6 +35,7 @@ use crate::render_layers::{DEFAULT_RENDER_LAYER, VIEW_MODEL_RENDER_LAYER};
 use crate::player::player_controller::{
     PlayerControllerPlugin,
     PlayerPhysicsController,
+    PlayerState,
 }; // import player_controller
 
 pub struct PlayerPlugin;
@@ -92,14 +93,14 @@ impl Default for CameraSensitivity {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PlayerState {
-    Ground,
-    Sprinting,
-    Air,
-    Sliding,
-    WallRunning,
-}
+// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// pub enum PlayerState {
+//     Ground,
+//     Sprinting,
+//     Air,
+//     Sliding,
+//     WallRunning,
+// }
 
 // #[derive(Debug, Component)]
 // struct WorldModelCamera;
@@ -351,6 +352,7 @@ fn spawn_player(
         .spawn((
             Player,
             PlayerMovementMode::Normal,
+	    PlayerState::Idle,
             PlayerPhysicsController {
                 ..PlayerPhysicsController::default()
             },
